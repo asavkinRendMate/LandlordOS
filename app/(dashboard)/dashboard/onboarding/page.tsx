@@ -55,10 +55,10 @@ function Label({ children, htmlFor }: { children: React.ReactNode; htmlFor?: str
 }
 
 const inputClass =
-  'w-full bg-white/8 border border-white/15 rounded-lg px-3.5 py-2.5 text-white placeholder-white/30 text-sm focus:outline-none focus:border-green-500/60 focus:ring-1 focus:ring-green-500/30 transition-colors'
+  'w-full bg-[#5f655f] border border-white/15 rounded-lg px-3.5 py-2.5 text-white placeholder-white/30 text-sm focus:outline-none focus:border-green-500/60 focus:ring-1 focus:ring-green-500/30 transition-colors'
 
 const selectClass =
-  'w-full bg-white/8 border border-white/15 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:border-green-500/60 focus:ring-1 focus:ring-green-500/30 transition-colors appearance-none'
+  'w-full bg-[#5f655f] border border-white/15 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:border-green-500/60 focus:ring-1 focus:ring-green-500/30 transition-colors appearance-none'
 
 // ── Step 1 — Property address ─────────────────────────────────────────────────
 
