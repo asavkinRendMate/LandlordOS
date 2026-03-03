@@ -23,7 +23,8 @@ export default function LoginPage() {
     })
 
     if (error) {
-      setError('Something went wrong. Please try again.')
+      console.error('[login] signInWithOtp error:', error.code, error.message, error.status)
+      setError(error.message)
     } else {
       setSent(true)
     }
