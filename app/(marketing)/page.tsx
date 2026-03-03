@@ -343,7 +343,7 @@ export default function LandingPage() {
           </div>
 
           {/* Desktop: horizontal flow with arrows */}
-          <div className="hidden lg:flex items-start">
+          <div className="hidden lg:flex items-stretch">
             {howItWorks.map((stage, i) => (
               <Fragment key={stage.title}>
                 <div
@@ -355,7 +355,7 @@ export default function LandingPage() {
                   <p className="text-gray-400 text-xs leading-relaxed">{stage.body}</p>
                 </div>
                 {i < howItWorks.length - 1 && (
-                  <div className="shrink-0 flex items-center px-2 text-green-300 mt-8">
+                  <div className="shrink-0 flex items-center px-2 text-green-300">
                     <IconArrowRight size={16} />
                   </div>
                 )}
