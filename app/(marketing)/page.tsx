@@ -1,81 +1,99 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Fragment } from 'react'
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
 const painPoints = [
   {
-    icon: '🚫',
-    title: 'Section 21 abolished',
-    body: 'No-fault evictions are gone. All repossessions now require specified grounds under Section 8 — you need to know them.',
+    icon: '📁',
+    title: 'Documents everywhere',
+    body: 'Certificates, contracts, inventories — scattered across email, Dropbox, and that pile on the desk. Finding anything when you need it is a mini-crisis.',
   },
   {
-    icon: '💷',
-    title: 'Fines up to £40,000',
-    body: 'Local authorities have new civil penalty powers. Non-compliance with the new rules can cost up to £40,000 per offence.',
+    icon: '💬',
+    title: 'Chasing rent manually',
+    body: "Texting tenants, checking your bank app every Friday, trying to remember if Dave paid last month. There has to be a better way.",
+  },
+  {
+    icon: '⏰',
+    title: 'No idea if certificates are expired',
+    body: "Gas Safety, EPC, EICR — you know you have them somewhere. But when do they run out? You tend to find out when it's already a problem.",
+  },
+  {
+    icon: '📱',
+    title: 'Tenant requests lost in WhatsApp',
+    body: "The boiler message is buried under 300 others. No paper trail, no follow-up, no idea what you agreed. And no defence if it goes further.",
+  },
+]
+
+const howItWorks = [
+  {
+    icon: '🔍',
+    title: 'Find the right tenant',
+    body: 'Share one link in your Rightmove or OpenRent listing. Applicants upload their documents. You get an AI summary — income verified, affordability checked, red flags flagged.',
   },
   {
     icon: '📋',
-    title: 'PRS Database registration',
-    body: "Every landlord must register on the new Privately Rented Sector database. Failure to register is a criminal offence.",
+    title: 'Move them in properly',
+    body: "Generate a legally compliant tenancy agreement in minutes. Both parties sign online. Capture a timestamped photo inventory — your protection if there's ever a deposit dispute.",
   },
   {
-    icon: '💧',
-    title: "Awaab's Law extended",
-    body: 'Damp and mould hazards must be investigated within 24 hours and remedied promptly. This applies to all private rentals.',
+    icon: '🏠',
+    title: 'Manage without the chaos',
+    body: 'Rent reminders go out automatically. Tenants submit maintenance requests through their own portal, with photos and a paper trail. You get alerts before certificates expire.',
+  },
+  {
+    icon: '🛡️',
+    title: 'Handle issues properly',
+    body: "Need to raise the rent? We generate the correct notice. Things go wrong? Export a complete evidence pack — every message, photo and payment — in one click.",
+  },
+  {
+    icon: '🔄',
+    title: 'Start again, stress-free',
+    body: 'Once the tenancy ends, your property is back to vacant in one click. Run the check-out inspection, handle the deposit, and open applications again.',
   },
 ]
 
 const featureGroups = [
   {
-    icon: '🛡️',
-    title: 'Compliance autopilot',
+    icon: '🏘️',
+    title: 'Your properties at a glance',
     features: [
-      'Gas Safety Certificate tracker with annual renewal alerts',
-      'EPC rating monitor — warns before expiry',
-      'EICR tracker with 5-year cycle reminders',
-      'Deposit registration deadline alert (30 days from move-in)',
-      'PRS Database registration reminders',
+      'Dashboard overview across all your properties',
+      'Status indicators — occupied, vacant, action needed',
+      'Certificate expiry alerts before they become problems',
+      'All your documents in one place, forever findable',
     ],
   },
   {
     icon: '🔍',
-    title: 'Tenant pipeline',
+    title: 'Find and screen tenants',
     features: [
-      'Unique shareable application link per property',
+      'One shareable application link per property',
       'AI document screening — payslips, bank statements, references',
       'Right to Rent check tracker',
-      'Shortlisting and applicant comparison',
+      'Side-by-side applicant comparison',
     ],
   },
   {
     icon: '✍️',
-    title: 'Move-in made easy',
+    title: 'Move-in without the paperwork',
     features: [
-      'APT (Assured Periodic Tenancy) contract generator',
-      'Digital inventory report with photo uploads',
-      'Tenant e-sign and document storage',
-      'Move-in checklist for landlord and tenant',
+      'Tenancy agreement generator (legally up to date)',
+      'Online signing for landlord and tenant',
+      'Timestamped photo inventory report',
+      'Deposit registration reminder (30-day deadline)',
     ],
   },
   {
-    icon: '🏡',
-    title: 'Active tenancy',
+    icon: '📬',
+    title: 'Stay on top effortlessly',
     features: [
-      'Rent payment tracker with arrears alerts',
-      'Tenant portal for payments, docs, and messages',
-      "Maintenance ticket system with Awaab's Law 24-hour timer",
-      'Section 13 rent increase notice — enforced once per year',
-    ],
-  },
-  {
-    icon: '⚖️',
-    title: 'When things go wrong',
-    features: [
-      'Section 8 Notice generator with correct statutory grounds',
-      'Dispute evidence pack compilation',
-      'Full repair log for tribunal evidence',
+      'Automatic rent reminders and payment tracking',
+      'Tenant portal for requests, messages and documents',
+      'Maintenance ticket log with full history and photos',
+      'Section 13 rent increase notice, done correctly',
     ],
   },
 ]
@@ -123,11 +141,11 @@ function IconCheck({ className = '' }: { className?: string }) {
   )
 }
 
-function IconArrowRight() {
+function IconArrowRight({ size = 18 }: { size?: number }) {
   return (
     <svg
-      width="18"
-      height="18"
+      width={size}
+      height={size}
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -153,25 +171,6 @@ function IconChevronDown() {
       strokeLinejoin="round"
     >
       <polyline points="6 9 12 15 18 9" />
-    </svg>
-  )
-}
-
-function IconWarning() {
-  return (
-    <svg
-      width="15"
-      height="15"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-      <line x1="12" y1="9" x2="12" y2="13" />
-      <line x1="12" y1="17" x2="12.01" y2="17" />
     </svg>
   )
 }
@@ -242,10 +241,6 @@ export default function LandingPage() {
           from { opacity: 0; transform: translateY(22px); }
           to   { opacity: 1; transform: translateY(0); }
         }
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to   { opacity: 1; }
-        }
 
         .hero-0 { animation: fadeInUp 0.65s ease both; }
         .hero-1 { animation: fadeInUp 0.65s ease 0.12s both; }
@@ -268,13 +263,13 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5 font-bold text-xl text-gray-900 select-none">
             <span className="text-2xl leading-none">🏠</span>
-            LandlordOS
+            LetSorted
           </div>
           <a
             href="#waitlist"
             className="bg-green-600 hover:bg-green-700 text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors duration-150"
           >
-            Join waitlist
+            Join the waitlist
           </a>
         </div>
       </nav>
@@ -282,28 +277,17 @@ export default function LandingPage() {
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <section className="py-24 sm:py-32 px-6 bg-gradient-to-b from-green-50 via-green-50/40 to-white">
         <div className="max-w-3xl mx-auto text-center">
-          <div className="hero-0 inline-flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-700 font-medium text-sm px-4 py-1.5 rounded-full mb-8">
-            <IconWarning />
-            Renters&apos; Rights Act — live 1 May 2026
-          </div>
-
-          <h1 className="hero-1 text-5xl sm:text-6xl font-extrabold text-gray-900 tracking-tight leading-[1.1] mb-6">
-            Landlord law just changed.
-            <br />
-            <span className="text-green-600">Stay on the right side of it.</span>
+          <h1 className="hero-0 text-5xl sm:text-6xl font-extrabold text-gray-900 tracking-tight leading-[1.1] mb-6">
+            Your rentals,{' '}
+            <span className="text-green-600">sorted.</span>
           </h1>
 
-          <p className="hero-2 text-xl text-gray-500 leading-relaxed mb-3 max-w-2xl mx-auto">
-            The Renters&apos; Rights Act 2025 is the biggest shake-up to UK rental law in a generation.
-            Non-compliant landlords face fines up to{' '}
-            <span className="font-semibold text-gray-700">£40,000</span>.
-          </p>
-          <p className="hero-2 text-xl text-gray-500 leading-relaxed mb-10 max-w-2xl mx-auto">
-            LandlordOS tracks your certificates, manages your tenancies, and keeps you compliant —
-            automatically.
+          <p className="hero-1 text-xl text-gray-500 leading-relaxed mb-10 max-w-2xl mx-auto">
+            LetSorted is the simplest way to manage your rental properties — tenants, documents,
+            rent and compliance, all in one place.
           </p>
 
-          <div className="hero-3">
+          <div className="hero-2">
             <a
               href="#waitlist"
               className="inline-flex items-center gap-2.5 bg-green-600 hover:bg-green-700 text-white font-bold text-lg px-8 py-4 rounded-xl transition-colors duration-150 shadow-lg shadow-green-200/60"
@@ -311,6 +295,9 @@ export default function LandingPage() {
               Join the waitlist — it&apos;s free
               <IconArrowRight />
             </a>
+            <p className="mt-4 text-sm text-gray-400">
+              New Renters&apos; Rights Act kicks in May 2026 — we&apos;ll have you ready.
+            </p>
           </div>
         </div>
       </section>
@@ -320,10 +307,10 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto">
           <div className="reveal text-center mb-14">
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">
-              What changed on 1 May 2026
+              Sound familiar?
             </h2>
             <p className="text-gray-400 text-lg">
-              The key things self-managing landlords need to know.
+              Managing a rental property shouldn&apos;t feel like this.
             </p>
           </div>
 
@@ -343,23 +330,76 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Features section ──────────────────────────────────────────────── */}
+      {/* ── How It Works section ──────────────────────────────────────────── */}
       <section className="py-20 px-6 bg-gray-50">
         <div className="max-w-5xl mx-auto">
           <div className="reveal text-center mb-14">
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">
-              Everything you need in one place
+              From empty property to happy tenant — and everything in between
             </h2>
             <p className="text-gray-400 text-lg">
-              No spreadsheets. No missed deadlines. No nasty surprises.
+              LetSorted guides you through every stage of renting.
             </p>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {/* Desktop: horizontal flow with arrows */}
+          <div className="hidden lg:flex items-start">
+            {howItWorks.map((stage, i) => (
+              <Fragment key={stage.title}>
+                <div
+                  className="reveal flex-1 bg-white rounded-2xl p-5 border border-gray-100 hover:border-green-200 hover:shadow-sm transition-all duration-200"
+                  style={{ transitionDelay: `${i * 0.07}s` }}
+                >
+                  <div className="text-2xl mb-3">{stage.icon}</div>
+                  <h3 className="font-bold text-gray-900 text-sm mb-2">{stage.title}</h3>
+                  <p className="text-gray-400 text-xs leading-relaxed">{stage.body}</p>
+                </div>
+                {i < howItWorks.length - 1 && (
+                  <div className="shrink-0 flex items-center px-2 text-green-300 mt-8">
+                    <IconArrowRight size={16} />
+                  </div>
+                )}
+              </Fragment>
+            ))}
+          </div>
+
+          {/* Mobile: vertical timeline */}
+          <div className="lg:hidden">
+            {howItWorks.map((stage, i) => (
+              <div key={stage.title} className="reveal relative flex gap-4 pb-8 last:pb-0">
+                {i < howItWorks.length - 1 && (
+                  <div className="absolute left-4 top-10 bottom-0 w-px bg-green-200" />
+                )}
+                <div className="w-9 h-9 rounded-full bg-white border-2 border-green-200 flex items-center justify-center text-base shrink-0 relative z-10">
+                  {stage.icon}
+                </div>
+                <div className="flex-1 pb-2">
+                  <h3 className="font-bold text-gray-900 mb-1.5">{stage.title}</h3>
+                  <p className="text-gray-500 text-sm leading-relaxed">{stage.body}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Features section ──────────────────────────────────────────────── */}
+      <section className="py-20 px-6 bg-white">
+        <div className="max-w-5xl mx-auto">
+          <div className="reveal text-center mb-14">
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">
+              Everything you need. Nothing you don&apos;t.
+            </h2>
+            <p className="text-gray-400 text-lg">
+              Simple tools that actually get used — not a feature list no one asked for.
+            </p>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-5">
             {featureGroups.map((group, i) => (
               <div
                 key={group.title}
-                className="reveal bg-white rounded-2xl p-7 border border-gray-100 hover:border-green-200 hover:shadow-sm transition-all duration-200"
+                className="reveal bg-gray-50 rounded-2xl p-7 border border-gray-100 hover:border-green-200 hover:shadow-sm transition-all duration-200"
                 style={{ transitionDelay: `${i * 0.07}s` }}
               >
                 <div className="text-3xl mb-4">{group.icon}</div>
@@ -375,11 +415,16 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
+
+          <p className="reveal text-center text-gray-400 text-sm mt-10">
+            And yes — we keep you fully compliant with the new Renters&apos; Rights Act automatically.
+            So you don&apos;t have to think about it.
+          </p>
         </div>
       </section>
 
       {/* ── Pricing section ───────────────────────────────────────────────── */}
-      <section className="py-20 px-6 bg-white">
+      <section className="py-20 px-6 bg-gray-50">
         <div className="max-w-4xl mx-auto">
           <div className="reveal text-center mb-14">
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">
@@ -390,7 +435,7 @@ export default function LandingPage() {
 
           <div className="grid sm:grid-cols-2 gap-6 mb-8">
             {/* Free tier */}
-            <div className="reveal rounded-2xl border-2 border-gray-200 p-8">
+            <div className="reveal rounded-2xl border-2 border-gray-200 bg-white p-8">
               <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Free</p>
               <p className="text-5xl font-extrabold text-gray-900">£0</p>
               <p className="text-gray-400 text-sm mt-1 mb-7">forever · 1 property</p>
@@ -405,7 +450,7 @@ export default function LandingPage() {
             </div>
 
             {/* Pro tier */}
-            <div className="reveal rounded-2xl border-2 border-green-500 p-8 relative">
+            <div className="reveal rounded-2xl border-2 border-green-500 bg-white p-8 relative">
               <span className="absolute -top-3.5 right-6 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full">
                 Most popular
               </span>
@@ -424,13 +469,13 @@ export default function LandingPage() {
           </div>
 
           {/* One-off items */}
-          <div className="reveal bg-gray-50 rounded-2xl p-7">
+          <div className="reveal bg-white rounded-2xl p-7">
             <p className="font-bold text-gray-900 mb-5">Pay-as-you-go extras</p>
             <div className="grid sm:grid-cols-2 gap-3">
               {oneOffItems.map((item) => (
                 <div
                   key={item.name}
-                  className="flex items-center justify-between bg-white rounded-xl px-5 py-4 border border-gray-100"
+                  className="flex items-center justify-between bg-gray-50 rounded-xl px-5 py-4 border border-gray-100"
                 >
                   <div>
                     <p className="font-semibold text-gray-900 text-sm">{item.name}</p>
@@ -454,19 +499,18 @@ export default function LandingPage() {
                 {alreadyRegistered ? "You're already on the list!" : "You're on the list!"}
               </h2>
               <p className="text-gray-500 text-lg leading-relaxed">
-                We&apos;ll be in touch before 1 May 2026. Know another landlord who&apos;d benefit? Tell
-                them about LandlordOS.
+                We&apos;ll be in touch before May 2026. Know another landlord who&apos;d benefit?
+                Tell them about LetSorted.
               </p>
             </div>
           ) : (
             <>
               <div className="reveal mb-10">
                 <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">
-                  Get early access
+                  Be first in the door
                 </h2>
                 <p className="text-gray-500 text-lg leading-relaxed">
-                  Be ready before the Act comes into force. Join the waitlist and we&apos;ll let you
-                  know when LandlordOS opens.
+                  We&apos;re building LetSorted right now. Join the waitlist and get early access.
                 </p>
               </div>
 
@@ -524,9 +568,9 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto flex items-center justify-between text-gray-400 text-sm">
           <div className="flex items-center gap-2 font-semibold text-gray-600">
             <span>🏠</span>
-            LandlordOS
+            LetSorted
           </div>
-          <span>LandlordOS © 2026</span>
+          <span>LetSorted © 2026 — Built for UK landlords who manage their own properties.</span>
         </div>
       </footer>
     </>
