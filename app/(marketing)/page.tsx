@@ -182,6 +182,8 @@ export default function LandingPage() {
   const [email, setEmail] = useState('')
   const [properties, setProperties] = useState('')
   const [submitted, setSubmitted] = useState(false)
+  const [alreadyRegistered, setAlreadyRegistered] = useState(false)
+  const [loading, setLoading] = useState(false)
   const [formError, setFormError] = useState('')
 
   // Scroll reveal — native IntersectionObserver, no libraries
@@ -201,14 +203,36 @@ export default function LandingPage() {
     return () => observer.disconnect()
   }, [])
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!email || !properties) {
       setFormError('Please fill in both fields.')
       return
     }
     setFormError('')
-    setSubmitted(true)
+    setLoading(true)
+    try {
+      const res = await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, propertyCount: properties }),
+      })
+      const data = (await res.json()) as {
+        success?: boolean
+        alreadyRegistered?: boolean
+        error?: string
+      }
+      if (!res.ok || !data.success) {
+        setFormError(data.error ?? 'Something went wrong. Please try again.')
+        return
+      }
+      if (data.alreadyRegistered) setAlreadyRegistered(true)
+      setSubmitted(true)
+    } catch {
+      setFormError('Something went wrong. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -425,8 +449,10 @@ export default function LandingPage() {
         <div className="max-w-md mx-auto text-center">
           {submitted ? (
             <div>
-              <p className="text-6xl mb-6">🎉</p>
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">You&apos;re on the list!</h2>
+              <p className="text-6xl mb-6">{alreadyRegistered ? '👋' : '🎉'}</p>
+              <h2 className="text-3xl font-bold text-gray-900 mb-4">
+                {alreadyRegistered ? "You're already on the list!" : "You're on the list!"}
+              </h2>
               <p className="text-gray-500 text-lg leading-relaxed">
                 We&apos;ll be in touch before 1 May 2026. Know another landlord who&apos;d benefit? Tell
                 them about LandlordOS.
@@ -478,9 +504,10 @@ export default function LandingPage() {
 
                 <button
                   type="submit"
-                  className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl text-base transition-colors duration-150 shadow-lg shadow-green-200/60"
+                  disabled={loading}
+                  className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl text-base transition-colors duration-150 shadow-lg shadow-green-200/60"
                 >
-                  Join the waitlist — it&apos;s free
+                  {loading ? 'Joining…' : "Join the waitlist — it's free"}
                 </button>
 
                 <p className="text-center text-gray-400 text-xs pt-1">
