@@ -1,0 +1,128 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ── User ──────────────────────────────────────────────────────────────────────
+// Mirrors Supabase auth.users — id is the Supabase user UUID
+model User {
+  id         String     @id
+  email      String     @unique
+  name       String?
+  createdAt  DateTime   @default(now()) @map("created_at")
+  properties Property[]
+
+  @@map("users")
+}
+
+// ── Property ──────────────────────────────────────────────────────────────────
+
+enum PropertyType {
+  FLAT
+  HOUSE
+  HMO
+  OTHER
+}
+
+enum PropertyStatus {
+  VACANT
+  APPLICATION_OPEN
+  OFFER_ACCEPTED
+  ACTIVE
+  NOTICE_GIVEN
+}
+
+model Property {
+  id               String         @id @default(cuid())
+  userId           String         @map("user_id")
+  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  line1            String
+  line2            String?
+  city             String
+  postcode         String
+  type             PropertyType   @default(FLAT)
+  status           PropertyStatus @default(VACANT)
+  applicationToken String?        @unique @map("application_token")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+
+  tenancies      Tenancy[]
+  complianceDocs ComplianceDoc[]
+
+  @@map("properties")
+}
+
+// ── ComplianceDoc ─────────────────────────────────────────────────────────────
+
+enum ComplianceDocType {
+  GAS_SAFETY
+  EPC
+  EICR
+  HOW_TO_RENT
+}
+
+enum ComplianceDocStatus {
+  MISSING
+  VALID
+  EXPIRING
+  EXPIRED
+}
+
+model ComplianceDoc {
+  id          String              @id @default(cuid())
+  propertyId  String              @map("property_id")
+  property    Property            @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  type        ComplianceDocType
+  status      ComplianceDocStatus @default(MISSING)
+  fileUrl     String?             @map("file_url")
+  issuedDate  DateTime?           @map("issued_date")
+  expiryDate  DateTime?           @map("expiry_date")
+  // How to Rent specific
+  issued      Boolean             @default(false)
+  version     String?
+  aiExtracted Boolean             @default(false) @map("ai_extracted")
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+
+  @@unique([propertyId, type])
+  @@map("compliance_docs")
+}
+
+// ── Tenancy ───────────────────────────────────────────────────────────────────
+
+enum TenancyStatus {
+  PENDING
+  ACTIVE
+  NOTICE_GIVEN
+  ENDED
+}
+
+model Tenancy {
+  id                 String        @id @default(cuid())
+  propertyId         String        @map("property_id")
+  property           Property      @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  tenantName         String?       @map("tenant_name")
+  tenantEmail        String?       @map("tenant_email")
+  tenantPhone        String?       @map("tenant_phone")
+  startDate          DateTime?     @map("start_date")
+  endDate            DateTime?     @map("end_date")
+  monthlyRent        Int?          @map("monthly_rent") // pence
+  paymentDay         Int?          @map("payment_day") // 1–31
+  status             TenancyStatus @default(PENDING)
+  depositAmount      Int?          @map("deposit_amount") // pence
+  depositScheme      String?       @map("deposit_scheme")
+  depositRef         String?       @map("deposit_ref")
+  depositProtected   Boolean       @default(false) @map("deposit_protected")
+  depositProtectedAt DateTime?     @map("deposit_protected_at")
+  portalToken        String?       @unique @map("portal_token")
+  contractUrl        String?       @map("contract_url")
+  createdAt          DateTime      @default(now()) @map("created_at")
+  updatedAt          DateTime      @updatedAt @map("updated_at")
+
+  @@map("tenancies")
+}
