@@ -57,3 +57,25 @@
     --chart-5: 340 75% 55%
   }
 }
+
+/* ── Wizard animations ────────────────────────────────────────────────────── */
+@keyframes pop-in {
+  0%   { transform: scale(0.4); opacity: 0; }
+  65%  { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(1);   opacity: 1; }
+}
+
+@keyframes draw-check {
+  from { stroke-dashoffset: 50; }
+  to   { stroke-dashoffset: 0;  }
+}
+
+.animate-pop-in {
+  animation: pop-in 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+}
+
+.animate-draw-check {
+  animation: draw-check 0.4s ease-out 0.3s both;
+  stroke-dasharray: 50;
+  stroke-dashoffset: 50;
+}

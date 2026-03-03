@@ -155,20 +155,17 @@ npm run email            # Preview React Email templates (localhost:3001)
 
 ```env
 # Database
-DATABASE_URL=              # Supabase connection string (pooled)
-DIRECT_URL=                # Supabase direct connection (for migrations)
+DATABASE_URL=              # Supabase connection string (pooled, pgbouncer=true)
+DIRECT_URL=                # Supabase direct connection (for migrations, port 5432)
 
 # Supabase
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 
-# Auth
-NEXTAUTH_SECRET=
-NEXTAUTH_URL=
-
-# Email
-RESEND_API_KEY=
+# Email (Resend)
+RESEND_API_KEY=            # Used by the app to send transactional email
+                           # Also used as the Supabase SMTP password (see below)
 
 # Payments
 STRIPE_SECRET_KEY=
@@ -182,6 +179,33 @@ ANTHROPIC_API_KEY=
 NEXT_PUBLIC_APP_URL=
 CRON_SECRET=               # Secret for cron job endpoints
 ```
+
+---
+
+## Supabase SMTP → Resend Setup
+
+Supabase Auth sends magic-link emails. Configure it to relay through Resend so
+emails arrive from our domain and don't land in spam.
+
+**Dashboard path:** Supabase → Authentication → Providers → Email → SMTP Settings
+
+| Field | Value |
+|---|---|
+| Enable Custom SMTP | ✅ on |
+| Sender name | `LetSorted` |
+| Sender email | `auth@letsorted.co.uk` *(must be a verified domain in Resend)* |
+| Host | `smtp.resend.com` |
+| Port | `465` |
+| Username | `resend` |
+| Password | `[RESEND_API_KEY]` — the `re_...` key from the Resend dashboard |
+
+**Resend side:**
+1. Add and verify your sending domain in Resend → Domains (adds SPF/DKIM DNS records).
+2. The same API key used for `RESEND_API_KEY` in `.env.local` doubles as the SMTP password — no separate credential needed.
+
+**Testing:**
+- Use Supabase → Authentication → Email Templates → "Send test email" after saving SMTP settings.
+- Check Resend → Logs to confirm delivery.
 
 ---
 
