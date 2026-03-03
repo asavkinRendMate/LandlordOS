@@ -4,12 +4,12 @@ export const metadata: Metadata = {
   title: 'LetSorted — Your rentals, sorted.',
   description:
     'The simplest way to manage your rental properties. Tenants, documents, rent and compliance — all in one place. Built for UK self-managing landlords.',
-  metadataBase: new URL('https://www.letsorted.co.uk'),
+  metadataBase: new URL('https://letsorted.co.uk'),
   openGraph: {
     title: 'LetSorted — Your rentals, sorted.',
     description:
       'The simplest way to manage your rental properties. Tenants, documents, rent and compliance — all in one place. Built for UK self-managing landlords.',
-    url: 'https://www.letsorted.co.uk',
+    url: 'https://letsorted.co.uk',
     siteName: 'LetSorted',
     locale: 'en_GB',
     type: 'website',
