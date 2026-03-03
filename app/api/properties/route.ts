@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { ComplianceDocType } from '@prisma/client'
 
 const schema = z.object({
+  name: z.string().optional(),
   line1: z.string().min(1),
   line2: z.string().optional(),
   city: z.string().min(1),
@@ -29,7 +30,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
     }
 
-    const { line1, line2, city, postcode, type } = result.data
+    const { name, line1, line2, city, postcode, type } = result.data
 
     // Ensure user row exists (created by DB trigger on first sign-in, but race-safe)
     await prisma.user.upsert({
@@ -44,6 +45,7 @@ export async function POST(req: Request) {
         data: {
           id: crypto.randomUUID(),
           userId: user.id,
+          name: name || null,
           line1,
           line2,
           city,

@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -28,40 +27,28 @@ function Label({ children, htmlFor }: { children: React.ReactNode; htmlFor?: str
   )
 }
 
-// ── Step indicator ────────────────────────────────────────────────────────────
+// ── Step pill indicator ───────────────────────────────────────────────────────
 
-const STEPS = [
-  { id: 1, label: 'Your Property' },
-  { id: 2, label: 'Occupancy' },
-  { id: 3, label: 'Your Tenant' },
-  { id: 4, label: 'All Done' },
-]
-
-function StepIndicator({ current }: { current: number }) {
+function StepPills({ current, total }: { current: number; total: number }) {
   return (
-    <div className="flex items-center justify-center flex-wrap gap-y-2">
-      {STEPS.map((step, i) => (
-        <div key={step.id} className="flex items-center">
-          <div
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all ${
-              current === step.id
-                ? 'bg-green-500/20 text-green-400 ring-1 ring-green-500/40'
-                : current > step.id
-                ? 'text-white/35'
-                : 'text-white/20'
-            }`}
-          >
-            {current > step.id && (
-              <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-              </svg>
-            )}
-            {step.label}
-          </div>
-          {i < STEPS.length - 1 && (
-            <span className={`mx-1 text-sm ${current > step.id ? 'text-green-500/40' : 'text-white/12'}`}>
-              →
-            </span>
+    <div className="flex items-center gap-2">
+      {Array.from({ length: total }, (_, i) => i + 1).map((n) => (
+        <div
+          key={n}
+          className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold transition-all ${
+            n === current
+              ? 'bg-green-500 text-white'
+              : n < current
+              ? 'bg-green-500/20 text-green-400'
+              : 'bg-white/8 text-white/25'
+          }`}
+        >
+          {n < current ? (
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+            </svg>
+          ) : (
+            n
           )}
         </div>
       ))}
@@ -73,20 +60,20 @@ function StepIndicator({ current }: { current: number }) {
 
 const propertySchema = z.object({
   name: z.string().optional(),
-  line1: z.string().min(1, 'Address line 1 is required'),
+  line1: z.string().min(1, 'Required'),
   line2: z.string().optional(),
-  city: z.string().min(1, 'Town / city is required'),
+  city: z.string().min(1, 'Required'),
   postcode: z.string().min(5, 'Enter a valid postcode'),
   type: z.enum(['FLAT', 'HOUSE', 'HMO', 'OTHER']),
 })
 
 const tenantSchema = z.object({
-  tenantName: z.string().min(1, 'Tenant name is required'),
+  tenantName: z.string().min(1, 'Required'),
   tenantEmail: z.string().email('Enter a valid email'),
   tenantPhone: z.string().optional(),
-  monthlyRentStr: z.string().min(1, 'Monthly rent is required'),
+  monthlyRentStr: z.string().min(1, 'Required'),
   paymentDay: z.number().int().min(1).max(31),
-  startDate: z.string().min(1, 'Start date is required'),
+  startDate: z.string().min(1, 'Required'),
 })
 
 type PropertyValues = z.infer<typeof propertySchema>
@@ -101,7 +88,7 @@ interface OsAddress {
   postcode: string
 }
 
-// ── Step 1 — Property address ─────────────────────────────────────────────────
+// ── Step 1 — Property ─────────────────────────────────────────────────────────
 
 function PropertyForm({ onNext }: { onNext: (v: PropertyValues) => void }) {
   const [lookupLoading, setLookupLoading] = useState(false)
@@ -132,8 +119,7 @@ function PropertyForm({ onNext }: { onNext: (v: PropertyValues) => void }) {
   }
 
   return (
-    <form id="wizard-form" onSubmit={handleSubmit(onNext)} className="space-y-4">
-      {/* Postcode lookup */}
+    <form id="wizard-form" onSubmit={handleSubmit(onNext)} className="space-y-3.5">
       <div>
         <Label htmlFor="postcode">Postcode</Label>
         <div className="flex gap-2">
@@ -154,7 +140,7 @@ function PropertyForm({ onNext }: { onNext: (v: PropertyValues) => void }) {
             ))}
             <button type="button" onClick={() => setShowSuggestions(false)}
               className="w-full text-center px-3.5 py-2 text-xs text-white/40 hover:text-white/60 transition-colors">
-              Enter manually instead
+              Enter manually
             </button>
           </div>
         )}
@@ -167,11 +153,13 @@ function PropertyForm({ onNext }: { onNext: (v: PropertyValues) => void }) {
       </div>
 
       <div>
-        <Label htmlFor="line2">Address line 2 <span className="text-white/30">(optional)</span></Label>
+        <Label htmlFor="line2">
+          Address line 2 <span className="text-white/30">(optional)</span>
+        </Label>
         <input id="line2" {...register('line2')} placeholder="Flat, suite, unit, etc." className={inputClass} />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-3">
         <div>
           <Label htmlFor="city">Town / City</Label>
           <input id="city" {...register('city')} placeholder="Manchester" className={inputClass} />
@@ -189,9 +177,10 @@ function PropertyForm({ onNext }: { onNext: (v: PropertyValues) => void }) {
       </div>
 
       <div>
-        <Label htmlFor="name">Property nickname <span className="text-white/30">(optional)</span></Label>
+        <Label htmlFor="name">
+          Nickname <span className="text-white/30">(optional)</span>
+        </Label>
         <input id="name" {...register('name')} placeholder="e.g. The Manchester Flat" className={inputClass} />
-        <p className="mt-1 text-xs text-white/30">A friendly label shown on your dashboard</p>
       </div>
     </form>
   )
@@ -201,35 +190,29 @@ function PropertyForm({ onNext }: { onNext: (v: PropertyValues) => void }) {
 
 function OccupancyStep({ onHasTenant, onVacant }: { onHasTenant: () => void; onVacant: () => void }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <button onClick={onHasTenant}
-        className="w-full flex items-start gap-4 bg-white/5 hover:bg-white/8 border border-white/12 hover:border-white/22 rounded-xl p-5 text-left transition-all">
-        <div className="w-10 h-10 rounded-xl bg-green-500/15 flex items-center justify-center shrink-0">
-          <svg className="w-5 h-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        className="w-full flex items-center gap-4 bg-white/5 hover:bg-white/8 border border-white/12 hover:border-white/22 rounded-xl p-4 text-left transition-all">
+        <div className="w-9 h-9 rounded-lg bg-green-500/15 flex items-center justify-center shrink-0">
+          <svg className="w-4.5 h-4.5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
           </svg>
         </div>
-        <div>
-          <p className="text-white font-semibold text-base">Yes, I have a tenant</p>
-          <p className="text-white/45 text-sm mt-1">We&apos;ll set up rent tracking and a tenant portal straight away</p>
-        </div>
-        <svg className="w-5 h-5 text-white/25 ml-auto mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <p className="text-white font-medium text-sm flex-1">Yes, I have a tenant</p>
+        <svg className="w-4 h-4 text-white/25 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
         </svg>
       </button>
 
       <button onClick={onVacant}
-        className="w-full flex items-start gap-4 bg-white/5 hover:bg-white/8 border border-white/12 hover:border-white/22 rounded-xl p-5 text-left transition-all">
-        <div className="w-10 h-10 rounded-xl bg-white/8 flex items-center justify-center shrink-0">
-          <svg className="w-5 h-5 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        className="w-full flex items-center gap-4 bg-white/5 hover:bg-white/8 border border-white/12 hover:border-white/22 rounded-xl p-4 text-left transition-all">
+        <div className="w-9 h-9 rounded-lg bg-white/8 flex items-center justify-center shrink-0">
+          <svg className="w-4.5 h-4.5 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
           </svg>
         </div>
-        <div>
-          <p className="text-white font-semibold text-base">No, it&apos;s vacant</p>
-          <p className="text-white/45 text-sm mt-1">You can add tenants later when you find them</p>
-        </div>
-        <svg className="w-5 h-5 text-white/25 ml-auto mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <p className="text-white font-medium text-sm flex-1">No, it&apos;s vacant</p>
+        <svg className="w-4 h-4 text-white/25 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
         </svg>
       </button>
@@ -244,26 +227,28 @@ function TenantForm({ onNext }: { onNext: (v: TenantValues) => void }) {
     useForm<TenantValues>({ resolver: zodResolver(tenantSchema), defaultValues: { paymentDay: 1 } })
 
   return (
-    <form id="wizard-form" onSubmit={handleSubmit(onNext)} className="space-y-4">
+    <form id="wizard-form" onSubmit={handleSubmit(onNext)} className="space-y-3.5">
       <div>
         <Label htmlFor="tenantName">Full name</Label>
         <input id="tenantName" {...register('tenantName')} placeholder="Jane Smith" className={inputClass} />
         <FieldError message={errors.tenantName?.message} />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-3">
         <div>
           <Label htmlFor="tenantEmail">Email</Label>
           <input id="tenantEmail" type="email" {...register('tenantEmail')} placeholder="jane@example.com" className={inputClass} />
           <FieldError message={errors.tenantEmail?.message} />
         </div>
         <div>
-          <Label htmlFor="tenantPhone">Phone <span className="text-white/30">(optional)</span></Label>
+          <Label htmlFor="tenantPhone">
+            Phone <span className="text-white/30">(optional)</span>
+          </Label>
           <input id="tenantPhone" type="tel" {...register('tenantPhone')} placeholder="07700 900000" className={inputClass} />
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-3">
         <div>
           <Label htmlFor="monthlyRentStr">Monthly rent (£)</Label>
           <input id="monthlyRentStr" {...register('monthlyRentStr')} placeholder="1200" className={inputClass} />
@@ -278,7 +263,7 @@ function TenantForm({ onNext }: { onNext: (v: TenantValues) => void }) {
       </div>
 
       <div>
-        <Label htmlFor="startDate">Tenancy start date</Label>
+        <Label htmlFor="startDate">Start date</Label>
         <input id="startDate" type="date" {...register('startDate')} className={inputClass} />
         <FieldError message={errors.startDate?.message} />
       </div>
@@ -286,120 +271,20 @@ function TenantForm({ onNext }: { onNext: (v: TenantValues) => void }) {
   )
 }
 
-// ── Step 4 — All done ─────────────────────────────────────────────────────────
+// ── Step headings ─────────────────────────────────────────────────────────────
 
-function AllDone({ propertyId, portalToken }: { propertyId: string; portalToken?: string }) {
-  const router = useRouter()
-  const [copied, setCopied] = useState(false)
-
-  async function copyPortalLink() {
-    const url = `${window.location.origin}/portal/${portalToken}`
-    await navigator.clipboard.writeText(url)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  const suggestions = [
-    {
-      icon: (
-        <svg className="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-      ),
-      title: 'Upload compliance documents',
-      desc: 'Gas safety, EPC, EICR and How to Rent guide',
-      action: <Link href={`/dashboard/properties/${propertyId}`} className="text-xs text-blue-400 hover:text-blue-300 transition-colors font-medium">Go →</Link>,
-    },
-    ...(portalToken ? [{
-      icon: (
-        <svg className="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-        </svg>
-      ),
-      title: 'Share the tenant portal link',
-      desc: 'Your tenant can submit maintenance requests and view their tenancy',
-      action: (
-        <button onClick={copyPortalLink} className="text-xs text-purple-400 hover:text-purple-300 transition-colors font-medium">
-          {copied ? 'Copied!' : 'Copy link'}
-        </button>
-      ),
-    }] : []),
-    {
-      icon: (
-        <svg className="w-5 h-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-        </svg>
-      ),
-      title: 'Explore your dashboard',
-      desc: 'See your property overview and what comes next',
-      action: <button onClick={() => router.push('/dashboard')} className="text-xs text-green-400 hover:text-green-300 transition-colors font-medium">Go →</button>,
-    },
-  ]
-
-  return (
-    <div>
-      {/* Checkmark */}
-      <div className="flex justify-center mb-8">
-        <div className="w-20 h-20 rounded-full bg-green-500/20 border border-green-500/30 flex items-center justify-center animate-pop-in">
-          <svg className="w-9 h-9" fill="none" viewBox="0 0 24 24" stroke="#4ade80" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
-            <path className="animate-draw-check" d="M5 13l4 4L19 7" />
-          </svg>
-        </div>
-      </div>
-
-      <h2 className="text-white text-3xl font-bold text-center mb-2">You&apos;re all set!</h2>
-      <p className="text-white/50 text-center mb-8">Your property is ready. Here&apos;s what you can do next:</p>
-
-      <div className="space-y-3 mb-8">
-        {suggestions.map((s, i) => (
-          <div key={i} className="flex items-start gap-3 bg-white/4 border border-white/8 rounded-xl p-4">
-            <div className="w-9 h-9 rounded-lg bg-white/6 flex items-center justify-center shrink-0">
-              {s.icon}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-white text-sm font-medium">{s.title}</p>
-              <p className="text-white/40 text-xs mt-0.5">{s.desc}</p>
-            </div>
-            <div className="shrink-0 mt-0.5">{s.action}</div>
-          </div>
-        ))}
-      </div>
-
-      <button
-        onClick={() => router.push('/dashboard')}
-        className="w-full bg-green-500 hover:bg-green-400 text-white font-semibold rounded-xl py-3 text-sm transition-colors"
-      >
-        Go to my dashboard →
-      </button>
-    </div>
-  )
-}
-
-// ── Step config ───────────────────────────────────────────────────────────────
-
-const stepContent = {
-  1: {
-    heading: "Let's add your first property",
-    subtitle: "We'll use this to set up your compliance checklist, generate tenancy documents, and keep everything organised in one place.",
-  },
-  2: {
-    heading: 'Is the property currently let?',
-    subtitle: "This helps us set the right starting point. If you have a tenant, we'll set up rent tracking and give them their own portal straight away.",
-  },
-  3: {
-    heading: 'Tell us about your tenant',
-    subtitle: "We'll use this to send automatic rent reminders, give your tenant their own maintenance portal, and track payments — so you don't have to chase manually.",
-  },
+const stepHeadings: Record<number, string> = {
+  1: 'Add a property',
+  2: 'Is it currently let?',
+  3: 'Tenant details',
 }
 
 // ── Main wizard ───────────────────────────────────────────────────────────────
 
-export default function OnboardingPage() {
+export default function NewPropertyPage() {
   const router = useRouter()
   const [step, setStep] = useState(1)
   const [propertyData, setPropertyData] = useState<PropertyValues | null>(null)
-  const [createdPropertyId, setCreatedPropertyId] = useState<string | null>(null)
-  const [createdPortalToken, setCreatedPortalToken] = useState<string | undefined>()
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -424,7 +309,7 @@ export default function OnboardingPage() {
     setSubmitting(true); setError(null)
     const id = await createProperty(propertyData)
     setSubmitting(false)
-    if (id) { setCreatedPropertyId(id); setStep(4) }
+    if (id) router.push('/dashboard')
   }
 
   async function handleStep3(tenantValues: TenantValues) {
@@ -433,7 +318,6 @@ export default function OnboardingPage() {
 
     const propertyId = await createProperty(propertyData)
     if (!propertyId) { setSubmitting(false); return }
-    setCreatedPropertyId(propertyId)
 
     const monthlyRent = Math.round(parseFloat(tenantValues.monthlyRentStr) * 100)
     const tenancyRes = await fetch('/api/tenancies', {
@@ -451,67 +335,64 @@ export default function OnboardingPage() {
     })
 
     setSubmitting(false)
-    const tenancyJson = await tenancyRes.json()
-    if (!tenancyRes.ok) { setError(tenancyJson.error ?? 'Failed to save tenant details'); return }
-
-    if (tenancyJson.data?.portalToken) setCreatedPortalToken(tenancyJson.data.portalToken)
-    setStep(4)
+    if (!tenancyRes.ok) {
+      const json = await tenancyRes.json()
+      setError(json.error ?? 'Failed to save tenant details')
+      return
+    }
+    router.push('/dashboard')
   }
 
-  // For step 1 and 3: submit button lives inside the form (form id="wizard-form")
-  // For step 2: buttons are inline
-  // For step 4: done screen has its own CTA
-
-  const content = step < 4 ? stepContent[step as keyof typeof stepContent] : null
-  const showBack = step === 3 && !submitting
+  const totalSteps = 3
+  const heading = stepHeadings[step]
 
   return (
     <div className="flex flex-col min-h-[calc(100vh-3.5rem)] lg:min-h-screen">
 
-      {/* TOP — step indicator */}
-      <div className="pt-8 pb-5 px-4 border-b border-white/6">
-        <StepIndicator current={step} />
+      {/* TOP — pill indicator + heading */}
+      <div className="px-4 pt-8 pb-6 border-b border-white/6">
+        <div className="max-w-lg mx-auto">
+          <div className="flex items-center justify-between mb-4">
+            <StepPills current={step} total={totalSteps} />
+            <button
+              onClick={() => router.push('/dashboard')}
+              className="text-sm text-white/30 hover:text-white/60 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+          <h1 className="text-white text-xl font-semibold">{heading}</h1>
+        </div>
       </div>
 
-      {/* MIDDLE — content */}
-      <div className="flex-1 flex items-start justify-center px-4 py-10 overflow-auto">
-        <div className="w-full max-w-lg">
-
-          {/* Heading + subtitle (steps 1–3) */}
-          {content && (
-            <div className="mb-8">
-              <h1 className="text-white text-2xl lg:text-3xl font-bold mb-3 leading-tight">
-                {content.heading}
-              </h1>
-              <p className="text-white/50 text-base leading-relaxed">{content.subtitle}</p>
-            </div>
-          )}
+      {/* MIDDLE — form */}
+      <div className="flex-1 px-4 py-6 overflow-auto">
+        <div className="max-w-lg mx-auto">
 
           {error && (
-            <div className="mb-5 bg-red-500/10 border border-red-500/25 rounded-lg px-4 py-3 text-red-400 text-sm">
+            <div className="mb-4 bg-red-500/10 border border-red-500/25 rounded-lg px-4 py-3 text-red-400 text-sm">
               {error}
             </div>
           )}
 
           {submitting ? (
             <div className="flex items-center justify-center py-16">
-              <div className="w-7 h-7 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+              <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
             </div>
           ) : step === 1 ? (
             <PropertyForm onNext={handleStep1} />
           ) : step === 2 ? (
             <OccupancyStep onHasTenant={() => setStep(3)} onVacant={handleVacant} />
-          ) : step === 3 ? (
-            <TenantForm onNext={handleStep3} />
           ) : (
-            <AllDone propertyId={createdPropertyId ?? ''} portalToken={createdPortalToken} />
+            <TenantForm onNext={handleStep3} />
           )}
+
         </div>
       </div>
 
-      {/* BOTTOM — navigation */}
+      {/* BOTTOM — navigation (steps 1 and 3 only — step 2 is click-to-select) */}
       {(step === 1 || step === 3) && !submitting && (
-        <div className="px-4 pb-8 flex flex-col items-center gap-3 max-w-lg mx-auto w-full">
+        <div className="px-4 pb-8 max-w-lg mx-auto w-full">
           <button
             type="submit"
             form="wizard-form"
@@ -519,20 +400,12 @@ export default function OnboardingPage() {
           >
             {step === 1 ? 'Continue' : 'Add property'}
           </button>
-          {showBack && (
+          {step === 3 && (
             <button
               onClick={() => setStep(2)}
-              className="text-sm text-white/30 hover:text-white/60 transition-colors"
+              className="mt-3 w-full text-center text-sm text-white/30 hover:text-white/60 transition-colors"
             >
               ← Back
-            </button>
-          )}
-          {step === 1 && (
-            <button
-              onClick={() => router.push('/dashboard')}
-              className="text-sm text-white/30 hover:text-white/60 transition-colors"
-            >
-              Skip for now
             </button>
           )}
         </div>
