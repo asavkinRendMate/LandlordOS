@@ -1,47 +1,29 @@
-// OS Places API v1 — postcode address lookup
-// Docs: https://osdatahub.os.uk/docs/places/technicalSpecification
+// OS Names API v1 — postcode lookup
+// Docs: https://osdatahub.os.uk/docs/names/technicalSpecification
 
-const OS_API_BASE = 'https://api.os.uk/search/places/v1'
+const OS_API_BASE = 'https://api.os.uk/search/names/v1'
 
 export interface OsAddress {
   uprn: string
-  singleLine: string // Full formatted address
+  singleLine: string
   line1: string
   line2: string | null
   city: string
   postcode: string
 }
 
-interface OsDpaResult {
-  DPA: {
-    UPRN: string
-    ADDRESS: string
-    SUB_BUILDING_NAME?: string
-    BUILDING_NAME?: string
-    BUILDING_NUMBER?: string
-    DEPENDENT_THOROUGHFARE_NAME?: string
-    THOROUGHFARE_NAME?: string
-    POST_TOWN: string
-    POSTCODE: string
-  }
+interface OsNamesEntry {
+  ID: string
+  NAME1: string
+  LOCAL_TYPE: string
+  POPULATED_PLACE?: string
+  DISTRICT_BOROUGH?: string
+  COUNTY_UNITARY?: string
 }
 
-interface OsApiResponse {
-  results?: OsDpaResult[]
+interface OsNamesResponse {
   header?: { totalresults: number }
-}
-
-function buildLine1(dpa: OsDpaResult['DPA']): string {
-  const parts: string[] = []
-
-  if (dpa.SUB_BUILDING_NAME) parts.push(dpa.SUB_BUILDING_NAME)
-  if (dpa.BUILDING_NAME) parts.push(dpa.BUILDING_NAME)
-  if (dpa.BUILDING_NUMBER) parts.push(dpa.BUILDING_NUMBER)
-
-  const road = dpa.THOROUGHFARE_NAME ?? dpa.DEPENDENT_THOROUGHFARE_NAME ?? ''
-  if (road) parts.push(road)
-
-  return parts.join(' ').trim()
+  results?: Array<{ GAZETTEER_ENTRY: OsNamesEntry }>
 }
 
 export async function lookupPostcode(postcode: string): Promise<OsAddress[]> {
@@ -49,25 +31,32 @@ export async function lookupPostcode(postcode: string): Promise<OsAddress[]> {
   if (!apiKey) throw new Error('OS_API_KEY is not configured')
 
   const clean = postcode.replace(/\s+/g, '').toUpperCase()
-  const url = `${OS_API_BASE}/postcode?postcode=${encodeURIComponent(clean)}&key=${apiKey}&maxresults=20&dataset=DPA`
+  const url = `${OS_API_BASE}/find?query=${encodeURIComponent(clean)}&key=${apiKey}&fq=LOCAL_TYPE:Postcode&maxResults=1`
 
   const res = await fetch(url, { next: { revalidate: 3600 } })
 
-  if (res.status === 400) return [] // Invalid postcode — return empty
+  if (res.status === 400) return []
   if (!res.ok) {
     const body = await res.text().catch(() => '')
-    throw new Error(`OS Places API error: ${res.status} ${body}`)
+    throw new Error(`OS Names API error: ${res.status} ${body}`)
   }
 
-  const data: OsApiResponse = await res.json()
-  if (!data.results) return []
+  const data: OsNamesResponse = await res.json()
+  if (!data.results?.length) return []
 
-  return data.results.map(({ DPA: dpa }) => ({
-    uprn: dpa.UPRN,
-    singleLine: dpa.ADDRESS,
-    line1: buildLine1(dpa),
-    line2: null,
-    city: dpa.POST_TOWN,
-    postcode: dpa.POSTCODE,
-  }))
+  return data.results.map(({ GAZETTEER_ENTRY: e }) => {
+    const city = e.POPULATED_PLACE ?? e.DISTRICT_BOROUGH ?? e.COUNTY_UNITARY ?? ''
+    // Format postcode with a space if missing (e.g. "S426UG" → "S42 6UG")
+    const formatted = e.NAME1.length > 3 && !e.NAME1.includes(' ')
+      ? `${e.NAME1.slice(0, -3)} ${e.NAME1.slice(-3)}`
+      : e.NAME1
+    return {
+      uprn: e.ID,
+      singleLine: city ? `${formatted} — ${city}` : formatted,
+      line1: '',
+      line2: null,
+      city,
+      postcode: formatted,
+    }
+  })
 }
