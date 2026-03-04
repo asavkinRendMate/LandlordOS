@@ -150,24 +150,26 @@ export default async function DashboardPage() {
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-5">
-        <h1 className="text-white text-xl font-semibold">Properties</h1>
-        <Link
-          href="/dashboard/properties/new"
-          className="flex items-center gap-1.5 bg-green-500 hover:bg-green-400 text-white text-sm font-semibold px-3.5 py-2 rounded-lg transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Add property
-        </Link>
-      </div>
+      <h1 className="text-white text-xl font-semibold mb-5">Properties</h1>
 
       {/* Grid — 1 col mobile, 2 col sm+ */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {properties.map((p) => (
           <PropertyCard key={p.id} property={p} />
         ))}
+      </div>
+
+      {/* Add property — sits below the cards */}
+      <div className="mt-4">
+        <Link
+          href="/dashboard/properties/new"
+          className="inline-flex items-center gap-1.5 bg-green-500 hover:bg-green-400 text-white text-sm font-semibold px-3.5 py-2 rounded-lg transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          Add property
+        </Link>
       </div>
     </div>
   )
