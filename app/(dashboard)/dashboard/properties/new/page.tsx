@@ -111,10 +111,10 @@ function PropertyForm({ onNext }: { onNext: (v: PropertyValues) => void }) {
   }
 
   function selectAddress(addr: OsAddress) {
-    setValue('line1', addr.line1, { shouldValidate: true })
-    setValue('line2', addr.line2 ?? '', { shouldValidate: true })
-    setValue('city', addr.city, { shouldValidate: true })
-    setValue('postcode', addr.postcode, { shouldValidate: true })
+    if (addr.line1) setValue('line1', addr.line1)
+    if (addr.line2) setValue('line2', addr.line2)
+    setValue('city', addr.city)
+    setValue('postcode', addr.postcode)
     setShowSuggestions(false)
   }
 
@@ -182,6 +182,12 @@ function PropertyForm({ onNext }: { onNext: (v: PropertyValues) => void }) {
         </Label>
         <input id="name" {...register('name')} placeholder="e.g. The Manchester Flat" className={inputClass} />
       </div>
+
+      <div className="pt-2">
+        <button type="submit" className="w-full bg-green-500 hover:bg-green-400 text-white font-semibold rounded-xl py-3 text-sm transition-colors">
+          Continue
+        </button>
+      </div>
     </form>
   )
 }
@@ -222,7 +228,7 @@ function OccupancyStep({ onHasTenant, onVacant }: { onHasTenant: () => void; onV
 
 // ── Step 3 — Tenant details ───────────────────────────────────────────────────
 
-function TenantForm({ onNext }: { onNext: (v: TenantValues) => void }) {
+function TenantForm({ onNext, onBack, submitting }: { onNext: (v: TenantValues) => void; onBack: () => void; submitting: boolean }) {
   const { register, handleSubmit, formState: { errors } } =
     useForm<TenantValues>({ resolver: zodResolver(tenantSchema), defaultValues: { paymentDay: 1 } })
 
@@ -266,6 +272,15 @@ function TenantForm({ onNext }: { onNext: (v: TenantValues) => void }) {
         <Label htmlFor="startDate">Start date</Label>
         <input id="startDate" type="date" {...register('startDate')} className={inputClass} />
         <FieldError message={errors.startDate?.message} />
+      </div>
+
+      <div className="pt-2 flex flex-col gap-3">
+        <button type="submit" disabled={submitting} className="w-full bg-green-500 hover:bg-green-400 disabled:opacity-50 text-white font-semibold rounded-xl py-3 text-sm transition-colors">
+          {submitting ? 'Saving…' : 'Add property'}
+        </button>
+        <button type="button" onClick={onBack} className="text-sm text-white/30 hover:text-white/60 transition-colors text-center">
+          ← Back
+        </button>
       </div>
     </form>
   )
@@ -375,7 +390,7 @@ export default function NewPropertyPage() {
             </div>
           )}
 
-          {submitting ? (
+          {submitting && step !== 3 ? (
             <div className="flex items-center justify-center py-16">
               <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
             </div>
@@ -384,32 +399,11 @@ export default function NewPropertyPage() {
           ) : step === 2 ? (
             <OccupancyStep onHasTenant={() => setStep(3)} onVacant={handleVacant} />
           ) : (
-            <TenantForm onNext={handleStep3} />
+            <TenantForm onNext={handleStep3} onBack={() => setStep(2)} submitting={submitting} />
           )}
 
         </div>
       </div>
-
-      {/* BOTTOM — navigation (steps 1 and 3 only — step 2 is click-to-select) */}
-      {(step === 1 || step === 3) && !submitting && (
-        <div className="px-4 pb-8 max-w-lg mx-auto w-full">
-          <button
-            type="submit"
-            form="wizard-form"
-            className="w-full bg-green-500 hover:bg-green-400 text-white font-semibold rounded-xl py-3 text-sm transition-colors"
-          >
-            {step === 1 ? 'Continue' : 'Add property'}
-          </button>
-          {step === 3 && (
-            <button
-              onClick={() => setStep(2)}
-              className="mt-3 w-full text-center text-sm text-white/30 hover:text-white/60 transition-colors"
-            >
-              ← Back
-            </button>
-          )}
-        </div>
-      )}
 
     </div>
   )
