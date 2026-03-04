@@ -103,7 +103,7 @@ interface OsAddress {
 
 // ── Step 1 — Property address ─────────────────────────────────────────────────
 
-function PropertyForm({ onNext }: { onNext: (v: PropertyValues) => void }) {
+function PropertyForm({ onNext, onSkip }: { onNext: (v: PropertyValues) => void; onSkip: () => void }) {
   const [lookupLoading, setLookupLoading] = useState(false)
   const [suggestions, setSuggestions] = useState<OsAddress[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
@@ -124,10 +124,10 @@ function PropertyForm({ onNext }: { onNext: (v: PropertyValues) => void }) {
   }
 
   function selectAddress(addr: OsAddress) {
-    setValue('line1', addr.line1, { shouldValidate: true })
-    setValue('line2', addr.line2 ?? '', { shouldValidate: true })
-    setValue('city', addr.city, { shouldValidate: true })
-    setValue('postcode', addr.postcode, { shouldValidate: true })
+    if (addr.line1) setValue('line1', addr.line1)
+    if (addr.line2) setValue('line2', addr.line2)
+    setValue('city', addr.city)
+    setValue('postcode', addr.postcode)
     setShowSuggestions(false)
   }
 
@@ -193,6 +193,15 @@ function PropertyForm({ onNext }: { onNext: (v: PropertyValues) => void }) {
         <input id="name" {...register('name')} placeholder="e.g. The Manchester Flat" className={inputClass} />
         <p className="mt-1 text-xs text-white/30">A friendly label shown on your dashboard</p>
       </div>
+
+      <div className="pt-2 flex flex-col gap-3">
+        <button type="submit" className="w-full bg-green-500 hover:bg-green-400 text-white font-semibold rounded-xl py-3 text-sm transition-colors">
+          Continue
+        </button>
+        <button type="button" onClick={onSkip} className="text-sm text-white/30 hover:text-white/60 transition-colors text-center">
+          Skip for now
+        </button>
+      </div>
     </form>
   )
 }
@@ -239,7 +248,7 @@ function OccupancyStep({ onHasTenant, onVacant }: { onHasTenant: () => void; onV
 
 // ── Step 3 — Tenant details ───────────────────────────────────────────────────
 
-function TenantForm({ onNext }: { onNext: (v: TenantValues) => void }) {
+function TenantForm({ onNext, onBack, submitting }: { onNext: (v: TenantValues) => void; onBack: () => void; submitting: boolean }) {
   const { register, handleSubmit, formState: { errors } } =
     useForm<TenantValues>({ resolver: zodResolver(tenantSchema), defaultValues: { paymentDay: 1 } })
 
@@ -281,6 +290,15 @@ function TenantForm({ onNext }: { onNext: (v: TenantValues) => void }) {
         <Label htmlFor="startDate">Tenancy start date</Label>
         <input id="startDate" type="date" {...register('startDate')} className={inputClass} />
         <FieldError message={errors.startDate?.message} />
+      </div>
+
+      <div className="pt-2 flex flex-col gap-3">
+        <button type="submit" disabled={submitting} className="w-full bg-green-500 hover:bg-green-400 disabled:opacity-50 text-white font-semibold rounded-xl py-3 text-sm transition-colors">
+          {submitting ? 'Saving…' : 'Add property'}
+        </button>
+        <button type="button" onClick={onBack} className="text-sm text-white/30 hover:text-white/60 transition-colors text-center">
+          ← Back
+        </button>
       </div>
     </form>
   )
@@ -463,7 +481,6 @@ export default function OnboardingPage() {
   // For step 4: done screen has its own CTA
 
   const content = step < 4 ? stepContent[step as keyof typeof stepContent] : null
-  const showBack = step === 3 && !submitting
 
   return (
     <div className="flex flex-col min-h-[calc(100vh-3.5rem)] lg:min-h-screen">
@@ -498,45 +515,16 @@ export default function OnboardingPage() {
               <div className="w-7 h-7 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
             </div>
           ) : step === 1 ? (
-            <PropertyForm onNext={handleStep1} />
+            <PropertyForm onNext={handleStep1} onSkip={() => router.push('/dashboard')} />
           ) : step === 2 ? (
             <OccupancyStep onHasTenant={() => setStep(3)} onVacant={handleVacant} />
           ) : step === 3 ? (
-            <TenantForm onNext={handleStep3} />
+            <TenantForm onNext={handleStep3} onBack={() => setStep(2)} submitting={submitting} />
           ) : (
             <AllDone propertyId={createdPropertyId ?? ''} portalToken={createdPortalToken} />
           )}
         </div>
       </div>
-
-      {/* BOTTOM — navigation */}
-      {(step === 1 || step === 3) && !submitting && (
-        <div className="px-4 pb-8 flex flex-col items-center gap-3 max-w-lg mx-auto w-full">
-          <button
-            type="submit"
-            form="wizard-form"
-            className="w-full bg-green-500 hover:bg-green-400 text-white font-semibold rounded-xl py-3 text-sm transition-colors"
-          >
-            {step === 1 ? 'Continue' : 'Add property'}
-          </button>
-          {showBack && (
-            <button
-              onClick={() => setStep(2)}
-              className="text-sm text-white/30 hover:text-white/60 transition-colors"
-            >
-              ← Back
-            </button>
-          )}
-          {step === 1 && (
-            <button
-              onClick={() => router.push('/dashboard')}
-              className="text-sm text-white/30 hover:text-white/60 transition-colors"
-            >
-              Skip for now
-            </button>
-          )}
-        </div>
-      )}
 
     </div>
   )
