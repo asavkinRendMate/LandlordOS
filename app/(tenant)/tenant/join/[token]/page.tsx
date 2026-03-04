@@ -61,6 +61,10 @@ export default function TenantJoinPage() {
   const [loadState, setLoadState] = useState<'loading' | 'invalid' | 'already_confirmed' | 'ready'>('loading')
   const [submitState, setSubmitState] = useState<'idle' | 'submitting' | 'done' | 'error'>('idle')
 
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+  })
+
   useEffect(() => {
     fetch(`/api/tenant/join/${token}`)
       .then((r) => r.json())
@@ -68,15 +72,11 @@ export default function TenantJoinPage() {
         if (json.error === 'already_confirmed') { setLoadState('already_confirmed'); return }
         if (json.error || !json.data) { setLoadState('invalid'); return }
         setTenant(json.data)
+        reset({ name: json.data.name, phone: json.data.phone ?? '', confirmed: undefined })
         setLoadState('ready')
       })
       .catch(() => setLoadState('invalid'))
-  }, [token])
-
-  const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({
-    resolver: zodResolver(schema),
-    defaultValues: { name: tenant?.name ?? '', phone: tenant?.phone ?? '' },
-  })
+  }, [token, reset])
 
   async function onSubmit(values: FormValues) {
     setSubmitState('submitting')
@@ -173,7 +173,6 @@ export default function TenantJoinPage() {
               <Label htmlFor="name">Full name</Label>
               <input
                 id="name"
-                defaultValue={tenant.name}
                 {...register('name')}
                 className={inputClass}
                 placeholder="Your full name"
@@ -198,7 +197,6 @@ export default function TenantJoinPage() {
               <input
                 id="phone"
                 type="tel"
-                defaultValue={tenant.phone ?? ''}
                 {...register('phone')}
                 className={inputClass}
                 placeholder="07700 900000"
