@@ -41,19 +41,32 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Property not found' }, { status: 404 })
     }
 
-    const tenancy = await prisma.tenancy.create({
-      data: {
-        id: crypto.randomUUID(),
-        propertyId,
-        tenantName,
-        tenantEmail,
-        tenantPhone,
-        monthlyRent,
-        paymentDay,
-        startDate: new Date(startDate),
-        portalToken: crypto.randomUUID(),
-      },
-    })
+    const [tenancy] = await prisma.$transaction([
+      // Tenancy — rent tracking record
+      prisma.tenancy.create({
+        data: {
+          id: crypto.randomUUID(),
+          propertyId,
+          tenantName,
+          tenantEmail,
+          tenantPhone,
+          monthlyRent,
+          paymentDay,
+          startDate: new Date(startDate),
+          portalToken: crypto.randomUUID(),
+        },
+      }),
+      // Tenant — portal access / invite record (created alongside every tenancy)
+      prisma.tenant.create({
+        data: {
+          propertyId,
+          name: tenantName,
+          email: tenantEmail,
+          phone: tenantPhone ?? null,
+          status: 'INVITED',
+        },
+      }),
+    ])
 
     return NextResponse.json({ data: tenancy }, { status: 201 })
   } catch (err) {
