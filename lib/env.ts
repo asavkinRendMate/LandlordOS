@@ -6,7 +6,7 @@ const schema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1, 'SUPABASE_SERVICE_ROLE_KEY is required'),
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
   OS_API_KEY: z.string().min(1, 'OS_API_KEY is required'),
-  NEXT_PUBLIC_APP_URL: z.string().url('NEXT_PUBLIC_APP_URL must be a valid URL'),
+  NEXT_PUBLIC_APP_URL: z.string().url().optional(),
   RESEND_API_KEY: z.string().optional(),
 })
 
