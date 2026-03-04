@@ -152,7 +152,7 @@ function AppLinkEmailForm({ propertyId }: { propertyId: string }) {
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         placeholder="applicant@email.com"
-        className="flex-1 min-w-0 bg-white/8 border border-white/15 rounded-lg px-3 py-1.5 text-white text-sm placeholder-white/30 focus:outline-none focus:border-green-500/60"
+        className="flex-1 min-w-0 bg-[#5f655f] border border-white/15 rounded-lg px-3 py-1.5 text-white text-sm placeholder-white/30 focus:outline-none focus:border-green-500/60 focus:ring-1 focus:ring-green-500/30 transition-colors"
       />
       <button
         onClick={send}
