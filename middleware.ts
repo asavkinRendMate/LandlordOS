@@ -31,8 +31,8 @@ export async function middleware(request: NextRequest) {
 
   const path = request.nextUrl.pathname
 
-  // Redirect unauthenticated users away from the dashboard
-  if (path.startsWith('/dashboard') && !user) {
+  // Redirect unauthenticated users away from protected areas
+  if ((path.startsWith('/dashboard') || path.startsWith('/tenant/dashboard')) && !user) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
