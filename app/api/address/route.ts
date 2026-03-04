@@ -13,7 +13,8 @@ export async function GET(req: Request) {
     const addresses = await lookupPostcode(postcode)
     return NextResponse.json({ data: addresses })
   } catch (err) {
+    const message = err instanceof Error ? err.message : 'Address lookup failed'
     console.error('[address GET]', err)
-    return NextResponse.json({ error: 'Address lookup failed' }, { status: 500 })
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

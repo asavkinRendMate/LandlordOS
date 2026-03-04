@@ -54,7 +54,10 @@ export async function lookupPostcode(postcode: string): Promise<OsAddress[]> {
   const res = await fetch(url, { next: { revalidate: 3600 } })
 
   if (res.status === 400) return [] // Invalid postcode — return empty
-  if (!res.ok) throw new Error(`OS Places API error: ${res.status}`)
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    throw new Error(`OS Places API error: ${res.status} ${body}`)
+  }
 
   const data: OsApiResponse = await res.json()
   if (!data.results) return []
