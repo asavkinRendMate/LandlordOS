@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, Fragment } from 'react'
+import { useState, useEffect, useRef, useCallback, Fragment } from 'react'
+import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
@@ -179,12 +180,37 @@ function IconChevronDown() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function LandingPage() {
+  const router = useRouter()
   const [email, setEmail] = useState('')
   const [properties, setProperties] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const [alreadyRegistered, setAlreadyRegistered] = useState(false)
   const [loading, setLoading] = useState(false)
   const [formError, setFormError] = useState('')
+
+  // Beta modal state
+  const [betaOpen, setBetaOpen] = useState(false)
+  const [betaCode, setBetaCode] = useState('')
+  const [betaError, setBetaError] = useState(false)
+  const betaInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (betaOpen) betaInputRef.current?.focus()
+  }, [betaOpen])
+
+  const handleBetaSubmit = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault()
+      if (betaCode === '4577') {
+        sessionStorage.setItem('betaAccess', 'true')
+        router.push('/login')
+      } else {
+        setBetaError(true)
+        setTimeout(() => setBetaError(false), 400)
+      }
+    },
+    [betaCode, router],
+  )
 
   // Scroll reveal — native IntersectionObserver, no libraries
   useEffect(() => {
@@ -263,12 +289,20 @@ export default function LandingPage() {
       <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-100">
         <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
           <Image src="/logo.svg" alt="LetSorted" width={150} height={50} priority />
-          <a
-            href="#waitlist"
-            className="bg-green-600 hover:bg-green-700 text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors duration-150"
-          >
-            Join the waitlist
-          </a>
+          <div className="flex items-center gap-2.5">
+            <button
+              onClick={() => setBetaOpen(true)}
+              className="border border-green-600 text-green-600 bg-white hover:bg-green-600/[0.06] font-semibold px-5 py-2.5 rounded-lg text-sm transition-all duration-150"
+            >
+              Closed Beta
+            </button>
+            <a
+              href="#waitlist"
+              className="bg-green-600 hover:bg-green-700 text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors duration-150"
+            >
+              Join the waitlist
+            </a>
+          </div>
         </div>
       </nav>
 
@@ -560,6 +594,51 @@ export default function LandingPage() {
           )}
         </div>
       </section>
+
+      {/* ── Beta access modal ──────────────────────────────────────────────── */}
+      {betaOpen && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40"
+          onClick={() => setBetaOpen(false)}
+        >
+          <div
+            className="relative bg-white rounded-xl p-6 w-full max-w-[360px] mx-4 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setBetaOpen(false)}
+              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 transition-colors"
+              aria-label="Close"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+
+            <h3 className="text-lg font-bold text-gray-900 mb-4">Enter access code</h3>
+
+            <form onSubmit={handleBetaSubmit} className="space-y-3">
+              <input
+                ref={betaInputRef}
+                type="password"
+                placeholder="Access code"
+                value={betaCode}
+                onChange={(e) => setBetaCode(e.target.value)}
+                className={`w-full border border-gray-200 rounded-lg px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm ${betaError ? 'shake' : ''}`}
+              />
+              {betaError && (
+                <p className="text-red-500 text-sm">Invalid access code</p>
+              )}
+              <button
+                type="submit"
+                className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg text-sm transition-colors duration-150"
+              >
+                Enter
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
     </>
   )

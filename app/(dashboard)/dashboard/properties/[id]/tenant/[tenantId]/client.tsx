@@ -52,10 +52,10 @@ const OTHER_TYPES = ['GUARANTOR_AGREEMENT', 'PET_AGREEMENT', 'OTHER']
 const EXPIRY_TYPES = ['RIGHT_TO_RENT', 'PASSPORT']
 
 const STATUS_CONFIG: Record<string, { label: string; cls: string }> = {
-  CANDIDATE:    { label: 'Applied',       cls: 'bg-blue-500/15 text-blue-300' },
-  INVITED:      { label: 'Invited',       cls: 'bg-yellow-500/15 text-yellow-300' },
-  TENANT:       { label: 'Active tenant', cls: 'bg-green-500/15 text-green-300' },
-  FORMER_TENANT:{ label: 'Former tenant', cls: 'bg-white/10 text-white/40' },
+  CANDIDATE:    { label: 'Applied',       cls: 'bg-blue-100 text-blue-700' },
+  INVITED:      { label: 'Invited',       cls: 'bg-yellow-100 text-yellow-800' },
+  TENANT:       { label: 'Active tenant', cls: 'bg-green-100 text-green-700' },
+  FORMER_TENANT:{ label: 'Former tenant', cls: 'bg-gray-100 text-gray-500' },
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -86,31 +86,31 @@ function DocRow({
   onDelete: (id: string) => void
 }) {
   return (
-    <div className="flex items-start gap-3 py-2.5 border-b border-white/6 last:border-0">
+    <div className="flex items-start gap-3 py-2.5 border-b border-gray-100 last:border-0">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-white text-sm font-medium">{DOC_TYPE_LABELS[type]}</span>
+          <span className="text-[#1A1A1A] text-sm font-medium">{DOC_TYPE_LABELS[type]}</span>
           {docs.length > 0 ? (
-            <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/15 text-green-300 font-medium">Uploaded</span>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">Uploaded</span>
           ) : (
-            <span className="text-xs px-2 py-0.5 rounded-full bg-white/8 text-white/30 font-medium">Missing</span>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium">Missing</span>
           )}
         </div>
         {docs.map((doc) => (
-          <div key={doc.id} className="mt-1 flex items-center gap-2 text-xs text-white/40">
+          <div key={doc.id} className="mt-1 flex items-center gap-2 text-xs text-[#9CA3AF]">
             <span className="truncate max-w-[200px]">{doc.fileName}</span>
             <span>· {formatBytes(doc.fileSize)}</span>
             {doc.expiryDate && <span>· expires {formatDate(doc.expiryDate)}</span>}
             <button
               onClick={() => onDownload(doc.id, doc.fileName)}
-              className="text-white/40 hover:text-white/70 transition-colors"
+              className="text-[#2D6A4F] hover:text-[#245c43] transition-colors"
               title="Download"
             >
               ↓
             </button>
             <button
               onClick={() => onDelete(doc.id)}
-              className="text-white/20 hover:text-red-400 transition-colors"
+              className="text-[#9CA3AF] hover:text-red-500 transition-colors"
               title="Delete"
             >
               ✕
@@ -120,7 +120,7 @@ function DocRow({
       </div>
       <button
         onClick={() => onUpload(type)}
-        className="shrink-0 text-xs bg-white/8 hover:bg-white/12 text-white/50 hover:text-white px-2.5 py-1 rounded-lg transition-colors"
+        className="shrink-0 text-xs bg-gray-100 hover:bg-gray-200 text-[#6B7280] px-2.5 py-1 rounded-lg transition-colors"
       >
         Upload
       </button>
@@ -208,7 +208,7 @@ export default function TenantDetailClient({
   })()
 
   const displayName = tenant.property.name ?? tenant.property.line1
-  const statusCfg = STATUS_CONFIG[tenant.status] ?? { label: tenant.status, cls: 'bg-white/10 text-white/40' }
+  const statusCfg = STATUS_CONFIG[tenant.status] ?? { label: tenant.status, cls: 'bg-gray-100 text-gray-500' }
 
   const r2rBoxCls = r2rStatus === 'valid'
     ? 'bg-green-500/10 border-green-500/30'
@@ -216,12 +216,15 @@ export default function TenantDetailClient({
     ? 'bg-orange-500/10 border-orange-500/30'
     : 'bg-red-500/10 border-red-500/30'
 
-  const r2rTextCls = r2rStatus === 'valid' ? 'text-green-400'
-    : r2rStatus === 'expiring' ? 'text-orange-400' : 'text-red-400'
+  const r2rTextCls = r2rStatus === 'valid' ? 'text-green-600'
+    : r2rStatus === 'expiring' ? 'text-orange-500' : 'text-red-600'
 
   const r2rLabel = r2rStatus === 'valid' ? 'Valid'
     : r2rStatus === 'expiring' ? 'Expiring soon'
     : r2rStatus === 'expired' ? 'Expired' : 'Missing'
+
+  const editInputClass =
+    'w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-[#1A1A1A] placeholder-gray-400 text-sm focus:outline-none focus:border-[#2D6A4F] focus:ring-1 focus:ring-[#2D6A4F]/20 transition-colors'
 
   return (
     <div className="p-4 lg:p-8 max-w-3xl">
@@ -229,7 +232,7 @@ export default function TenantDetailClient({
       {/* Back */}
       <Link
         href={`/dashboard/properties/${propertyId}`}
-        className="inline-flex items-center gap-1 text-sm text-white/40 hover:text-white/70 transition-colors mb-6"
+        className="inline-flex items-center gap-1 text-sm text-[#9CA3AF] hover:text-[#6B7280] transition-colors mb-6"
       >
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -240,8 +243,8 @@ export default function TenantDetailClient({
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-white text-2xl font-bold">{tenant.name}</h1>
-          <p className="text-white/40 text-sm mt-0.5">{tenant.email}</p>
+          <h1 className="text-[#1A1A1A] text-2xl font-bold">{tenant.name}</h1>
+          <p className="text-[#9CA3AF] text-sm mt-0.5">{tenant.email}</p>
         </div>
         <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${statusCfg.cls}`}>{statusCfg.label}</span>
       </div>
@@ -249,33 +252,33 @@ export default function TenantDetailClient({
       {/* R2R status box */}
       <div className={`border rounded-xl p-4 mb-5 ${r2rBoxCls}`}>
         <div className="flex items-center justify-between mb-2">
-          <p className="text-xs text-white/40 uppercase tracking-wide font-medium">Right to Rent Check</p>
+          <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium">Right to Rent Check</p>
           <span className={`text-sm font-semibold ${r2rTextCls}`}>{r2rLabel}</span>
         </div>
         {r2rDoc ? (
-          <div className="text-sm text-white/60">
+          <div className="text-sm text-[#374151]">
             <p>{r2rDoc.fileName}</p>
-            {r2rDoc.expiryDate && <p className="text-xs mt-0.5">Expires {formatDate(r2rDoc.expiryDate)}</p>}
+            {r2rDoc.expiryDate && <p className="text-xs mt-0.5 text-[#6B7280]">Expires {formatDate(r2rDoc.expiryDate)}</p>}
           </div>
         ) : (
-          <p className="text-sm text-white/40">No Right to Rent document uploaded.</p>
+          <p className="text-sm text-[#6B7280]">No Right to Rent document uploaded.</p>
         )}
         <button
           onClick={() => openUpload('RIGHT_TO_RENT')}
-          className="mt-3 text-sm bg-white/8 hover:bg-white/12 text-white/70 hover:text-white px-3 py-1.5 rounded-lg transition-colors"
+          className="mt-3 text-sm bg-gray-100 hover:bg-gray-200 text-[#6B7280] px-3 py-1.5 rounded-lg transition-colors"
         >
           {r2rDoc ? 'Upload new document' : 'Upload R2R document'}
         </button>
       </div>
 
       {/* Tenant details */}
-      <div className="bg-white/4 border border-white/8 rounded-xl p-4 mb-5">
+      <div className="bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4 mb-5">
         <div className="flex items-center justify-between mb-3">
-          <p className="text-xs text-white/40 uppercase tracking-wide font-medium">Tenant Details</p>
+          <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium">Tenant Details</p>
           {!editing && (
             <button
               onClick={() => { setEditing(true); setEditName(tenant.name); setEditEmail(tenant.email); setEditPhone(tenant.phone ?? '') }}
-              className="text-xs text-white/40 hover:text-white/70 transition-colors"
+              className="text-xs text-[#9CA3AF] hover:text-[#6B7280] transition-colors"
             >
               Edit
             </button>
@@ -285,40 +288,40 @@ export default function TenantDetailClient({
         {editing ? (
           <div className="space-y-3">
             <div>
-              <label className="text-[10px] text-white/40 uppercase tracking-wide block mb-1">Name</label>
+              <label className="text-[10px] text-[#9CA3AF] uppercase tracking-wide block mb-1">Name</label>
               <input
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
-                className="w-full bg-[#1a2e1a] border border-white/12 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-green-500/60 transition-colors"
+                className={editInputClass}
               />
             </div>
             <div>
-              <label className="text-[10px] text-white/40 uppercase tracking-wide block mb-1">Email</label>
+              <label className="text-[10px] text-[#9CA3AF] uppercase tracking-wide block mb-1">Email</label>
               <input
                 type="email"
                 value={editEmail}
                 onChange={(e) => setEditEmail(e.target.value)}
-                className="w-full bg-[#1a2e1a] border border-white/12 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-green-500/60 transition-colors"
+                className={editInputClass}
               />
             </div>
             <div>
-              <label className="text-[10px] text-white/40 uppercase tracking-wide block mb-1">Phone</label>
+              <label className="text-[10px] text-[#9CA3AF] uppercase tracking-wide block mb-1">Phone</label>
               <input
                 type="tel"
                 value={editPhone}
                 onChange={(e) => setEditPhone(e.target.value)}
-                className="w-full bg-[#1a2e1a] border border-white/12 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-green-500/60 transition-colors"
+                className={editInputClass}
               />
             </div>
             <div className="flex gap-2">
               <button
                 onClick={saveEdit}
                 disabled={saving}
-                className="bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white text-sm font-medium px-4 py-1.5 rounded-lg transition-colors"
+                className="bg-[#2D6A4F] hover:bg-[#245c43] disabled:opacity-50 text-white text-sm font-medium px-4 py-1.5 rounded-lg transition-colors"
               >
                 {saving ? 'Saving…' : 'Save'}
               </button>
-              <button onClick={() => setEditing(false)} className="text-sm text-white/30 hover:text-white/60 transition-colors px-2">
+              <button onClick={() => setEditing(false)} className="text-sm text-[#9CA3AF] hover:text-[#6B7280] transition-colors px-2">
                 Cancel
               </button>
             </div>
@@ -326,17 +329,17 @@ export default function TenantDetailClient({
         ) : (
           <div className="space-y-2">
             <div className="flex items-center gap-3">
-              <span className="text-white/40 text-sm w-14 shrink-0">Name</span>
-              <span className="text-white text-sm">{tenant.name}</span>
+              <span className="text-[#6B7280] text-sm w-14 shrink-0">Name</span>
+              <span className="text-[#1A1A1A] text-sm">{tenant.name}</span>
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-white/40 text-sm w-14 shrink-0">Email</span>
-              <span className="text-white text-sm break-all">{tenant.email}</span>
+              <span className="text-[#6B7280] text-sm w-14 shrink-0">Email</span>
+              <span className="text-[#1A1A1A] text-sm break-all">{tenant.email}</span>
             </div>
             {tenant.phone && (
               <div className="flex items-center gap-3">
-                <span className="text-white/40 text-sm w-14 shrink-0">Phone</span>
-                <span className="text-white text-sm">{tenant.phone}</span>
+                <span className="text-[#6B7280] text-sm w-14 shrink-0">Phone</span>
+                <span className="text-[#1A1A1A] text-sm">{tenant.phone}</span>
               </div>
             )}
           </div>
@@ -344,12 +347,12 @@ export default function TenantDetailClient({
       </div>
 
       {/* Required Documents */}
-      <div className="bg-white/4 border border-white/8 rounded-xl p-4 mb-5">
+      <div className="bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4 mb-5">
         <div className="flex items-center justify-between mb-3">
-          <p className="text-xs text-white/40 uppercase tracking-wide font-medium">Required Documents</p>
+          <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium">Required Documents</p>
           <button
             onClick={() => openUpload()}
-            className="flex items-center gap-1.5 text-sm bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded-lg transition-colors"
+            className="flex items-center gap-1.5 text-sm bg-[#2D6A4F] hover:bg-[#245c43] text-white px-3 py-1.5 rounded-lg transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -372,12 +375,12 @@ export default function TenantDetailClient({
       </div>
 
       {/* Other Documents */}
-      <div className="bg-white/4 border border-white/8 rounded-xl p-4 mb-5">
+      <div className="bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4 mb-5">
         <div className="flex items-center justify-between mb-3">
-          <p className="text-xs text-white/40 uppercase tracking-wide font-medium">Other Documents</p>
+          <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium">Other Documents</p>
           <button
             onClick={() => openUpload()}
-            className="flex items-center gap-1.5 text-sm bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded-lg transition-colors"
+            className="flex items-center gap-1.5 text-sm bg-[#2D6A4F] hover:bg-[#245c43] text-white px-3 py-1.5 rounded-lg transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />

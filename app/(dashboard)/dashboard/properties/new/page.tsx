@@ -9,19 +9,19 @@ import { zodResolver } from '@hookform/resolvers/zod'
 // ── Shared field styles ───────────────────────────────────────────────────────
 
 const inputClass =
-  'w-full bg-[#5f655f] border border-white/15 rounded-lg px-3.5 py-2.5 text-white placeholder-white/30 text-sm focus:outline-none focus:border-green-500/60 focus:ring-1 focus:ring-green-500/30 transition-colors'
+  'w-full bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-[#1A1A1A] placeholder-gray-400 text-sm focus:outline-none focus:border-[#2D6A4F] focus:ring-1 focus:ring-[#2D6A4F]/20 transition-colors'
 
 const selectClass =
-  'w-full bg-[#5f655f] border border-white/15 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:border-green-500/60 focus:ring-1 focus:ring-green-500/30 transition-colors appearance-none'
+  'w-full bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-[#1A1A1A] text-sm focus:outline-none focus:border-[#2D6A4F] focus:ring-1 focus:ring-[#2D6A4F]/20 transition-colors appearance-none'
 
 function FieldError({ message }: { message?: string }) {
   if (!message) return null
-  return <p className="mt-1 text-xs text-red-400">{message}</p>
+  return <p className="mt-1 text-xs text-red-600">{message}</p>
 }
 
 function Label({ children, htmlFor }: { children: React.ReactNode; htmlFor?: string }) {
   return (
-    <label htmlFor={htmlFor} className="block text-sm text-white/70 mb-1.5">
+    <label htmlFor={htmlFor} className="block text-sm text-[#374151] mb-1.5">
       {children}
     </label>
   )
@@ -37,10 +37,10 @@ function StepPills({ current, total }: { current: number; total: number }) {
           key={n}
           className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold transition-all ${
             n === current
-              ? 'bg-green-500 text-white'
+              ? 'bg-[#2D6A4F] text-white'
               : n < current
-              ? 'bg-green-500/20 text-green-400'
-              : 'bg-white/8 text-white/25'
+              ? 'bg-[#2D6A4F]/15 text-[#2D6A4F]'
+              : 'bg-gray-100 text-[#9CA3AF]'
           }`}
         >
           {n < current ? (
@@ -125,21 +125,21 @@ function PropertyForm({ onNext }: { onNext: (v: PropertyValues) => void }) {
         <div className="flex gap-2">
           <input id="postcode" {...register('postcode')} placeholder="e.g. SW1A 2AA" className={`${inputClass} flex-1`} />
           <button type="button" onClick={lookupAddress} disabled={lookupLoading}
-            className="shrink-0 bg-white/10 hover:bg-white/15 disabled:opacity-50 text-white text-sm px-4 py-2.5 rounded-lg transition-colors">
+            className="shrink-0 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 text-[#1A1A1A] text-sm px-4 py-2.5 rounded-lg transition-colors">
             {lookupLoading ? '…' : 'Find'}
           </button>
         </div>
         <FieldError message={errors.postcode?.message} />
         {showSuggestions && suggestions.length > 0 && (
-          <div className="mt-2 bg-[#1a2d1a] border border-white/15 rounded-lg overflow-hidden max-h-44 overflow-y-auto">
+          <div className="mt-2 bg-white border border-gray-200 rounded-lg overflow-hidden max-h-44 overflow-y-auto shadow-lg">
             {suggestions.map((addr) => (
               <button key={addr.uprn} type="button" onClick={() => selectAddress(addr)}
-                className="w-full text-left px-3.5 py-2.5 text-sm text-white/80 hover:bg-white/8 transition-colors border-b border-white/5 last:border-0">
+                className="w-full text-left px-3.5 py-2.5 text-sm text-[#374151] hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-0">
                 {addr.singleLine}
               </button>
             ))}
             <button type="button" onClick={() => setShowSuggestions(false)}
-              className="w-full text-center px-3.5 py-2 text-xs text-white/40 hover:text-white/60 transition-colors">
+              className="w-full text-center px-3.5 py-2 text-xs text-[#9CA3AF] hover:text-[#6B7280] transition-colors">
               Enter manually
             </button>
           </div>
@@ -154,7 +154,7 @@ function PropertyForm({ onNext }: { onNext: (v: PropertyValues) => void }) {
 
       <div>
         <Label htmlFor="line2">
-          Address line 2 <span className="text-white/30">(optional)</span>
+          Address line 2 <span className="text-[#9CA3AF]">(optional)</span>
         </Label>
         <input id="line2" {...register('line2')} placeholder="Flat, suite, unit, etc." className={inputClass} />
       </div>
@@ -178,13 +178,13 @@ function PropertyForm({ onNext }: { onNext: (v: PropertyValues) => void }) {
 
       <div>
         <Label htmlFor="name">
-          Nickname <span className="text-white/30">(optional)</span>
+          Nickname <span className="text-[#9CA3AF]">(optional)</span>
         </Label>
         <input id="name" {...register('name')} placeholder="e.g. The Manchester Flat" className={inputClass} />
       </div>
 
       <div className="pt-2">
-        <button type="submit" className="w-full bg-green-500 hover:bg-green-400 text-white font-semibold rounded-xl py-3 text-sm transition-colors">
+        <button type="submit" className="w-full bg-[#2D6A4F] hover:bg-[#245c43] disabled:opacity-50 text-white font-semibold rounded-xl py-3 text-sm transition-colors">
           Continue
         </button>
       </div>
@@ -198,27 +198,27 @@ function OccupancyStep({ onHasTenant, onVacant }: { onHasTenant: () => void; onV
   return (
     <div className="space-y-3">
       <button onClick={onHasTenant}
-        className="w-full flex items-center gap-4 bg-white/5 hover:bg-white/8 border border-white/12 hover:border-white/22 rounded-xl p-4 text-left transition-all">
-        <div className="w-9 h-9 rounded-lg bg-green-500/15 flex items-center justify-center shrink-0">
-          <svg className="w-4.5 h-4.5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        className="w-full flex items-center gap-4 bg-white border border-gray-200 hover:border-[#2D6A4F]/30 hover:bg-gray-50 rounded-xl p-4 text-left transition-all">
+        <div className="w-9 h-9 rounded-lg bg-green-100 flex items-center justify-center shrink-0">
+          <svg className="w-4.5 h-4.5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
           </svg>
         </div>
-        <p className="text-white font-medium text-sm flex-1">Yes, I have a tenant</p>
-        <svg className="w-4 h-4 text-white/25 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <p className="text-[#1A1A1A] font-medium text-sm flex-1">Yes, I have a tenant</p>
+        <svg className="w-4 h-4 text-[#D1D5DB] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
         </svg>
       </button>
 
       <button onClick={onVacant}
-        className="w-full flex items-center gap-4 bg-white/5 hover:bg-white/8 border border-white/12 hover:border-white/22 rounded-xl p-4 text-left transition-all">
-        <div className="w-9 h-9 rounded-lg bg-white/8 flex items-center justify-center shrink-0">
-          <svg className="w-4.5 h-4.5 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        className="w-full flex items-center gap-4 bg-white border border-gray-200 hover:border-[#2D6A4F]/30 hover:bg-gray-50 rounded-xl p-4 text-left transition-all">
+        <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+          <svg className="w-4.5 h-4.5 text-[#9CA3AF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
           </svg>
         </div>
-        <p className="text-white font-medium text-sm flex-1">No, it&apos;s vacant</p>
-        <svg className="w-4 h-4 text-white/25 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <p className="text-[#1A1A1A] font-medium text-sm flex-1">No, it&apos;s vacant</p>
+        <svg className="w-4 h-4 text-[#D1D5DB] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
         </svg>
       </button>
@@ -248,7 +248,7 @@ function TenantForm({ onNext, onBack, submitting }: { onNext: (v: TenantValues) 
         </div>
         <div>
           <Label htmlFor="tenantPhone">
-            Phone <span className="text-white/30">(optional)</span>
+            Phone <span className="text-[#9CA3AF]">(optional)</span>
           </Label>
           <input id="tenantPhone" type="tel" {...register('tenantPhone')} placeholder="07700 900000" className={inputClass} />
         </div>
@@ -275,10 +275,10 @@ function TenantForm({ onNext, onBack, submitting }: { onNext: (v: TenantValues) 
       </div>
 
       <div className="pt-2 flex flex-col gap-3">
-        <button type="submit" disabled={submitting} className="w-full bg-green-500 hover:bg-green-400 disabled:opacity-50 text-white font-semibold rounded-xl py-3 text-sm transition-colors">
+        <button type="submit" disabled={submitting} className="w-full bg-[#2D6A4F] hover:bg-[#245c43] disabled:opacity-50 text-white font-semibold rounded-xl py-3 text-sm transition-colors">
           {submitting ? 'Saving…' : 'Add property'}
         </button>
-        <button type="button" onClick={onBack} className="text-sm text-white/30 hover:text-white/60 transition-colors text-center">
+        <button type="button" onClick={onBack} className="text-sm text-[#9CA3AF] hover:text-[#6B7280] transition-colors text-center">
           ← Back
         </button>
       </div>
@@ -365,18 +365,18 @@ export default function NewPropertyPage() {
     <div className="flex flex-col min-h-[calc(100vh-3.5rem)] lg:min-h-screen">
 
       {/* TOP — pill indicator + heading */}
-      <div className="px-4 pt-8 pb-6 border-b border-white/6">
+      <div className="px-4 pt-8 pb-6 border-b border-gray-100">
         <div className="max-w-lg mx-auto">
           <div className="flex items-center justify-between mb-4">
             <StepPills current={step} total={totalSteps} />
             <button
               onClick={() => router.push('/dashboard')}
-              className="text-sm text-white/30 hover:text-white/60 transition-colors"
+              className="text-sm text-[#9CA3AF] hover:text-[#6B7280] transition-colors"
             >
               Cancel
             </button>
           </div>
-          <h1 className="text-white text-xl font-semibold">{heading}</h1>
+          <h1 className="text-[#1A1A1A] text-xl font-semibold">{heading}</h1>
         </div>
       </div>
 
@@ -385,14 +385,14 @@ export default function NewPropertyPage() {
         <div className="max-w-lg mx-auto">
 
           {error && (
-            <div className="mb-4 bg-red-500/10 border border-red-500/25 rounded-lg px-4 py-3 text-red-400 text-sm">
+            <div className="mb-4 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-red-700 text-sm">
               {error}
             </div>
           )}
 
           {submitting && step !== 3 ? (
             <div className="flex items-center justify-center py-16">
-              <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+              <div className="w-6 h-6 border-2 border-[#2D6A4F] border-t-transparent rounded-full animate-spin" />
             </div>
           ) : step === 1 ? (
             <PropertyForm onNext={handleStep1} />

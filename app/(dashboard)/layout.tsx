@@ -17,8 +17,16 @@ export default async function DashboardLayout({ children }: { children: React.Re
     select: { id: true },
   }).catch(() => null)
 
+  const openMaintenanceCount = await prisma.maintenanceRequest.count({
+    where: { property: { userId: user.id }, status: 'OPEN' },
+  }).catch(() => 0)
+
   return (
-    <DashboardShell user={user} hasTenantProfile={!!tenantProfile}>
+    <DashboardShell
+      user={user}
+      hasTenantProfile={!!tenantProfile}
+      openMaintenanceCount={openMaintenanceCount}
+    >
       {children}
     </DashboardShell>
   )

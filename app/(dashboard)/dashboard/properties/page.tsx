@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createAuthClient } from '@/lib/supabase/auth'
 import { prisma } from '@/lib/prisma'
-import type { Property, PropertyDocument, Tenancy, Tenant, MaintenanceRequest, MaintenancePriority } from '@prisma/client'
+import type { Property, PropertyDocument, Tenancy, Tenant } from '@prisma/client'
 
 // ── Status helpers ────────────────────────────────────────────────────────────
 
@@ -50,39 +50,12 @@ function formatRent(pence: number | null): string {
   return `£${(pence / 100).toLocaleString('en-GB')}/mo`
 }
 
-function timeAgo(date: Date): string {
-  const seconds = Math.floor((Date.now() - date.getTime()) / 1000)
-  if (seconds < 60)   return `${seconds}s ago`
-  const minutes = Math.floor(seconds / 60)
-  if (minutes < 60)   return `${minutes}m ago`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24)     return `${hours}h ago`
-  const days = Math.floor(hours / 24)
-  return `${days}d ago`
-}
-
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type TenancyWithTenant = Tenancy & { tenant: Pick<Tenant, 'name'> | null }
 type PropertyWithRelations = Property & {
   documents: PropertyDocument[]
   tenancies: TenancyWithTenant[]
-}
-
-type MaintenanceWithRelations = MaintenanceRequest & {
-  property: { name: string | null; line1: string }
-  tenant:   { name: string }
-}
-
-// ── Priority helpers ──────────────────────────────────────────────────────────
-
-const priorityOrder: Record<MaintenancePriority, number> = { URGENT: 0, HIGH: 1, MEDIUM: 2, LOW: 3 }
-
-const priorityBadge: Record<MaintenancePriority, string> = {
-  URGENT: 'bg-red-100 text-red-700',
-  HIGH:   'bg-orange-100 text-orange-700',
-  MEDIUM: 'bg-yellow-100 text-yellow-800',
-  LOW:    'bg-gray-100 text-gray-500',
 }
 
 // ── Property card ─────────────────────────────────────────────────────────────
@@ -98,7 +71,6 @@ function PropertyCard({ property }: { property: PropertyWithRelations }) {
       href={`/dashboard/properties/${property.id}`}
       className={`block bg-white border border-black/[0.06] border-t-[3px] ${topBorder} rounded-xl p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)] hover:-translate-y-px transition-all duration-150`}
     >
-      {/* Header */}
       <div className="flex items-start justify-between gap-2 mb-3">
         <div className="min-w-0">
           <p className="text-[#1A1A1A] font-medium text-sm leading-snug truncate">
@@ -114,7 +86,6 @@ function PropertyCard({ property }: { property: PropertyWithRelations }) {
         </span>
       </div>
 
-      {/* Rent / tenant */}
       <p className="text-[#6B7280] text-xs mb-3 truncate">
         {activeTenancy ? (
           <>
@@ -126,7 +97,6 @@ function PropertyCard({ property }: { property: PropertyWithRelations }) {
         )}
       </p>
 
-      {/* Compliance strip */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         {docTypes.map((type) => {
           const color = getComplianceColor(property.documents, type)
@@ -142,83 +112,28 @@ function PropertyCard({ property }: { property: PropertyWithRelations }) {
   )
 }
 
-// ── Maintenance preview row ───────────────────────────────────────────────────
-
-function MaintenanceRow({ req }: { req: MaintenanceWithRelations }) {
-  const propertyLabel = req.property.name ?? req.property.line1
-  return (
-    <Link
-      href={`/dashboard/maintenance/${req.id}`}
-      className="flex items-center gap-3 py-2.5 border-b border-gray-100 last:border-0 hover:bg-gray-50 -mx-4 px-4 transition-colors"
-    >
-      <span className={`shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full ${priorityBadge[req.priority]}`}>
-        {req.priority}
-      </span>
-      <div className="flex-1 min-w-0">
-        <p className="text-[#1A1A1A] text-sm font-medium truncate">{req.title}</p>
-        <p className="text-[#9CA3AF] text-xs truncate">{propertyLabel} · {req.tenant.name}</p>
-      </div>
-      <span className="shrink-0 text-[#9CA3AF] text-xs">{timeAgo(new Date(req.createdAt))}</span>
-      <svg className="w-4 h-4 text-[#D1D5DB] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-      </svg>
-    </Link>
-  )
-}
-
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default async function DashboardPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ as?: string }>
-}) {
+export default async function PropertiesPage() {
   const supabase = createAuthClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { as: asMode } = await searchParams
-
-  const [properties, openRequests] = await Promise.all([
-    prisma.property.findMany({
-      where: { userId: user.id },
-      include: {
-        documents: true,
-        tenancies: {
-          where: { status: { not: 'ENDED' } },
-          orderBy: { createdAt: 'desc' },
-          take: 1,
-          include: { tenant: { select: { name: true } } },
-        },
+  const properties = await prisma.property.findMany({
+    where: { userId: user.id },
+    include: {
+      documents: true,
+      tenancies: {
+        where: { status: { not: 'ENDED' } },
+        orderBy: { createdAt: 'desc' },
+        take: 1,
+        include: { tenant: { select: { name: true } } },
       },
-      orderBy: { createdAt: 'asc' },
-    }),
-    prisma.maintenanceRequest.findMany({
-      where: { property: { userId: user.id }, status: { in: ['OPEN', 'IN_PROGRESS'] } },
-      include: {
-        property: { select: { name: true, line1: true } },
-        tenant:   { select: { name: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 20,
-    }),
-  ])
+    },
+    orderBy: { createdAt: 'asc' },
+  })
 
-  if (properties.length === 0) {
-    if (asMode === 'landlord') redirect('/dashboard/onboarding')
-    const tenantProfile = await prisma.tenant.findFirst({
-      where: { email: user.email!, status: { in: ['TENANT', 'INVITED'] } },
-      select: { id: true },
-    })
-    redirect(tenantProfile ? '/tenant/dashboard' : '/dashboard/onboarding')
-  }
-
-  // Sort maintenance by priority then date
-  const topRequests = [...openRequests]
-    .sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority] || b.createdAt.getTime() - a.createdAt.getTime())
-    .slice(0, 3) as MaintenanceWithRelations[]
-
-  // Expiring compliance alerts (within 30 days) — now from PropertyDocument
+  // Expiring compliance alerts (within 30 days)
   const now = new Date()
   const in30 = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
   const complianceDocTypes = new Set(['GAS_SAFETY', 'EPC', 'EICR'])
@@ -246,45 +161,9 @@ export default async function DashboardPage({
         </div>
       )}
 
-      {/* Maintenance preview */}
-      <div className="bg-white border border-black/[0.06] rounded-xl p-4 mb-5 shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] animate-fade-in-up" style={{ animationDelay: '0ms' }}>
-        <div className="flex items-center justify-between mb-1">
-          <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium">Active Maintenance</p>
-          <Link href="/dashboard/maintenance" className="text-xs text-[#2D6A4F] hover:text-[#245c43] transition-colors">
-            View all →
-          </Link>
-        </div>
-        {topRequests.length === 0 ? (
-          <p className="text-[#9CA3AF] text-sm italic py-2">No active maintenance requests</p>
-        ) : (
-          <div>
-            {topRequests.map((req) => (
-              <MaintenanceRow key={req.id} req={req} />
-            ))}
-          </div>
-        )}
-      </div>
-
       {/* Header */}
-      <div className="flex items-center justify-between mb-4 animate-fade-in-up" style={{ animationDelay: '80ms' }}>
-        <h1 className="text-[#1A1A1A] text-xl font-semibold">Properties</h1>
-        <Link
-          href="/dashboard/properties"
-          className="text-xs text-[#6B7280] hover:text-[#374151] transition-colors"
-        >
-          View all →
-        </Link>
-      </div>
-
-      {/* Grid — 1 col mobile, 2 col sm+ */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-fade-in-up" style={{ animationDelay: '160ms' }}>
-        {properties.map((p) => (
-          <PropertyCard key={p.id} property={p} />
-        ))}
-      </div>
-
-      {/* Add property */}
-      <div className="mt-4">
+      <div className="flex items-center justify-between mb-5 animate-fade-in-up" style={{ animationDelay: '0ms' }}>
+        <h1 className="text-[#1A1A1A] text-xl font-semibold">My Properties</h1>
         <Link
           href="/dashboard/properties/new"
           className="inline-flex items-center gap-1.5 bg-green-500 hover:bg-green-400 text-white text-sm font-semibold px-3.5 py-2 rounded-lg transition-colors"
@@ -295,6 +174,24 @@ export default async function DashboardPage({
           Add property
         </Link>
       </div>
+
+      {properties.length === 0 ? (
+        <div className="text-center py-12 animate-fade-in-up" style={{ animationDelay: '80ms' }}>
+          <p className="text-[#9CA3AF] text-sm mb-4">No properties yet</p>
+          <Link
+            href="/dashboard/properties/new"
+            className="inline-flex items-center gap-1.5 bg-green-500 hover:bg-green-400 text-white text-sm font-semibold px-3.5 py-2 rounded-lg transition-colors"
+          >
+            Add your first property
+          </Link>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-fade-in-up" style={{ animationDelay: '80ms' }}>
+          {properties.map((p) => (
+            <PropertyCard key={p.id} property={p} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }

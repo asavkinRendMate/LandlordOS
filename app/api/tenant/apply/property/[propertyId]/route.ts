@@ -7,7 +7,7 @@ export async function GET(_req: Request, { params }: { params: { propertyId: str
   try {
     const property = await prisma.property.findUnique({
       where: { id: params.propertyId },
-      select: { id: true, name: true, line1: true, line2: true, city: true, postcode: true },
+      select: { id: true, name: true, line1: true, line2: true, city: true, postcode: true, requireFinancialVerification: true },
     })
 
     if (!property) return NextResponse.json({ error: 'Not found' }, { status: 404 })

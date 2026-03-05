@@ -7,6 +7,17 @@ import DocumentUploadModal from '@/components/shared/DocumentUploadModal'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+interface FinancialReport {
+  id: string
+  status: string
+  totalScore: number | null
+  grade: string | null
+  aiSummary: string | null
+  breakdown: Record<string, number> | null
+  appliedRules: Array<{ key: string; description: string; points: number }> | null
+  verificationToken: string
+}
+
 interface Property {
   id: string
   name: string | null
@@ -16,6 +27,7 @@ interface Property {
   postcode: string
   status: string
   type: string
+  requireFinancialVerification: boolean
   tenants: Tenant[]
   complianceDocs: ComplianceDoc[]
   tenancies: Tenancy[]
@@ -29,6 +41,7 @@ interface Tenant {
   status: string
   inviteToken: string
   documents: { documentType: string; expiryDate: string | null }[]
+  financialReports: FinancialReport[]
 }
 
 interface ComplianceDoc {
@@ -117,22 +130,22 @@ function formatDate(iso: string): string {
 }
 
 const statusConfig: Record<string, { label: string; cls: string }> = {
-  VACANT: { label: 'Vacant', cls: 'bg-white/10 text-white/50' },
-  APPLICATION_OPEN: { label: 'Accepting applications', cls: 'bg-blue-500/15 text-blue-300' },
-  OFFER_ACCEPTED: { label: 'Offer accepted', cls: 'bg-yellow-500/15 text-yellow-300' },
-  ACTIVE: { label: 'Active', cls: 'bg-green-500/15 text-green-300' },
-  NOTICE_GIVEN: { label: 'Notice given', cls: 'bg-orange-500/15 text-orange-300' },
+  VACANT:           { label: 'Vacant',                cls: 'bg-gray-100 text-gray-500' },
+  APPLICATION_OPEN: { label: 'Accepting applications', cls: 'bg-blue-100 text-blue-700' },
+  OFFER_ACCEPTED:   { label: 'Offer accepted',         cls: 'bg-yellow-100 text-yellow-800' },
+  ACTIVE:           { label: 'Active',                 cls: 'bg-green-100 text-green-700' },
+  NOTICE_GIVEN:     { label: 'Notice given',           cls: 'bg-orange-100 text-orange-700' },
 }
 
 const tenantStatusConfig: Record<string, { label: string; cls: string }> = {
-  CANDIDATE: { label: 'Applied', cls: 'bg-blue-500/15 text-blue-300' },
-  INVITED: { label: 'Invited', cls: 'bg-yellow-500/15 text-yellow-300' },
-  TENANT: { label: 'Active tenant', cls: 'bg-green-500/15 text-green-300' },
-  FORMER_TENANT: { label: 'Former tenant', cls: 'bg-white/10 text-white/40' },
+  CANDIDATE:     { label: 'Applied',        cls: 'bg-blue-100 text-blue-700' },
+  INVITED:       { label: 'Invited',        cls: 'bg-yellow-100 text-yellow-800' },
+  TENANT:        { label: 'Active tenant',  cls: 'bg-green-100 text-green-700' },
+  FORMER_TENANT: { label: 'Former tenant',  cls: 'bg-gray-100 text-gray-500' },
 }
 
 function StatusBadge({ status, config }: { status: string; config: typeof statusConfig }) {
-  const c = config[status] ?? { label: status, cls: 'bg-white/10 text-white/40' }
+  const c = config[status] ?? { label: status, cls: 'bg-gray-100 text-gray-500' }
   return <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${c.cls}`}>{c.label}</span>
 }
 
@@ -162,7 +175,7 @@ function FileIcon({ mimeType, size = 'md' }: { mimeType: string; size?: 'sm' | '
     )
   }
   return (
-    <svg className={`${sz} text-white/40 shrink-0`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <svg className={`${sz} text-gray-400 shrink-0`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
     </svg>
   )
@@ -174,22 +187,22 @@ function ExpiryBadge({ expiryDate }: { expiryDate: string }) {
   const d = new Date(expiryDate)
   const now = new Date()
   const daysLeft = Math.ceil((d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-  if (daysLeft < 0) return <span className="text-xs text-red-400">Expired {formatDate(expiryDate)}</span>
-  if (daysLeft <= 30) return <span className="text-xs text-orange-400">Expires {formatDate(expiryDate)}</span>
-  return <span className="text-xs text-green-400">Valid until {formatDate(expiryDate)}</span>
+  if (daysLeft < 0) return <span className="text-xs text-red-600 font-medium">Expired {formatDate(expiryDate)}</span>
+  if (daysLeft <= 30) return <span className="text-xs text-orange-600 font-medium">Expires {formatDate(expiryDate)}</span>
+  return <span className="text-xs text-green-700 font-medium">Valid until {formatDate(expiryDate)}</span>
 }
 
 // ── Compliance status cards ────────────────────────────────────────────────────
 
 function complianceStatusFromDocs(docs: PropertyDocument[], type: string): { label: string; cls: string } {
   const doc = docs.find((d) => d.documentType === type)
-  if (!doc) return { label: 'Not uploaded', cls: 'bg-white/8 text-white/30' }
-  if (type === 'HOW_TO_RENT') return { label: 'Issued', cls: 'bg-green-500/15 text-green-300' }
-  if (!doc.expiryDate) return { label: 'Uploaded', cls: 'bg-green-500/15 text-green-300' }
+  if (!doc) return { label: 'Not uploaded', cls: 'bg-gray-100 text-gray-400' }
+  if (type === 'HOW_TO_RENT') return { label: 'Issued', cls: 'bg-green-100 text-green-700' }
+  if (!doc.expiryDate) return { label: 'Uploaded', cls: 'bg-green-100 text-green-700' }
   const daysLeft = Math.ceil((new Date(doc.expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-  if (daysLeft < 0) return { label: 'Expired', cls: 'bg-red-500/15 text-red-300' }
-  if (daysLeft <= 30) return { label: 'Expiring soon', cls: 'bg-orange-500/15 text-orange-300' }
-  return { label: 'Valid', cls: 'bg-green-500/15 text-green-300' }
+  if (daysLeft < 0) return { label: 'Expired', cls: 'bg-red-100 text-red-700' }
+  if (daysLeft <= 30) return { label: 'Expiring soon', cls: 'bg-orange-100 text-orange-700' }
+  return { label: 'Valid', cls: 'bg-green-100 text-green-700' }
 }
 
 const REQUIRED_DOC_ICONS: Record<string, React.ReactNode> = {
@@ -234,7 +247,7 @@ function DeleteDocButton({ docId, onDeleted }: { docId: string; onDeleted: () =>
     return (
       <button
         onClick={() => setConfirm(true)}
-        className="p-1.5 text-white/25 hover:text-red-400 transition-colors rounded"
+        className="p-1.5 text-gray-300 hover:text-red-500 transition-colors rounded"
         title="Delete document"
       >
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -246,11 +259,11 @@ function DeleteDocButton({ docId, onDeleted }: { docId: string; onDeleted: () =>
 
   return (
     <div className="flex items-center gap-1 text-xs">
-      <span className="text-white/40">Delete?</span>
-      <button onClick={del} disabled={deleting} className="text-red-400 hover:text-red-300 font-medium transition-colors disabled:opacity-50">
+      <span className="text-[#6B7280]">Delete?</span>
+      <button onClick={del} disabled={deleting} className="text-red-600 hover:text-red-700 font-medium transition-colors disabled:opacity-50">
         {deleting ? '…' : 'Yes'}
       </button>
-      <button onClick={() => setConfirm(false)} className="text-white/30 hover:text-white/60 transition-colors">No</button>
+      <button onClick={() => setConfirm(false)} className="text-[#9CA3AF] hover:text-[#6B7280] transition-colors">No</button>
     </div>
   )
 }
@@ -267,7 +280,7 @@ function CopyButton({ text, label = 'Copy link' }: { text: string; label?: strin
   return (
     <button
       onClick={copy}
-      className="text-sm bg-white/8 hover:bg-white/12 text-white/70 hover:text-white px-3 py-1.5 rounded-lg transition-colors"
+      className="text-sm bg-gray-100 hover:bg-gray-200 text-[#6B7280] hover:text-[#1A1A1A] px-3 py-1.5 rounded-lg transition-colors"
     >
       {copied ? '✓ Copied' : label}
     </button>
@@ -292,7 +305,7 @@ function SendInviteButton({ tenantId }: { tenantId: string }) {
     <button
       onClick={send}
       disabled={state === 'sending'}
-      className="text-sm bg-green-500/15 hover:bg-green-500/25 text-green-400 hover:text-green-300 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+      className="text-sm bg-green-100 hover:bg-green-200 text-green-700 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
     >
       {state === 'sending' ? 'Sending…' : state === 'sent' ? '✓ Sent' : state === 'error' ? 'Error — retry' : 'Send invite email'}
     </button>
@@ -322,7 +335,7 @@ function AppLinkEmailForm({ propertyId }: { propertyId: string }) {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="text-sm bg-white/8 hover:bg-white/12 text-white/70 hover:text-white px-3 py-1.5 rounded-lg transition-colors"
+        className="text-sm bg-gray-100 hover:bg-gray-200 text-[#6B7280] px-3 py-1.5 rounded-lg transition-colors"
       >
         Send by email
       </button>
@@ -336,18 +349,18 @@ function AppLinkEmailForm({ propertyId }: { propertyId: string }) {
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         placeholder="applicant@email.com"
-        className="flex-1 min-w-0 bg-[#5f655f] border border-white/15 rounded-lg px-3 py-1.5 text-white text-sm placeholder-white/30 focus:outline-none focus:border-green-500/60 focus:ring-1 focus:ring-green-500/30 transition-colors"
+        className="flex-1 min-w-0 bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-[#1A1A1A] text-sm placeholder-gray-400 focus:outline-none focus:border-[#2D6A4F] focus:ring-1 focus:ring-[#2D6A4F]/20 transition-colors"
       />
       <button
         onClick={send}
         disabled={state === 'sending' || !email}
-        className="shrink-0 text-sm bg-green-500/15 hover:bg-green-500/25 text-green-400 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+        className="shrink-0 text-sm bg-green-100 hover:bg-green-200 text-green-700 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
       >
         {state === 'sending' ? 'Sending…' : state === 'sent' ? '✓ Sent' : 'Send'}
       </button>
       <button
         onClick={() => setOpen(false)}
-        className="shrink-0 text-sm text-white/30 hover:text-white/60 transition-colors"
+        className="shrink-0 text-sm text-[#9CA3AF] hover:text-[#6B7280] transition-colors"
       >
         Cancel
       </button>
@@ -370,8 +383,8 @@ function monthLabel(iso: string): string {
 function InfoTooltip({ text }: { text: string }) {
   return (
     <span className="relative group inline-flex items-center">
-      <span className="w-4 h-4 rounded-full bg-white/10 text-white/40 text-[10px] font-bold flex items-center justify-center cursor-help select-none">i</span>
-      <span className="pointer-events-none absolute left-5 top-0 z-20 hidden group-hover:block w-64 bg-[#0d1a0d] border border-white/12 rounded-lg px-3 py-2 text-xs text-white/60 shadow-xl leading-relaxed whitespace-normal">
+      <span className="w-4 h-4 rounded-full bg-gray-100 text-[#9CA3AF] text-[10px] font-bold flex items-center justify-center cursor-help select-none">i</span>
+      <span className="pointer-events-none absolute left-5 top-0 z-20 hidden group-hover:block w-64 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-xs text-gray-300 shadow-xl leading-relaxed whitespace-normal">
         {text}
       </span>
     </span>
@@ -392,15 +405,15 @@ interface RentPayment {
 }
 
 const PAYMENT_STATUS: Record<string, { label: string; cls: string }> = {
-  PENDING:  { label: 'Upcoming', cls: 'bg-white/8 text-white/40' },
-  EXPECTED: { label: 'Due today', cls: 'bg-blue-500/15 text-blue-300' },
-  RECEIVED: { label: 'Received', cls: 'bg-green-500/15 text-green-300' },
-  LATE:     { label: 'Late', cls: 'bg-red-500/15 text-red-300' },
-  PARTIAL:  { label: 'Partial', cls: 'bg-orange-500/15 text-orange-300' },
+  PENDING:  { label: 'Upcoming',  cls: 'bg-gray-100 text-gray-500' },
+  EXPECTED: { label: 'Due today', cls: 'bg-blue-100 text-blue-700' },
+  RECEIVED: { label: 'Received',  cls: 'bg-green-100 text-green-700' },
+  LATE:     { label: 'Late',      cls: 'bg-red-100 text-red-700' },
+  PARTIAL:  { label: 'Partial',   cls: 'bg-orange-100 text-orange-700' },
 }
 
 function PaymentBadge({ status }: { status: string }) {
-  const cfg = PAYMENT_STATUS[status] ?? { label: status, cls: 'bg-white/8 text-white/40' }
+  const cfg = PAYMENT_STATUS[status] ?? { label: status, cls: 'bg-gray-100 text-gray-500' }
   return <span className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${cfg.cls}`}>{cfg.label}</span>
 }
 
@@ -429,48 +442,48 @@ function MarkReceivedForm({ payment, onSaved, onClose }: { payment: RentPayment;
   }
 
   return (
-    <div className="mt-2 p-3 bg-black/20 border border-white/8 rounded-xl space-y-2">
+    <div className="mt-2 p-3 bg-gray-50 border border-gray-100 rounded-xl space-y-2">
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="text-[10px] text-white/40 uppercase tracking-wide block mb-1">Date received</label>
+          <label className="text-[10px] text-[#9CA3AF] uppercase tracking-wide block mb-1">Date received</label>
           <input
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="w-full bg-[#1a2e1a] border border-white/12 rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-green-500/60 transition-colors [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-50"
+            className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-[#1A1A1A] text-xs focus:outline-none focus:border-[#2D6A4F] focus:ring-1 focus:ring-[#2D6A4F]/20 transition-colors"
           />
         </div>
         <div>
-          <label className="text-[10px] text-white/40 uppercase tracking-wide block mb-1">Amount (£)</label>
+          <label className="text-[10px] text-[#9CA3AF] uppercase tracking-wide block mb-1">Amount (£)</label>
           <input
             type="number"
             step="0.01"
             min="0.01"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className="w-full bg-[#1a2e1a] border border-white/12 rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-green-500/60 transition-colors"
+            className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-[#1A1A1A] text-xs focus:outline-none focus:border-[#2D6A4F] focus:ring-1 focus:ring-[#2D6A4F]/20 transition-colors"
           />
         </div>
       </div>
       <div>
-        <label className="text-[10px] text-white/40 uppercase tracking-wide block mb-1">Note (optional)</label>
+        <label className="text-[10px] text-[#9CA3AF] uppercase tracking-wide block mb-1">Note (optional)</label>
         <input
           type="text"
           value={note}
           onChange={(e) => setNote(e.target.value)}
           placeholder="e.g. paid via bank transfer"
-          className="w-full bg-[#1a2e1a] border border-white/12 rounded-lg px-2.5 py-1.5 text-white text-xs placeholder-white/20 focus:outline-none focus:border-green-500/60 transition-colors"
+          className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-[#1A1A1A] text-xs placeholder-gray-400 focus:outline-none focus:border-[#2D6A4F] focus:ring-1 focus:ring-[#2D6A4F]/20 transition-colors"
         />
       </div>
       <div className="flex gap-2">
         <button
           onClick={save}
           disabled={saving}
-          className="flex-1 bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white text-xs font-medium py-1.5 rounded-lg transition-colors"
+          className="flex-1 bg-[#2D6A4F] hover:bg-[#245c43] disabled:opacity-50 text-white text-xs font-medium py-1.5 rounded-lg transition-colors"
         >
           {saving ? 'Saving…' : 'Confirm'}
         </button>
-        <button onClick={onClose} className="text-xs text-white/30 hover:text-white/60 transition-colors px-2">
+        <button onClick={onClose} className="text-xs text-[#9CA3AF] hover:text-[#6B7280] transition-colors px-2">
           Cancel
         </button>
       </div>
@@ -507,14 +520,14 @@ function RentPaymentsSection({ propertyId }: { propertyId: string }) {
 
   const headerRow = (
     <div className="flex items-center gap-2 mb-3">
-      <p className="text-xs text-white/40 uppercase tracking-wide font-medium">Rent Payments</p>
+      <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium">Rent Payments</p>
       <InfoTooltip text={tooltipText} />
     </div>
   )
 
   if (loading) {
     return (
-      <div className="bg-white/4 border border-white/8 rounded-xl p-4 mb-5">
+      <div className="bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4 mb-5">
         {headerRow}
         <div className="flex justify-center py-6">
           <div className="w-5 h-5 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
@@ -525,9 +538,9 @@ function RentPaymentsSection({ propertyId }: { propertyId: string }) {
 
   if (payments.length === 0) {
     return (
-      <div className="bg-white/4 border border-white/8 rounded-xl p-4 mb-5">
+      <div className="bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4 mb-5">
         {headerRow}
-        <p className="text-white/30 text-sm italic">
+        <p className="text-[#9CA3AF] text-sm italic">
           Payments will appear once the tenancy has a rent amount and payment day set.
         </p>
       </div>
@@ -535,41 +548,41 @@ function RentPaymentsSection({ propertyId }: { propertyId: string }) {
   }
 
   return (
-    <div className="bg-white/4 border border-white/8 rounded-xl p-4 mb-5">
+    <div className="bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4 mb-5">
       {headerRow}
 
       {/* Summary strip */}
       <div className="flex flex-wrap gap-x-4 gap-y-1 mb-4 text-sm">
-        {monthlyAmt && <span className="text-white/70 font-medium">{formatGBP(monthlyAmt)}/mo</span>}
+        {monthlyAmt && <span className="text-[#374151] font-medium">{formatGBP(monthlyAmt)}/mo</span>}
         {nextDue && (
           nextDue.status === 'LATE'
-            ? <span className="text-red-400 font-medium">Overdue since {formatDate(nextDue.dueDate)}</span>
-            : <span className="text-white/50">Next due: {formatDate(nextDue.dueDate)}</span>
+            ? <span className="text-red-600 font-medium">Overdue since {formatDate(nextDue.dueDate)}</span>
+            : <span className="text-[#6B7280]">Next due: {formatDate(nextDue.dueDate)}</span>
         )}
         {lastReceived?.receivedDate && (
-          <span className="text-white/50">Last received: {formatDate(lastReceived.receivedDate)}</span>
+          <span className="text-[#6B7280]">Last received: {formatDate(lastReceived.receivedDate)}</span>
         )}
       </div>
 
       {/* Upcoming payments */}
       {upcoming.length > 0 && (
         <div className="mb-4">
-          <p className="text-[10px] text-white/30 font-medium uppercase tracking-wide mb-2">Upcoming</p>
+          <p className="text-[10px] text-[#9CA3AF] font-medium uppercase tracking-wide mb-2">Upcoming</p>
           <div className="space-y-2">
             {[...upcoming].reverse().map((p) => (
               <div key={p.id}>
                 <div className="flex items-center gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-white text-sm font-medium">{monthLabel(p.dueDate)}</span>
-                      <span className="text-white/40 text-xs">Due {formatDate(p.dueDate)}</span>
-                      <span className="text-white/70 text-sm">{formatGBP(p.amount)}</span>
+                      <span className="text-[#1A1A1A] text-sm font-medium">{monthLabel(p.dueDate)}</span>
+                      <span className="text-[#9CA3AF] text-xs">Due {formatDate(p.dueDate)}</span>
+                      <span className="text-[#374151] text-sm">{formatGBP(p.amount)}</span>
                       <PaymentBadge status={p.status} />
                     </div>
                   </div>
                   <button
                     onClick={() => setOpenFormId(openFormId === p.id ? null : p.id)}
-                    className="shrink-0 text-xs bg-green-500/15 hover:bg-green-500/25 text-green-400 hover:text-green-300 px-2.5 py-1 rounded-lg transition-colors"
+                    className="shrink-0 text-xs bg-green-100 hover:bg-green-200 text-green-700 px-2.5 py-1 rounded-lg transition-colors"
                   >
                     Mark received
                   </button>
@@ -592,7 +605,7 @@ function RentPaymentsSection({ propertyId }: { propertyId: string }) {
         <div>
           <button
             onClick={() => setShowHistory(!showHistory)}
-            className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/70 transition-colors mb-2"
+            className="flex items-center gap-1.5 text-xs text-[#9CA3AF] hover:text-[#6B7280] transition-colors mb-2"
           >
             <svg className={`w-3.5 h-3.5 transition-transform ${showHistory ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -601,20 +614,20 @@ function RentPaymentsSection({ propertyId }: { propertyId: string }) {
           </button>
 
           {showHistory && (
-            <div className="space-y-2 border-t border-white/6 pt-3">
+            <div className="space-y-2 border-t border-gray-100 pt-3">
               {history.map((p) => (
                 <div key={p.id} className="flex items-center gap-3">
                   <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
-                    <span className="text-white/60 text-sm">{monthLabel(p.dueDate)}</span>
-                    <span className="text-white/30 text-xs">Due {formatDate(p.dueDate)}</span>
-                    <span className="text-white/50 text-sm">
+                    <span className="text-[#374151] text-sm">{monthLabel(p.dueDate)}</span>
+                    <span className="text-[#9CA3AF] text-xs">Due {formatDate(p.dueDate)}</span>
+                    <span className="text-[#6B7280] text-sm">
                       {p.status === 'PARTIAL' && p.receivedAmount ? formatGBP(p.receivedAmount) : formatGBP(p.amount)}
                     </span>
                     <PaymentBadge status={p.status} />
-                    {p.note && <span className="text-white/30 text-xs truncate max-w-[140px]">{p.note}</span>}
+                    {p.note && <span className="text-[#9CA3AF] text-xs truncate max-w-[140px]">{p.note}</span>}
                   </div>
                   {p.receivedDate && (
-                    <span className="shrink-0 text-white/30 text-xs">{formatDate(p.receivedDate)}</span>
+                    <span className="shrink-0 text-[#9CA3AF] text-xs">{formatDate(p.receivedDate)}</span>
                   )}
                 </div>
               ))}
@@ -658,12 +671,12 @@ function ComplianceSection({ propertyId }: { propertyId: string }) {
   const requiredTypes = ['GAS_SAFETY', 'EPC', 'EICR', 'HOW_TO_RENT']
 
   return (
-    <div className="bg-white/4 border border-white/8 rounded-xl p-4 mb-5">
+    <div className="bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4 mb-5">
       <div className="flex items-center justify-between mb-4">
-        <p className="text-xs text-white/40 uppercase tracking-wide font-medium">Compliance & Documents</p>
+        <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium">Property Documents</p>
         <button
           onClick={() => setShowModal(true)}
-          className="flex items-center gap-1.5 text-sm bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded-lg transition-colors"
+          className="flex items-center gap-1.5 text-sm bg-[#2D6A4F] hover:bg-[#245c43] text-white px-3 py-1.5 rounded-lg transition-colors"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -678,9 +691,9 @@ function ComplianceSection({ propertyId }: { propertyId: string }) {
           const st = complianceStatusFromDocs(docs, type)
           const doc = docs.find((d) => d.documentType === type)
           return (
-            <div key={type} className="bg-white/4 border border-white/8 rounded-xl p-3 transition-all duration-300 hover:bg-white/8 hover:border-green-500/30 hover:shadow-[0_0_0_1px_rgba(74,222,128,0.08),0_4px_20px_rgba(0,0,0,0.25)]">
-              <div className="text-white/50 mb-2">{REQUIRED_DOC_ICONS[type]}</div>
-              <p className="text-white text-xs font-medium leading-snug mb-1.5">{DOC_TYPE_LABELS[type]}</p>
+            <div key={type} className="bg-white border border-black/[0.06] rounded-xl p-3 transition-all duration-300 hover:bg-gray-50 hover:border-green-300 hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)]">
+              <div className="text-[#6B7280] mb-2">{REQUIRED_DOC_ICONS[type]}</div>
+              <p className="text-[#1A1A1A] text-xs font-medium leading-snug mb-1.5">{DOC_TYPE_LABELS[type]}</p>
               <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${st.cls}`}>{st.label}</span>
               {doc?.expiryDate && (
                 <p className="mt-1.5">
@@ -693,21 +706,21 @@ function ComplianceSection({ propertyId }: { propertyId: string }) {
       </div>
 
       {/* All documents list */}
-      <p className="text-xs text-white/40 font-medium uppercase tracking-wide mb-3">All Documents</p>
+      <p className="text-xs text-[#9CA3AF] font-medium uppercase tracking-wide mb-3">All Documents</p>
 
       {loading ? (
         <div className="flex justify-center py-6">
           <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : docs.length === 0 ? (
-        <div className="text-center py-8 border-2 border-dashed border-white/8 rounded-xl">
-          <svg className="w-8 h-8 text-white/20 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-xl">
+          <svg className="w-8 h-8 text-gray-300 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
           </svg>
-          <p className="text-white/30 text-sm">No documents uploaded yet.</p>
+          <p className="text-[#9CA3AF] text-sm">No documents uploaded yet.</p>
           <button
             onClick={() => setShowModal(true)}
-            className="mt-2 text-sm text-green-400 hover:text-green-300 transition-colors"
+            className="mt-2 text-sm text-[#2D6A4F] hover:text-[#245c43] transition-colors"
           >
             Upload your first document
           </button>
@@ -717,13 +730,13 @@ function ComplianceSection({ propertyId }: { propertyId: string }) {
           {docs.map((doc) => {
             const ack = doc.acknowledgments[0]
             return (
-              <div key={doc.id} className="bg-white/4 border border-white/8 rounded-xl p-4 flex flex-col gap-3 transition-all duration-300 hover:bg-white/8 hover:border-green-500/30 hover:shadow-[0_0_0_1px_rgba(74,222,128,0.08),0_4px_20px_rgba(0,0,0,0.25)]">
+              <div key={doc.id} className="bg-white border border-black/[0.06] rounded-xl p-4 flex flex-col gap-3 transition-all duration-300 hover:bg-gray-50 hover:border-green-300 hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)]">
                 <div className="flex items-start gap-3">
                   <FileIcon mimeType={doc.mimeType} size="lg" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-white text-sm font-medium truncate" title={doc.fileName}>{doc.fileName}</p>
-                    <p className="text-white/40 text-xs mt-0.5">{DOC_TYPE_LABELS[doc.documentType] ?? doc.documentType}</p>
-                    <p className="text-white/30 text-xs">{formatBytes(doc.fileSize)} · {formatDate(doc.uploadedAt)}</p>
+                    <p className="text-[#1A1A1A] text-sm font-medium truncate" title={doc.fileName}>{doc.fileName}</p>
+                    <p className="text-[#6B7280] text-xs mt-0.5">{DOC_TYPE_LABELS[doc.documentType] ?? doc.documentType}</p>
+                    <p className="text-[#9CA3AF] text-xs">{formatBytes(doc.fileSize)} · {formatDate(doc.uploadedAt)}</p>
                   </div>
                 </div>
 
@@ -735,16 +748,16 @@ function ComplianceSection({ propertyId }: { propertyId: string }) {
 
                 <div className="text-xs">
                   {ack ? (
-                    <span className="text-green-400">Seen by {ack.tenant.name} on {formatDate(ack.acknowledgedAt)}</span>
+                    <span className="text-green-700">Seen by {ack.tenant.name} on {formatDate(ack.acknowledgedAt)}</span>
                   ) : (
-                    <span className="text-white/30">Not yet seen by tenant</span>
+                    <span className="text-[#9CA3AF]">Not yet seen by tenant</span>
                   )}
                 </div>
 
-                <div className="flex items-center justify-between border-t border-white/6 pt-3">
+                <div className="flex items-center justify-between border-t border-gray-100 pt-3">
                   <button
                     onClick={() => downloadDoc(doc.id, doc.fileName)}
-                    className="flex items-center gap-1.5 text-xs text-white/50 hover:text-white transition-colors"
+                    className="flex items-center gap-1.5 text-xs text-[#6B7280] hover:text-[#1A1A1A] transition-colors"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -768,6 +781,225 @@ function ComplianceSection({ propertyId }: { propertyId: string }) {
         documentTypes={Object.entries(DOC_TYPE_LABELS).map(([value, label]) => ({ value, label }))}
         expiryDateTypes={['GAS_SAFETY', 'EPC', 'EICR']}
       />
+    </div>
+  )
+}
+
+// ── Property Maintenance section ─────────────────────────────────────────────
+
+interface MaintenanceRequest {
+  id: string
+  title: string
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
+  status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED'
+  createdAt: string
+  tenant: { name: string }
+}
+
+const MAINT_PRIORITY_BADGE: Record<string, string> = {
+  URGENT: 'bg-red-100 text-red-700',
+  HIGH:   'bg-orange-100 text-orange-700',
+  MEDIUM: 'bg-yellow-100 text-yellow-800',
+  LOW:    'bg-gray-100 text-gray-500',
+}
+
+const MAINT_STATUS_BADGE: Record<string, string> = {
+  OPEN:        'bg-blue-100 text-blue-700',
+  IN_PROGRESS: 'bg-amber-100 text-amber-700',
+  RESOLVED:    'bg-green-100 text-green-700',
+}
+
+const MAINT_STATUS_LABEL: Record<string, string> = {
+  OPEN: 'Open', IN_PROGRESS: 'In progress', RESOLVED: 'Resolved',
+}
+
+function PropertyMaintenanceSection({ propertyId }: { propertyId: string }) {
+  const [requests, setRequests] = useState<MaintenanceRequest[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch(`/api/maintenance?propertyId=${propertyId}&status=OPEN`)
+      .then((r) => r.json())
+      .then((json) => { if (json.data) setRequests(json.data) })
+      .finally(() => setLoading(false))
+  }, [propertyId])
+
+  return (
+    <div className="bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4 mb-5">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium">Maintenance</p>
+        <a
+          href={`/dashboard/maintenance?propertyId=${propertyId}`}
+          className="text-xs text-[#2D6A4F] hover:text-[#245c43] transition-colors"
+        >
+          View all →
+        </a>
+      </div>
+      {loading ? (
+        <div className="flex justify-center py-4">
+          <div className="w-5 h-5 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : requests.length === 0 ? (
+        <p className="text-[#9CA3AF] text-sm italic">No open maintenance requests</p>
+      ) : (
+        <div>
+          {requests.map((req, i) => (
+            <a
+              key={req.id}
+              href={`/dashboard/maintenance/${req.id}`}
+              className={`flex items-center gap-3 py-2.5 ${i > 0 ? 'border-t border-gray-100' : ''} hover:bg-gray-50 -mx-4 px-4 transition-colors`}
+            >
+              <span className={`shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full ${MAINT_PRIORITY_BADGE[req.priority]}`}>
+                {req.priority}
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className="text-[#1A1A1A] text-sm font-medium truncate">{req.title}</p>
+                <p className="text-[#6B7280] text-xs">{req.tenant.name}</p>
+              </div>
+              <span className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${MAINT_STATUS_BADGE[req.status]}`}>
+                {MAINT_STATUS_LABEL[req.status]}
+              </span>
+              <svg className="w-4 h-4 text-[#D1D5DB] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Financial score helpers ────────────────────────────────────────────────────
+
+function gradeStyle(grade: string | null): { bg: string; text: string; border: string } {
+  if (!grade) return { bg: 'bg-gray-100', text: 'text-gray-500', border: 'border-gray-200' }
+  if (grade === 'Excellent' || grade === 'Good') return { bg: 'bg-green-100', text: 'text-green-700', border: 'border-green-200' }
+  if (grade === 'Fair') return { bg: 'bg-yellow-100', text: 'text-yellow-800', border: 'border-yellow-200' }
+  if (grade === 'Poor') return { bg: 'bg-orange-100', text: 'text-orange-700', border: 'border-orange-200' }
+  return { bg: 'bg-red-100', text: 'text-red-700', border: 'border-red-200' }
+}
+
+function FinancialScoreBadge({ report }: { report: FinancialReport }) {
+  const [expanded, setExpanded] = useState(false)
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
+
+  if (report.status === 'PROCESSING' || report.status === 'PENDING') {
+    return (
+      <div className="mt-3 flex items-center gap-2 text-xs text-[#9CA3AF]">
+        <div className="w-3.5 h-3.5 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+        Analysing statement…
+      </div>
+    )
+  }
+
+  if (report.status === 'FAILED' || report.totalScore === null) {
+    return (
+      <div className="mt-3 text-xs text-red-600">Financial analysis failed</div>
+    )
+  }
+
+  const { bg, text, border } = gradeStyle(report.grade)
+
+  return (
+    <div className={`mt-3 rounded-xl border ${border} p-3`}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className={`${bg} ${text} rounded-lg px-3 py-1.5 flex items-center gap-2`}>
+            <span className="font-bold text-lg leading-none">{report.totalScore}</span>
+            <span className="text-xs font-medium opacity-80">/100</span>
+          </div>
+          <span className={`text-sm font-semibold ${text}`}>{report.grade}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <a
+            href={`${appUrl}/verify/${report.verificationToken}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-[#9CA3AF] hover:text-[#2D6A4F] transition-colors"
+          >
+            Verify report →
+          </a>
+        </div>
+      </div>
+
+      {report.aiSummary && (
+        <div className="mt-2">
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="flex items-center gap-1 text-xs text-[#9CA3AF] hover:text-[#6B7280] transition-colors"
+          >
+            <svg className={`w-3 h-3 transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+            {expanded ? 'Hide' : 'Read'} analysis
+          </button>
+          {expanded && (
+            <div className="mt-2">
+              <p className="text-[#6B7280] text-xs leading-relaxed">{report.aiSummary}</p>
+              {report.breakdown && Object.keys(report.breakdown).length > 0 && (
+                <div className="mt-2 space-y-1">
+                  {Object.entries(report.breakdown).map(([cat, pts]) => (
+                    <div key={cat} className="flex items-center justify-between text-xs">
+                      <span className="text-[#9CA3AF] capitalize">{cat.toLowerCase()}</span>
+                      <span className={pts >= 0 ? 'text-green-700' : 'text-red-600'}>
+                        {pts >= 0 ? '+' : ''}{pts}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Financial verification toggle ─────────────────────────────────────────────
+
+function FinancialVerificationToggle({
+  propertyId,
+  initialValue,
+}: {
+  propertyId: string
+  initialValue: boolean
+}) {
+  const [enabled, setEnabled] = useState(initialValue)
+  const [saving, setSaving] = useState(false)
+
+  async function toggle() {
+    const next = !enabled
+    setSaving(true)
+    const res = await fetch(`/api/properties/${propertyId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requireFinancialVerification: next }),
+    })
+    if (res.ok) setEnabled(next)
+    setSaving(false)
+  }
+
+  return (
+    <div className="flex items-center justify-between py-3 border-t border-gray-100">
+      <div>
+        <p className="text-[#374151] text-sm font-medium">Require financial verification from applicants</p>
+        <p className="text-[#9CA3AF] text-xs mt-0.5">Applicants must upload bank statements to apply</p>
+      </div>
+      <button
+        onClick={toggle}
+        disabled={saving}
+        className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none disabled:opacity-50
+          ${enabled ? 'bg-green-500' : 'bg-gray-200'}`}
+        role="switch"
+        aria-checked={enabled}
+      >
+        <span
+          className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform
+            ${enabled ? 'translate-x-6' : 'translate-x-1'}`}
+        />
+      </button>
     </div>
   )
 }
@@ -805,8 +1037,8 @@ export default function PropertyPage() {
   if (error || !property) {
     return (
       <div className="p-8 text-center">
-        <p className="text-white/50">{error ?? 'Property not found'}</p>
-        <button onClick={() => router.back()} className="mt-4 text-sm text-green-400 hover:text-green-300">← Back</button>
+        <p className="text-[#6B7280]">{error ?? 'Property not found'}</p>
+        <button onClick={() => router.back()} className="mt-4 text-sm text-[#2D6A4F] hover:text-[#245c43]">← Back</button>
       </div>
     )
   }
@@ -828,7 +1060,7 @@ export default function PropertyPage() {
     <div className="p-4 lg:p-8 max-w-3xl">
 
       {/* Back */}
-      <Link href="/dashboard" className="inline-flex items-center gap-1 text-sm text-white/40 hover:text-white/70 transition-colors mb-6">
+      <Link href="/dashboard/properties" className="inline-flex items-center gap-1 text-sm text-[#9CA3AF] hover:text-[#6B7280] transition-colors mb-6">
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
         </svg>
@@ -838,8 +1070,8 @@ export default function PropertyPage() {
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-white text-2xl font-bold">{displayName}</h1>
-          {property.name && <p className="text-white/40 text-sm mt-0.5">{address}</p>}
+          <h1 className="text-[#1A1A1A] text-2xl font-bold">{displayName}</h1>
+          {property.name && <p className="text-[#6B7280] text-sm mt-0.5">{address}</p>}
         </div>
         <StatusBadge status={property.status} config={statusConfig} />
       </div>
@@ -850,13 +1082,13 @@ export default function PropertyPage() {
       {/* ── Tenant section ──────────────────────────────────────────────────── */}
       {(() => {
         const r2rSt = currentTenant ? tenantDocStatus(currentTenant.documents, 'RIGHT_TO_RENT') : 'missing'
-        const borderCls = !currentTenant ? 'border-white/8'
-          : (r2rSt === 'missing' || r2rSt === 'expired') ? 'border-red-500/30'
-          : TENANT_STRIP_TYPES.some((t) => tenantDocStatus(currentTenant.documents, t) !== 'valid') ? 'border-orange-500/30'
-          : 'border-green-500/20'
+        const borderCls = !currentTenant ? 'border-black/[0.06]'
+          : (r2rSt === 'missing' || r2rSt === 'expired') ? 'border-red-300'
+          : TENANT_STRIP_TYPES.some((t) => tenantDocStatus(currentTenant.documents, t) !== 'valid') ? 'border-orange-300'
+          : 'border-green-300'
         return (
-          <div className={`bg-white/4 border ${borderCls} rounded-xl p-4 mb-5 transition-colors`}>
-            <p className="text-xs text-white/40 uppercase tracking-wide font-medium mb-3">Tenant</p>
+          <div className={`bg-white border ${borderCls} rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4 mb-5 transition-colors`}>
+            <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium mb-3">Tenant</p>
 
             {currentTenant ? (
               <div>
@@ -865,13 +1097,13 @@ export default function PropertyPage() {
                   className="flex flex-wrap items-center justify-between gap-3 mb-3 group"
                 >
                   <div>
-                    <p className="text-white font-medium group-hover:text-green-300 transition-colors">{currentTenant.name}</p>
-                    <p className="text-white/50 text-sm">{currentTenant.email}</p>
-                    {currentTenant.phone && <p className="text-white/40 text-xs mt-0.5">{currentTenant.phone}</p>}
+                    <p className="text-[#1A1A1A] font-medium group-hover:text-[#2D6A4F] transition-colors">{currentTenant.name}</p>
+                    <p className="text-[#6B7280] text-sm">{currentTenant.email}</p>
+                    {currentTenant.phone && <p className="text-[#9CA3AF] text-xs mt-0.5">{currentTenant.phone}</p>}
                   </div>
                   <div className="flex items-center gap-2">
                     <StatusBadge status={currentTenant.status} config={tenantStatusConfig} />
-                    <svg className="w-4 h-4 text-white/30 group-hover:text-white/60 transition-colors shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-4 h-4 text-[#9CA3AF] group-hover:text-[#6B7280] transition-colors shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
                   </div>
@@ -884,7 +1116,7 @@ export default function PropertyPage() {
                     return (
                       <div key={type} className="flex items-center gap-1.5">
                         <div className={`w-2 h-2 rounded-full shrink-0 ${dotCls}`} />
-                        <span className="text-xs text-white/40">{TENANT_STRIP_LABELS[type]}</span>
+                        <span className="text-xs text-[#9CA3AF]">{TENANT_STRIP_LABELS[type]}</span>
                       </div>
                     )
                   })}
@@ -898,7 +1130,7 @@ export default function PropertyPage() {
                 )}
               </div>
             ) : (
-              <p className="text-white/30 text-sm italic">No tenant added yet</p>
+              <p className="text-[#9CA3AF] text-sm italic">No tenant added yet</p>
             )}
           </div>
         )
@@ -907,15 +1139,18 @@ export default function PropertyPage() {
       {/* ── Rent Payments section ───────────────────────────────────────────── */}
       {activeTenancy && <RentPaymentsSection propertyId={property.id} />}
 
+      {/* ── Maintenance section ──────────────────────────────────────────────── */}
+      <PropertyMaintenanceSection propertyId={property.id} />
+
       {/* ── Applications section ─────────────────────────────────────────────── */}
-      {showApplications && <div className="bg-white/4 border border-white/8 rounded-xl p-4 mb-5">
-        <p className="text-xs text-white/40 uppercase tracking-wide font-medium mb-3">Applications</p>
+      {showApplications && <div className="bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4 mb-5">
+        <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium mb-3">Applications</p>
 
         {/* Application link */}
         <div className="mb-4">
-          <p className="text-white/60 text-sm mb-2">Share this link with prospective tenants:</p>
+          <p className="text-[#6B7280] text-sm mb-2">Share this link with prospective tenants:</p>
           <div className="flex flex-wrap gap-2">
-            <code className="flex-1 min-w-0 bg-black/20 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white/60 truncate font-mono">
+            <code className="flex-1 min-w-0 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-xs text-[#6B7280] truncate font-mono">
               {applyLink}
             </code>
             <CopyButton text={applyLink} label="Copy" />
@@ -925,22 +1160,38 @@ export default function PropertyPage() {
           </div>
         </div>
 
+        {/* Financial verification toggle */}
+        <FinancialVerificationToggle
+          propertyId={property.id}
+          initialValue={property.requireFinancialVerification}
+        />
+
         {/* Candidate list */}
         {candidates.length > 0 ? (
-          <div className="space-y-2 mt-4 border-t border-white/8 pt-4">
-            <p className="text-xs text-white/40 font-medium mb-2">Received ({candidates.length})</p>
-            {candidates.map((c) => (
-              <div key={c.id} className="flex items-center justify-between py-2.5 border-b border-white/6 last:border-0">
-                <div>
-                  <p className="text-white text-sm font-medium">{c.name}</p>
-                  <p className="text-white/40 text-xs">{c.email}</p>
+          <div className="space-y-3 mt-4 border-t border-gray-100 pt-4">
+            <p className="text-xs text-[#9CA3AF] font-medium mb-2">Received ({candidates.length})</p>
+            {candidates.map((c) => {
+              const report = c.financialReports[0] ?? null
+              return (
+                <div key={c.id} className="py-2.5 border-b border-gray-100 last:border-0">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[#1A1A1A] text-sm font-medium">{c.name}</p>
+                      <p className="text-[#9CA3AF] text-xs">{c.email}</p>
+                    </div>
+                    <StatusBadge status={c.status} config={tenantStatusConfig} />
+                  </div>
+                  {report ? (
+                    <FinancialScoreBadge report={report} />
+                  ) : (
+                    <p className="mt-1.5 text-xs text-[#9CA3AF] italic">No financial verification submitted</p>
+                  )}
                 </div>
-                <StatusBadge status={c.status} config={tenantStatusConfig} />
-              </div>
-            ))}
+              )
+            })}
           </div>
         ) : (
-          <p className="text-white/30 text-sm italic mt-3">No applications yet</p>
+          <p className="text-[#9CA3AF] text-sm italic mt-3">No applications yet</p>
         )}
       </div>}
 
