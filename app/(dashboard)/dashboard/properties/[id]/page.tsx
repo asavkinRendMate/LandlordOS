@@ -91,13 +91,18 @@ function tenantDocStatus(
   docs: { documentType: string; expiryDate: string | null }[],
   type: string
 ): 'valid' | 'expiring' | 'expired' | 'missing' {
-  const doc = docs.find((d) => d.documentType === type)
-  if (!doc) return 'missing'
-  if (doc.expiryDate) {
-    const days = Math.ceil((new Date(doc.expiryDate).getTime() - Date.now()) / 86400000)
-    if (days < 0) return 'expired'
-    if (days <= 30) return 'expiring'
-  }
+  const typeDocs = docs.filter((d) => d.documentType === type)
+  if (typeDocs.length === 0) return 'missing'
+  // Pick the doc with the latest expiry (no expiry = treat as Infinity)
+  const best = [...typeDocs].sort((a, b) => {
+    const tA = a.expiryDate ? new Date(a.expiryDate).getTime() : Infinity
+    const tB = b.expiryDate ? new Date(b.expiryDate).getTime() : Infinity
+    return tB - tA
+  })[0]
+  if (!best.expiryDate) return 'valid'
+  const days = Math.ceil((new Date(best.expiryDate).getTime() - Date.now()) / 86400000)
+  if (days < 0) return 'expired'
+  if (days <= 30) return 'expiring'
   return 'valid'
 }
 

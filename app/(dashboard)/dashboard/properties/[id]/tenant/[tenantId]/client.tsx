@@ -190,8 +190,13 @@ export default function TenantDetailClient({
     setShowUpload(true)
   }
 
-  // R2R status
-  const r2rDoc = docs.find((d) => d.documentType === 'RIGHT_TO_RENT')
+  // R2R status — pick the doc with the latest expiry (no expiry = Infinity)
+  const r2rDocs = docs.filter((d) => d.documentType === 'RIGHT_TO_RENT')
+  const r2rDoc = r2rDocs.length === 0 ? null : [...r2rDocs].sort((a, b) => {
+    const tA = a.expiryDate ? new Date(a.expiryDate).getTime() : Infinity
+    const tB = b.expiryDate ? new Date(b.expiryDate).getTime() : Infinity
+    return tB - tA
+  })[0]
   const r2rStatus = (() => {
     if (!r2rDoc) return 'missing'
     if (r2rDoc.expiryDate) {
@@ -259,7 +264,7 @@ export default function TenantDetailClient({
           onClick={() => openUpload('RIGHT_TO_RENT')}
           className="mt-3 text-sm bg-white/8 hover:bg-white/12 text-white/70 hover:text-white px-3 py-1.5 rounded-lg transition-colors"
         >
-          {r2rDoc ? 'Replace document' : 'Upload R2R document'}
+          {r2rDoc ? 'Upload new document' : 'Upload R2R document'}
         </button>
       </div>
 
