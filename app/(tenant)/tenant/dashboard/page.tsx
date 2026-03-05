@@ -56,10 +56,12 @@ export default async function TenantDashboardPage() {
   return (
     <TenantDashboardClient
       tenant={{
+        id: tenant.id,
         name: tenant.name,
         email: tenant.email,
       }}
       property={{
+        id: property.id,
         address,
         landlordName: property.user.name ?? 'Your landlord',
         landlordEmail: property.user.email,

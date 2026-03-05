@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createAuthClient } from '@/lib/supabase/auth'
 import { prisma } from '@/lib/prisma'
-import type { ComplianceDoc, Property, Tenancy } from '@prisma/client'
+import type { ComplianceDoc, Property, Tenancy, Tenant } from '@prisma/client'
 
 // ── Status helpers ────────────────────────────────────────────────────────────
 
@@ -38,9 +38,10 @@ function formatRent(pence: number | null): string {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+type TenancyWithTenant = Tenancy & { tenant: Pick<Tenant, 'name'> | null }
 type PropertyWithRelations = Property & {
   complianceDocs: ComplianceDoc[]
-  tenancies: Tenancy[]
+  tenancies: TenancyWithTenant[]
 }
 
 // ── Property card ─────────────────────────────────────────────────────────────
@@ -76,7 +77,7 @@ function PropertyCard({ property }: { property: PropertyWithRelations }) {
         {activeTenancy ? (
           <>
             <span className="text-white/80 font-medium">{formatRent(activeTenancy.monthlyRent)}</span>
-            {activeTenancy.tenantName && <span className="ml-1.5">· {activeTenancy.tenantName}</span>}
+            {activeTenancy.tenant?.name && <span className="ml-1.5">· {activeTenancy.tenant.name}</span>}
           </>
         ) : (
           <span className="text-white/30 italic">No active tenancy</span>
@@ -102,10 +103,16 @@ function PropertyCard({ property }: { property: PropertyWithRelations }) {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ as?: string }>
+}) {
   const supabase = createAuthClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
+
+  const { as: asMode } = await searchParams
 
   const properties = await prisma.property.findMany({
     where: { userId: user.id },
@@ -115,12 +122,22 @@ export default async function DashboardPage() {
         where: { status: { not: 'ENDED' } },
         orderBy: { createdAt: 'desc' },
         take: 1,
+        include: { tenant: { select: { name: true } } },
       },
     },
     orderBy: { createdAt: 'asc' },
   })
 
-  if (properties.length === 0) redirect('/dashboard/onboarding')
+  if (properties.length === 0) {
+    // If explicitly entering as landlord (e.g. from tenant dashboard link), go to onboarding
+    if (asMode === 'landlord') redirect('/dashboard/onboarding')
+    // Otherwise, default tenant-only users to their rental portal
+    const tenantProfile = await prisma.tenant.findFirst({
+      where: { email: user.email!, status: { in: ['TENANT', 'INVITED'] } },
+      select: { id: true },
+    })
+    redirect(tenantProfile ? '/tenant/dashboard' : '/dashboard/onboarding')
+  }
 
   // Expiring compliance alerts (within 30 days)
   const now = new Date()

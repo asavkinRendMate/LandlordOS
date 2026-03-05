@@ -19,6 +19,11 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
         },
         tenants: {
           orderBy: { createdAt: 'desc' },
+          include: {
+            documents: {
+              select: { documentType: true, expiryDate: true },
+            },
+          },
         },
       },
     })

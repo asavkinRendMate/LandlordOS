@@ -2,9 +2,9 @@
 
 ## Product
 
-**Working name:** [TBD — domain not finalised]
+**Name:** LetSorted (letsorted.co.uk)
 **Target:** UK private landlords who self-manage 1–5 properties
-**Core value:** Compliance-first property management built for the Renters' Rights Act 2025
+**Core value:** Simple property management — tenants, documents, rent and compliance in one place. Renters' Rights Act 2025 readiness built in, not the primary pitch.
 
 ---
 
@@ -23,13 +23,35 @@ The Renters' Rights Act 2025 received Royal Assent on 27 October 2025 and comes 
 
 ---
 
+## Competitor Landscape
+
+| Product | Strengths | Gap we exploit |
+|---|---|---|
+| August (Goodlord) | Strong lettings-agent tool, polished | Agent-focused, too complex for self-managers |
+| NRLA Portfolio | NRLA brand trust, compliance tools | Clunky UX, no tenant-facing portal |
+| Rentila | Free tier, decent rent tracker | No compliance focus, dated design |
+| PaTMa | Compliance alerts, portfolio view | No tenant onboarding, no tenant portal |
+
+**Positioning:** LetSorted is the only product that combines landlord compliance + tenant onboarding + tenant portal in a single clean UI built for 1–5 property self-managing landlords. Not competing with agent software.
+
+---
+
 ## User Roles
 
 | Role | Access | Auth |
 |---|---|---|
 | Landlord | Full dashboard, all properties | Magic link (email) |
-| Tenant/Applicant | Apply form + Tenant portal | Link-based (token), no account |
+| Tenant | Tenant portal (`/tenant/dashboard`) | Magic link (email) |
+| Applicant | Apply form only (`/apply/[propertyId]`) | None — public form |
 | Admin | Internal metrics (future) | — |
+
+One Supabase user account can be both a landlord and a tenant simultaneously. The dashboard shell shows a "My Rental" context switcher when the signed-in user has an active Tenant record.
+
+**Tenant statuses (TenantStatus enum):**
+- `CANDIDATE` — submitted application via public apply form, not yet reviewed
+- `INVITED` — landlord added them manually or accepted their application; invite email sent
+- `TENANT` — confirmed their details via `/tenant/join/[token]`; has access to tenant dashboard
+- `FORMER_TENANT` — tenancy ended
 
 ---
 
@@ -86,90 +108,87 @@ On creation:
 
 ---
 
-### 3. Compliance Management
+### 3. Compliance & Document Management
 
-Tab on every property. Shows 4 mandatory compliance items:
+Section on every property detail page. Two overlapping systems:
 
-#### Gas Safety Certificate
-- Upload PDF/image
-- AI extracts expiry date automatically (`/api/ai/extract-dates`)
-- Manual override available
-- Alert schedule: 30 days → yellow, 14 days → orange, 7 days → red, expired → critical
-- If missing: link to Checkatrade with "find a Gas Safe engineer" instruction
+#### Dashboard compliance strip (legacy ComplianceDoc model)
+Four coloured dots shown on each property card on the overview dashboard (Gas, EPC, EICR, H2R). Status is set on the `ComplianceDoc` record and drives the alert bar ("EPC expires in 14 days — Flat 2, Manchester"). These records are seeded when a property is created.
 
-#### EPC (Energy Performance Certificate)
-- Upload file
-- AI extracts rating (A–G) and expiry date
-- Valid for 10 years
-- Alert at 60 days before expiry
-- Note: EPC must be minimum E rating to legally rent (show warning if below)
+#### Property document system (PropertyDocument model)
+Full document management with Supabase Storage. 14 document types:
+Gas Safety Certificate, EPC, EICR, How to Rent Guide, Tenancy Agreement, Inventory Report, Deposit Certificate, Right to Rent, Building Insurance, Landlord Insurance, Section 13 Notice, Section 8 Notice, Check-out Inventory, Other.
 
-#### EICR (Electrical Installation Condition Report)
-- Upload file
-- AI extracts expiry date
-- Valid for 5 years
-- Alert at 30 days before expiry
+**On the property detail page:**
+- 4 compliance status cards at top (Gas Safety, EPC, EICR, How to Rent) — status derived from uploaded PropertyDocuments (not the legacy ComplianceDoc). Status logic: no doc → "Not uploaded" (grey), expiry >30 days → "Valid" (green), expiry ≤30 days → "Expiring soon" (orange), expiry passed → "Expired" (red), How to Rent → "Issued" (green) when any doc of that type exists.
+- "Upload" button → drag-and-drop modal. Per-file: document type dropdown (required) + expiry date (shown only for Gas Safety, EPC, EICR). Multiple files in one batch.
+- Document grid: file type icon (PDF red, image blue, DOCX blue, other grey), document name, type label, file size, upload date, expiry badge, tenant acknowledgment status.
+- Download (signed URL, 60-min expiry) and delete (with confirmation).
 
-#### How to Rent Guide
-- No file upload — checkbox only
-- Fields: date issued, which version issued
-- Must be re-issued for every new tenancy
-- System prompts when new tenancy starts: "Have you issued the current How to Rent Guide?"
+**AI date extraction:** planned but not yet implemented. Spec: after upload, POST to `/api/ai/extract-dates`, Claude returns `{ expiryDate, issuedDate }`, UI pre-fills with "AI extracted — please verify" indicator.
 
-**AI date extraction flow:**
-1. Landlord uploads PDF
-2. POST to `/api/ai/extract-dates` with file content
-3. Claude reads document, returns `{ expiryDate, issuedDate, documentType }`
-4. UI pre-fills fields, shows "AI extracted — please verify"
-5. Landlord confirms or corrects
+#### Tenant document acknowledgment
+Tenants see all property documents (PropertyDocument) for their property in the tenant dashboard. Each document has a "Mark as reviewed" checkbox. On click: POST `/api/documents/[id]/acknowledge`, creates a `DocumentAcknowledgment` record. Once acknowledged, shows "Reviewed on [date]" (cannot uncheck). Landlord sees acknowledgment status per document on the property detail page.
+
+#### Tenant document management (TenantDocument model)
+Separate from PropertyDocument. Tenant-specific documents uploaded by either the landlord (on the tenant detail page) or the tenant themselves (via the tenant portal).
+
+**9 document types:** Passport, Right to Rent, Proof of Income, Bank Statements, Employer Reference, Previous Landlord Reference, Guarantor Agreement, Pet Agreement, Other.
+
+**Required docs (shown on tenant detail page with status dots):** Right to Rent, Passport, Proof of Income, Bank Statements, Employer Reference, Previous Landlord Reference.
+
+**Other docs:** Guarantor Agreement, Pet Agreement, Other.
+
+**Expiry tracking:** Right to Rent and Passport have expiry dates. Status: Valid (green) / Expiring soon ≤30 days (orange) / Expired (red) / Missing (grey dot).
+
+**Tenant card on property page:** shows 4 status dots (Right to Rent, Passport, Proof of Income, Bank Statements). Card border colour: red if R2R missing/expired, orange if any of the 4 are missing, green if all 4 valid.
+
+**Storage:** private `tenant-documents` bucket in Supabase Storage. Path: `/{propertyId}/{tenantId}/{docId}/{filename}`. Always served via signed URLs (60-min expiry).
+
+**API routes:**
+- `GET /api/tenant-documents?tenantId=` — list tenant docs (landlord or tenant self)
+- `POST /api/tenant-documents/upload` — multipart upload
+- `GET /api/tenant-documents/[id]` — signed URL for download
+- `DELETE /api/tenant-documents/[id]` — remove from storage + DB
+- `PATCH /api/tenants/[id]` — update tenant name/phone
 
 ---
 
 ### 4. Tenant Pipeline (Vacant Property)
 
-#### Step 1: Generate Application Link
-- Landlord clicks "Open applications"
-- Property status → APPLICATION_OPEN
-- Unique public URL generated: `[domain]/apply/[token]`
-- Landlord copies link → pastes into OpenRent / Rightmove / Zoopla listing
+#### Step 1: Application Link
+- Application link shown on property detail page: `[domain]/apply/[propertyId]`
+- Copy-to-clipboard button + "Send by email" inline form (emails the link via Resend)
+- Planned: "Open applications" button explicitly sets Property status → APPLICATION_OPEN
 
-#### Step 2: Applicant Form (no login required)
-Applicant fills in:
-- Full name, email, phone
+#### Step 2: Applicant Form (public, no login)
+Applicant fills in at `/apply/[propertyId]`:
+- Full name, email, phone (optional)
 - Current address
 - Employment status (employed / self-employed / student / other)
 - Monthly income (£)
-- Uploads:
-  - Photo ID (passport or driving licence)
-  - Income proof (3 payslips OR 3 months bank statements)
-  - Reference letter from previous landlord (optional)
-- Message: reason for moving, ideal move-in date, pets (yes/no)
-- Submits → confirmation email sent to applicant
+- Message to landlord (optional)
+- Confirmation checkbox
+- Submits → Tenant record created with status CANDIDATE
+- File uploads (ID doc, payslips, references) — **planned, not yet implemented**
+- Confirmation/notification emails — **planned, not yet implemented**
 
-#### Step 3: AI Screening (Paid — £15 Screening Pack)
-Triggered when landlord clicks "Screen applicant":
-- Stripe payment or existing credit checked
+#### Step 3: Landlord Manages Applications
+- "Applications" section on property detail shows all CANDIDATE tenants (name, email, status)
+- "Send invite email" button converts candidate to INVITED and emails them join link
+- Shortlist / Reject / AI scoring — **planned, not yet implemented**
+
+#### Step 4: Tenant Onboarding
+- Tenant receives invite email with link to `/tenant/join/[inviteToken]`
+- Confirms name, phone; reads property address (read-only)
+- On submit: status → TENANT, `confirmedAt` set, magic link emailed to tenant
+- Tenant signs in via magic link → `/tenant/dashboard`
+
+#### Step 5: AI Screening (Paid — £15 Screening Pack) — planned
+- Stripe payment checked
 - POST to `/api/ai/screen-applicant` with uploaded documents
-- Claude analyses:
-  - Income verification (extract stated income from payslips/bank statements)
-  - Affordability check (rent should be ≤35% of monthly income)
-  - Document quality (complete / unclear / missing)
-- Returns structured summary:
-  ```
-  Income: £3,200/mo confirmed ✅
-  Affordability: Rent = 31% of income (threshold <35%) ✅
-  Documents: Complete ✅
-  Flags: None
-  ```
-- AI score: GREEN / AMBER / RED
-- Summary stored on Application record
-
-#### Step 4: Landlord Manages Applications
-- List view: all applicants, AI score badge, date applied
-- Actions per applicant: "Shortlist" / "Reject" / "Accept"
-- Rejection: auto-email sent to applicant (polite template)
-- Accept one → others auto-rejected with email notifications
-- Property status → OFFER_ACCEPTED
+- Claude analyses income, affordability (rent ≤35% income), document quality
+- Returns GREEN / AMBER / RED score with structured summary
 
 ---
 
@@ -209,22 +228,29 @@ Triggered when landlord clicks "Screen applicant":
 ### 6. Active Tenancy Management
 
 #### Rent Tracking
-- Monthly RentPayment records auto-created on tenancy start
-- Landlord manually marks "Paid" when payment received
-- Automated emails (via Resend):
-  - Reminder to tenant: 3 days before due date
-  - Alert to landlord: if unpaid on due date
-  - Escalation: if still unpaid 7 days after due date
-- Dashboard shows red badge on property card if rent overdue
+Implemented via the `RentPayment` model. Status enum: `PENDING → EXPECTED → RECEIVED | LATE | PARTIAL`.
+
+`lib/payments.ts` provides two functions:
+- `generateUpcomingPayments(tenancyId)` — idempotent, creates EXPECTED records for the next 3 months based on tenancy `paymentDay` and `monthlyRent`
+- `updatePaymentStatuses()` — transitions EXPECTED → LATE when due date passes without payment
+
+- Landlord manually marks rent as received (status → RECEIVED) and can record partial payments
+- Automated emails (planned — via Resend):
+  - Reminder to tenant 3 days before due date
+  - Alert to landlord if unpaid on due date
+  - Escalation if still unpaid 7 days after due date
+- Dashboard shows red badge on property card if any rent LATE
+
+**GoCardless Direct Debit (planned):** future integration to auto-collect rent and reconcile against RentPayment records automatically.
 
 #### Tenant Portal
-Accessible via unique link (no login). Tenant can:
-- View property details and landlord contact
-- Submit maintenance request:
-  - Select category: Plumbing / Electrical / Heating / Damp & Mould / Other
-  - Write description
-  - Upload photos (required for Damp & Mould)
-  - Submit → ticket created, landlord notified
+Accessible at `/tenant/dashboard` — requires magic link sign-in (email). Tenant can:
+- View property address and key tenancy details
+- Download and acknowledge landlord-uploaded PropertyDocuments (mark as reviewed)
+- Upload their own TenantDocuments (passport, R2R, income proof, bank statements, etc.)
+- View rent payment status (read-only) — planned
+- If the tenant's account is also a landlord: "Switch to landlord dashboard" context switcher in nav
+- Planned: submit maintenance requests, give notice
 
 #### Maintenance Tickets
 Landlord view:

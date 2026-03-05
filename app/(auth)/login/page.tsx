@@ -1,7 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
+import Footer from '@/components/shared/Footer'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -32,12 +34,12 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0f1a0f] flex items-center justify-center px-4">
+    <div className="min-h-screen bg-[#0f1a0f] flex flex-col">
+      <div className="flex-1 flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
-        {/* Wordmark */}
-        <div className="text-center mb-10">
-          <span className="text-2xl font-bold text-white tracking-tight">LetSorted</span>
-          <div className="w-6 h-0.5 bg-green-500 mx-auto mt-2 rounded-full" />
+        {/* Logo */}
+        <div className="flex justify-center mb-10">
+          <Image src="/logo-white.svg" alt="LetSorted" width={160} height={53} priority />
         </div>
 
         {sent ? (
@@ -102,6 +104,8 @@ export default function LoginPage() {
           </div>
         )}
       </div>
+      </div>
+      <Footer variant="app" />
     </div>
   )
 }

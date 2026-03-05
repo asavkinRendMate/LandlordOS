@@ -1,10 +1,12 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
+import Footer from '@/components/shared/Footer'
 
 // ── Nav config ────────────────────────────────────────────────────────────────
 
@@ -122,13 +124,16 @@ export function DashboardShell({ user, children, hasTenantProfile }: DashboardSh
       <div className="hidden lg:flex min-h-screen">
         <aside className="w-56 shrink-0 flex flex-col border-r border-white/8">
           <div className="px-5 py-5 border-b border-white/8">
-            <span className="text-white font-bold text-base tracking-tight">LetSorted</span>
+            <Image src="/logo-white.svg" alt="LetSorted" width={120} height={40} />
           </div>
           <NavLinks />
           {hasTenantProfile && <ContextSwitcher />}
           <UserFooter email={user.email ?? ''} onSignOut={handleSignOut} />
         </aside>
-        <main className="flex-1 min-w-0 overflow-auto">{children}</main>
+        <main className="flex-1 min-w-0 overflow-auto flex flex-col">
+          <div className="flex-1">{children}</div>
+          <Footer variant="app" />
+        </main>
       </div>
 
       {/* ── Mobile layout (<lg) ─────────────────────────────────────────────── */}
@@ -146,7 +151,7 @@ export function DashboardShell({ user, children, hasTenantProfile }: DashboardSh
             </svg>
           </button>
 
-          <span className="text-white font-bold text-base tracking-tight">LetSorted</span>
+          <Image src="/logo-white.svg" alt="LetSorted" width={100} height={33} />
 
           <div className="w-8 h-8 rounded-full bg-green-500/20 border border-green-500/30 flex items-center justify-center">
             <span className="text-green-400 text-xs font-semibold">{initials}</span>
@@ -168,7 +173,7 @@ export function DashboardShell({ user, children, hasTenantProfile }: DashboardSh
           }`}
         >
           <div className="px-5 py-4 border-b border-white/8 flex items-center justify-between">
-            <span className="text-white font-bold text-base tracking-tight">LetSorted</span>
+            <Image src="/logo-white.svg" alt="LetSorted" width={120} height={40} />
             <button
               onClick={() => setDrawerOpen(false)}
               className="w-8 h-8 flex items-center justify-center rounded-lg text-white/40 hover:text-white hover:bg-white/8 transition-colors"
@@ -185,7 +190,10 @@ export function DashboardShell({ user, children, hasTenantProfile }: DashboardSh
         </div>
 
         {/* Page content */}
-        <main className="flex-1 min-w-0 overflow-auto">{children}</main>
+        <main className="flex-1 min-w-0 overflow-auto flex flex-col">
+          <div className="flex-1">{children}</div>
+          <Footer variant="app" />
+        </main>
       </div>
 
     </div>

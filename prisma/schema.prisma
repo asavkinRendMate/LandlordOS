@@ -56,6 +56,7 @@ model Property {
   tenancies      Tenancy[]
   complianceDocs ComplianceDoc[]
   tenants        Tenant[]
+  documents      PropertyDocument[]
 
   @@map("properties")
 }
@@ -109,9 +110,8 @@ model Tenancy {
   id                 String        @id @default(cuid())
   propertyId         String        @map("property_id")
   property           Property      @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  tenantName         String?       @map("tenant_name")
-  tenantEmail        String?       @map("tenant_email")
-  tenantPhone        String?       @map("tenant_phone")
+  tenantId           String?       @map("tenant_id")
+  tenant             Tenant?       @relation(fields: [tenantId], references: [id])
   startDate          DateTime?     @map("start_date")
   endDate            DateTime?     @map("end_date")
   monthlyRent        Int?          @map("monthly_rent") // pence
@@ -126,8 +126,35 @@ model Tenancy {
   contractUrl        String?       @map("contract_url")
   createdAt          DateTime      @default(now()) @map("created_at")
   updatedAt          DateTime      @updatedAt @map("updated_at")
+  payments           RentPayment[]
 
   @@map("tenancies")
+}
+
+// ── RentPayment ───────────────────────────────────────────────────────────────
+
+enum PaymentStatus {
+  PENDING  // upcoming, not yet due
+  EXPECTED // due date reached, not yet marked as received
+  RECEIVED // landlord manually confirmed
+  LATE     // overdue, not received
+  PARTIAL  // partial payment received
+}
+
+model RentPayment {
+  id             String        @id @default(uuid())
+  tenancyId      String        @map("tenancy_id")
+  tenancy        Tenancy       @relation(fields: [tenancyId], references: [id], onDelete: Cascade)
+  amount         Int           // pence
+  dueDate        DateTime      @map("due_date")
+  receivedDate   DateTime?     @map("received_date")
+  receivedAmount Int?          @map("received_amount") // pence, for partial payments
+  status         PaymentStatus @default(PENDING)
+  note           String?
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  @@map("rent_payments")
 }
 
 // ── Tenant ────────────────────────────────────────────────────────────────────
@@ -154,5 +181,88 @@ model Tenant {
   createdAt   DateTime     @default(now()) @map("created_at")
   updatedAt   DateTime     @updatedAt @map("updated_at")
 
+  tenancies       Tenancy[]
+  documents       TenantDocument[]
+  acknowledgments DocumentAcknowledgment[]
+
   @@map("tenants")
+}
+
+// ── TenantDocument ────────────────────────────────────────────────────────────
+
+enum TenantDocumentType {
+  PASSPORT
+  RIGHT_TO_RENT
+  PROOF_OF_INCOME
+  BANK_STATEMENTS
+  EMPLOYER_REFERENCE
+  PREVIOUS_LANDLORD_REFERENCE
+  GUARANTOR_AGREEMENT
+  PET_AGREEMENT
+  OTHER
+}
+
+model TenantDocument {
+  id           String             @id @default(uuid())
+  tenantId     String             @map("tenant_id")
+  tenant       Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  documentType TenantDocumentType @map("document_type")
+  fileName     String             @map("file_name")
+  fileUrl      String             @map("file_url")
+  fileSize     Int                @map("file_size")
+  mimeType     String             @map("mime_type")
+  uploadedBy   String             @map("uploaded_by")
+  uploadedAt   DateTime           @default(now()) @map("uploaded_at")
+  expiryDate   DateTime?          @map("expiry_date")
+  note         String?
+
+  @@map("tenant_documents")
+}
+
+// ── PropertyDocument ──────────────────────────────────────────────────────────
+
+enum DocumentType {
+  GAS_SAFETY
+  EPC
+  EICR
+  HOW_TO_RENT
+  TENANCY_AGREEMENT
+  INVENTORY_REPORT
+  DEPOSIT_CERTIFICATE
+  RIGHT_TO_RENT
+  BUILDING_INSURANCE
+  LANDLORD_INSURANCE
+  SECTION_13_NOTICE
+  SECTION_8_NOTICE
+  CHECKOUT_INVENTORY
+  OTHER
+}
+
+model PropertyDocument {
+  id           String       @id @default(uuid())
+  propertyId   String       @map("property_id")
+  property     Property     @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  documentType DocumentType @map("document_type")
+  fileName     String       @map("file_name")
+  fileUrl      String       @map("file_url")
+  fileSize     Int          @map("file_size") // bytes
+  mimeType     String       @map("mime_type")
+  uploadedAt   DateTime     @default(now()) @map("uploaded_at")
+  expiryDate   DateTime?    @map("expiry_date")
+
+  acknowledgments DocumentAcknowledgment[]
+
+  @@map("property_documents")
+}
+
+model DocumentAcknowledgment {
+  id             String           @id @default(uuid())
+  documentId     String           @map("document_id")
+  document       PropertyDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  tenantId       String           @map("tenant_id")
+  tenant         Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  acknowledgedAt DateTime         @default(now()) @map("acknowledged_at")
+
+  @@unique([documentId, tenantId])
+  @@map("document_acknowledgments")
 }
