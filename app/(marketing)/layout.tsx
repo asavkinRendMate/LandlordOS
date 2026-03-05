@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Footer from '@/components/shared/Footer'
 
 export const metadata: Metadata = {
   title: 'LetSorted — Your rentals, sorted.',
@@ -32,5 +33,10 @@ export const metadata: Metadata = {
 }
 
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>
+  return (
+    <>
+      {children}
+      <Footer variant="marketing" />
+    </>
+  )
 }

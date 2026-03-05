@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, Fragment } from 'react'
+import Image from 'next/image'
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -261,10 +262,7 @@ export default function LandingPage() {
       {/* ── Nav ───────────────────────────────────────────────────────────── */}
       <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-100">
         <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2.5 font-bold text-xl text-gray-900 select-none">
-            <span className="text-2xl leading-none">🏠</span>
-            LetSorted
-          </div>
+          <Image src="/logo.svg" alt="LetSorted" width={150} height={50} priority />
           <a
             href="#waitlist"
             className="bg-green-600 hover:bg-green-700 text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors duration-150"
@@ -563,16 +561,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Footer ────────────────────────────────────────────────────────── */}
-      <footer className="py-8 px-6 border-t border-gray-100">
-        <div className="max-w-5xl mx-auto flex items-center justify-between text-gray-400 text-sm">
-          <div className="flex items-center gap-2 font-semibold text-gray-600">
-            <span>🏠</span>
-            LetSorted
-          </div>
-          <span>LetSorted © 2026 — Built for UK landlords who manage their own properties.</span>
-        </div>
-      </footer>
     </>
   )
 }

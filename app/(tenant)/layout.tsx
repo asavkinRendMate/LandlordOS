@@ -1,0 +1,10 @@
+import Footer from '@/components/shared/Footer'
+
+export default function TenantLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen bg-[#f0f7f4] flex flex-col">
+      <div className="flex-1">{children}</div>
+      <Footer variant="app" />
+    </div>
+  )
+}
