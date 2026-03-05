@@ -50,13 +50,16 @@ model Property {
   type             PropertyType   @default(FLAT)
   status           PropertyStatus @default(VACANT)
   applicationToken String?        @unique @map("application_token")
+  requireFinancialVerification Boolean @default(false) @map("require_financial_verification")
   createdAt        DateTime       @default(now()) @map("created_at")
   updatedAt        DateTime       @updatedAt @map("updated_at")
 
-  tenancies      Tenancy[]
-  complianceDocs ComplianceDoc[]
-  tenants        Tenant[]
-  documents      PropertyDocument[]
+  tenancies           Tenancy[]
+  complianceDocs      ComplianceDoc[]
+  tenants             Tenant[]
+  documents           PropertyDocument[]
+  maintenanceRequests MaintenanceRequest[]
+  financialReports    FinancialReport[]
 
   @@map("properties")
 }
@@ -181,9 +184,11 @@ model Tenant {
   createdAt   DateTime     @default(now()) @map("created_at")
   updatedAt   DateTime     @updatedAt @map("updated_at")
 
-  tenancies       Tenancy[]
-  documents       TenantDocument[]
-  acknowledgments DocumentAcknowledgment[]
+  tenancies           Tenancy[]
+  documents           TenantDocument[]
+  acknowledgments     DocumentAcknowledgment[]
+  maintenanceRequests MaintenanceRequest[]
+  financialReports    FinancialReport[]
 
   @@map("tenants")
 }
@@ -265,4 +270,105 @@ model DocumentAcknowledgment {
 
   @@unique([documentId, tenantId])
   @@map("document_acknowledgments")
+}
+
+// ── MaintenanceRequest ─────────────────────────────────────────────────────────
+
+enum MaintenanceStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+}
+
+enum MaintenancePriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model MaintenanceRequest {
+  id          String              @id @default(uuid())
+  propertyId  String              @map("property_id")
+  property    Property            @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  tenantId    String              @map("tenant_id")
+  tenant      Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  title       String
+  description String
+  priority    MaintenancePriority @default(MEDIUM)
+  status      MaintenanceStatus   @default(OPEN)
+  resolvedAt  DateTime?           @map("resolved_at")
+  resolvedBy  String?             @map("resolved_by")
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+
+  @@map("maintenance_requests")
+}
+
+// ── Financial Scoring ──────────────────────────────────────────────────────────
+
+enum ScoringCategory {
+  AFFORDABILITY
+  STABILITY
+  DEBT
+  GAMBLING
+  LIQUIDITY
+  POSITIVE
+}
+
+model ScoringRule {
+  id          String          @id @default(uuid())
+  category    ScoringCategory
+  key         String          @unique
+  description String
+  points      Int
+  isActive    Boolean         @default(true) @map("is_active")
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  @@map("scoring_rules")
+}
+
+model ScoringConfig {
+  id        String   @id @default(uuid())
+  version   Int      @unique
+  isActive  Boolean  @default(false) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("scoring_configs")
+}
+
+enum ReportType {
+  LANDLORD_REQUESTED
+  SELF_REQUESTED
+}
+
+enum ReportStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model FinancialReport {
+  id                   String       @id @default(uuid())
+  tenantId             String?      @map("tenant_id")
+  tenant               Tenant?      @relation(fields: [tenantId], references: [id])
+  propertyId           String?      @map("property_id")
+  property             Property?    @relation(fields: [propertyId], references: [id])
+  reportType           ReportType   @map("report_type")
+  status               ReportStatus @default(PENDING)
+  scoringConfigVersion Int          @map("scoring_config_version")
+  totalScore           Int?         @map("total_score")
+  grade                String?
+  aiSummary            String?      @map("ai_summary")
+  breakdown            Json?
+  appliedRules         Json?        @map("applied_rules")
+  verificationToken    String       @unique @default(uuid()) @map("verification_token")
+  pdfUrl               String?      @map("pdf_url")
+  statementFileUrl     String?      @map("statement_file_url")
+  createdAt            DateTime     @default(now()) @map("created_at")
+  updatedAt            DateTime     @updatedAt @map("updated_at")
+
+  @@map("financial_reports")
 }

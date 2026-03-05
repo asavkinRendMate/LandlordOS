@@ -8,6 +8,7 @@ const schema = z.object({
   OS_API_KEY: z.string().min(1, 'OS_API_KEY is required'),
   NEXT_PUBLIC_APP_URL: z.string().url().optional(),
   RESEND_API_KEY: z.string().optional(),
+  ANTHROPIC_API_KEY: z.string().optional(),
 })
 
 // Throws at startup if any required variable is missing or malformed.
@@ -20,4 +21,5 @@ export const env = schema.parse({
   OS_API_KEY: process.env.OS_API_KEY,
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
   RESEND_API_KEY: process.env.RESEND_API_KEY,
+  ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
 })

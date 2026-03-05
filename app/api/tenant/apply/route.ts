@@ -29,7 +29,7 @@ export async function POST(req: Request) {
     if (!property) return NextResponse.json({ error: 'Property not found' }, { status: 404 })
 
     // Create Tenant record as CANDIDATE
-    await prisma.tenant.create({
+    const tenant = await prisma.tenant.create({
       data: {
         propertyId,
         name,
@@ -66,7 +66,7 @@ export async function POST(req: Request) {
       `,
     })
 
-    return NextResponse.json({ success: true }, { status: 201 })
+    return NextResponse.json({ data: { tenantId: tenant.id } }, { status: 201 })
   } catch (err) {
     console.error('[tenant/apply POST]', err)
     return NextResponse.json({ error: 'Something went wrong' }, { status: 500 })

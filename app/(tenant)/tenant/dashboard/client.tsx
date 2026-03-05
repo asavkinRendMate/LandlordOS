@@ -348,12 +348,67 @@ function TenantPaymentsSection({ propertyId }: { propertyId: string }) {
   )
 }
 
+// ── Expiry helpers for tenant documents ──────────────────────────────────────
+
+type TenantDocExpiryStatus = 'none' | 'valid' | 'expiring' | 'expiring-soon' | 'expired'
+
+function calcExpiryStatus(expiryDate: string | null): TenantDocExpiryStatus {
+  if (!expiryDate) return 'none'
+  const days = Math.ceil((new Date(expiryDate).getTime() - Date.now()) / 86400000)
+  if (days < 0) return 'expired'
+  if (days <= 7) return 'expiring-soon'
+  if (days <= 30) return 'expiring'
+  return 'valid'
+}
+
+function calcExpiryDays(expiryDate: string): number {
+  return Math.ceil((new Date(expiryDate).getTime() - Date.now()) / 86400000)
+}
+
+function tenantDocRowStyle(status: TenantDocExpiryStatus) {
+  switch (status) {
+    case 'expired':       return { background: 'rgba(220,38,38,0.1)',  borderLeft: '4px solid rgb(220,38,38)' }
+    case 'expiring-soon': return { background: 'rgba(234,88,12,0.1)',  borderLeft: '4px solid rgb(234,88,12)' }
+    case 'expiring':      return { background: 'rgba(245,158,11,0.1)', borderLeft: '4px solid rgb(245,158,11)' }
+    default:              return {}
+  }
+}
+
+function TenantDocExpiryBadge({ expiryDate }: { expiryDate: string | null }) {
+  if (!expiryDate) return null
+  const status = calcExpiryStatus(expiryDate)
+  if (status === 'valid' || status === 'none') return null
+  const days = calcExpiryDays(expiryDate)
+  if (status === 'expired') {
+    const abs = Math.abs(days)
+    return (
+      <span className="shrink-0 text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-600">
+        Expired {abs} day{abs !== 1 ? 's' : ''} ago
+      </span>
+    )
+  }
+  if (status === 'expiring-soon') {
+    return (
+      <span className="shrink-0 text-xs font-medium px-2 py-0.5 rounded-full bg-orange-100 text-orange-600">
+        Expires in {days} day{days !== 1 ? 's' : ''}
+      </span>
+    )
+  }
+  return (
+    <span className="shrink-0 text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-600">
+      Expires in {days} day{days !== 1 ? 's' : ''}
+    </span>
+  )
+}
+
 // ── My Documents section ──────────────────────────────────────────────────────
 
 function MyDocumentsSection({ tenantId }: { tenantId: string }) {
   const [docs, setDocs] = useState<TenantDocument[]>([])
   const [loading, setLoading] = useState(true)
   const [showUpload, setShowUpload] = useState(false)
+  const [uploadPreselectedType, setUploadPreselectedType] = useState<string | undefined>(undefined)
+  const [bannerDismissed, setBannerDismissed] = useState(false)
 
   const loadDocs = useCallback(async () => {
     setLoading(true)
@@ -377,6 +432,31 @@ function MyDocumentsSection({ tenantId }: { tenantId: string }) {
     }
   }
 
+  function openUploadForType(docType: string) {
+    setUploadPreselectedType(docType)
+    setShowUpload(true)
+  }
+
+  // Banner counts
+  const expiredCount      = docs.filter(d => calcExpiryStatus(d.expiryDate) === 'expired').length
+  const expiringSoonCount = docs.filter(d => calcExpiryStatus(d.expiryDate) === 'expiring-soon').length
+  const expiringCount     = docs.filter(d => calcExpiryStatus(d.expiryDate) === 'expiring').length
+
+  let bannerMsg = ''
+  let bannerCls = ''
+  if (!bannerDismissed) {
+    if (expiredCount > 0) {
+      bannerMsg = `⚠️ ${expiredCount} document${expiredCount > 1 ? 's' : ''} ${expiredCount > 1 ? 'have' : 'has'} expired and need to be updated.`
+      bannerCls = 'bg-red-50 border-red-200 text-red-700'
+    } else if (expiringSoonCount > 0) {
+      bannerMsg = `⚠️ ${expiringSoonCount} document${expiringSoonCount > 1 ? 's' : ''} ${expiringSoonCount > 1 ? 'are' : 'is'} expiring very soon.`
+      bannerCls = 'bg-orange-50 border-orange-200 text-orange-700'
+    } else if (expiringCount > 0) {
+      bannerMsg = `⚠️ ${expiringCount} document${expiringCount > 1 ? 's' : ''} ${expiringCount > 1 ? 'are' : 'is'} expiring soon.`
+      bannerCls = 'bg-amber-50 border-amber-200 text-amber-700'
+    }
+  }
+
   return (
     <div className="bg-white rounded-2xl border border-gray-100 p-5">
       <div className="flex items-center gap-3 mb-4">
@@ -387,7 +467,7 @@ function MyDocumentsSection({ tenantId }: { tenantId: string }) {
         </div>
         <h2 className="text-gray-900 font-semibold flex-1">My Documents</h2>
         <button
-          onClick={() => setShowUpload(true)}
+          onClick={() => { setUploadPreselectedType(undefined); setShowUpload(true) }}
           className="flex items-center gap-1.5 text-sm bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded-lg transition-colors"
         >
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -397,6 +477,16 @@ function MyDocumentsSection({ tenantId }: { tenantId: string }) {
         </button>
       </div>
 
+      {bannerMsg && (
+        <div className={`mb-3 flex items-start gap-2 p-3 border rounded-xl text-sm ${bannerCls}`}>
+          <span className="flex-1">{bannerMsg}</span>
+          <button
+            onClick={() => setBannerDismissed(true)}
+            className="opacity-60 hover:opacity-100 shrink-0 text-base leading-none font-medium"
+          >✕</button>
+        </div>
+      )}
+
       {loading ? (
         <div className="flex justify-center py-4">
           <div className="w-5 h-5 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
@@ -405,7 +495,7 @@ function MyDocumentsSection({ tenantId }: { tenantId: string }) {
         <div className="text-center py-6 border-2 border-dashed border-gray-100 rounded-xl">
           <p className="text-gray-400 text-sm">No documents uploaded yet.</p>
           <button
-            onClick={() => setShowUpload(true)}
+            onClick={() => { setUploadPreselectedType(undefined); setShowUpload(true) }}
             className="mt-2 text-sm text-green-600 hover:text-green-700 transition-colors"
           >
             Upload your first document
@@ -413,25 +503,68 @@ function MyDocumentsSection({ tenantId }: { tenantId: string }) {
         </div>
       ) : (
         <div className="space-y-2">
-          {docs.map((doc) => (
-            <div key={doc.id} className="flex items-start gap-3 p-3 rounded-xl border border-gray-100 bg-gray-50">
-              <FileIcon mimeType={doc.mimeType} />
-              <div className="flex-1 min-w-0">
-                <p className="text-gray-900 text-sm font-medium truncate">{doc.fileName}</p>
-                <p className="text-gray-500 text-xs">{TENANT_DOC_TYPE_LABELS[doc.documentType] ?? doc.documentType}</p>
-                <p className="text-gray-400 text-xs">{formatBytes(doc.fileSize)}</p>
-              </div>
-              <button
-                onClick={() => downloadDoc(doc.id, doc.fileName)}
-                className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors shrink-0"
-                title="Download"
+          {docs.map((doc) => {
+            const expStatus = calcExpiryStatus(doc.expiryDate)
+            const needsAttention = expStatus === 'expired' || expStatus === 'expiring-soon' || expStatus === 'expiring'
+            const tooltipText = expStatus === 'expiring-soon'
+              ? 'Your document expires very soon. Please upload a replacement urgently.'
+              : expStatus === 'expiring'
+              ? 'Your document will expire soon. Consider uploading a replacement.'
+              : ''
+            return (
+              <div
+                key={doc.id}
+                className={`flex items-start gap-3 p-3 rounded-xl border border-gray-100${expStatus === 'none' || expStatus === 'valid' ? ' bg-gray-50' : ''}`}
+                style={tenantDocRowStyle(expStatus)}
               >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-              </button>
-            </div>
-          ))}
+                <FileIcon mimeType={doc.mimeType} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-gray-900 text-sm font-medium truncate">{doc.fileName}</p>
+                    <TenantDocExpiryBadge expiryDate={doc.expiryDate} />
+                  </div>
+                  <p className="text-gray-500 text-xs">{TENANT_DOC_TYPE_LABELS[doc.documentType] ?? doc.documentType}</p>
+                  <p className="text-gray-400 text-xs">{formatBytes(doc.fileSize)}</p>
+                  {expStatus === 'expired' && (
+                    <p className="text-red-600 text-xs mt-1">This document has expired. Please upload a new one.</p>
+                  )}
+                  {(expStatus === 'expiring-soon' || expStatus === 'expiring') && (
+                    <p className="text-gray-500 text-xs mt-1 sm:hidden">{tooltipText}</p>
+                  )}
+                </div>
+                <div className="flex flex-col items-end gap-2 shrink-0">
+                  <button
+                    onClick={() => downloadDoc(doc.id, doc.fileName)}
+                    className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors"
+                    title="Download"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                  </button>
+                  {(expStatus === 'expiring-soon' || expStatus === 'expiring') && (
+                    <span className="relative group hidden sm:inline-flex items-center">
+                      <span className={`w-4 h-4 rounded-full ${expStatus === 'expiring-soon' ? 'bg-orange-100 text-orange-500' : 'bg-amber-100 text-amber-500'} text-[10px] font-bold flex items-center justify-center cursor-help select-none`}>!</span>
+                      <span className="pointer-events-none absolute right-6 top-0 z-20 hidden group-hover:block w-52 bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-500 shadow-lg leading-relaxed whitespace-normal">
+                        {tooltipText}
+                      </span>
+                    </span>
+                  )}
+                  {needsAttention && (
+                    <button
+                      onClick={() => openUploadForType(doc.documentType)}
+                      className="flex items-center gap-1 text-xs text-gray-700 hover:text-gray-900 border border-gray-300 hover:border-gray-400 bg-white px-2 py-1 rounded-lg transition-colors"
+                    >
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                      </svg>
+                      Update
+                    </button>
+                  )}
+                </div>
+              </div>
+            )
+          })}
         </div>
       )}
 
@@ -443,26 +576,231 @@ function MyDocumentsSection({ tenantId }: { tenantId: string }) {
         extraFields={{ tenantId }}
         documentTypes={TENANT_DOC_TYPES}
         expiryDateTypes={['RIGHT_TO_RENT', 'PASSPORT']}
+        preselectedType={uploadPreselectedType}
         title="Upload Your Document"
       />
     </div>
   )
 }
 
-// ── Placeholder section ───────────────────────────────────────────────────────
+// ── Maintenance request types ─────────────────────────────────────────────────
 
-function PlaceholderSection({ title, icon }: { title: string; icon: React.ReactNode }) {
+interface TenantMaintenanceRequest {
+  id: string
+  title: string
+  description: string
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
+  status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED'
+  createdAt: string
+}
+
+const MAINT_STATUS_CLS: Record<string, string> = {
+  OPEN:        'bg-blue-100 text-blue-600',
+  IN_PROGRESS: 'bg-amber-100 text-amber-600',
+  RESOLVED:    'bg-green-100 text-green-700',
+}
+
+const MAINT_STATUS_LABEL: Record<string, string> = {
+  OPEN: 'Open', IN_PROGRESS: 'In progress', RESOLVED: 'Resolved',
+}
+
+const PRIORITY_OPTIONS: Array<{ value: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'; label: string; hint: string }> = [
+  { value: 'LOW',    label: 'Low',    hint: 'Not urgent, minor issue' },
+  { value: 'MEDIUM', label: 'Medium', hint: 'Needs attention soon' },
+  { value: 'HIGH',   label: 'High',   hint: 'Significant issue' },
+  { value: 'URGENT', label: 'Urgent', hint: 'Safety concern or emergency' },
+]
+
+// ── Tenant Maintenance section ────────────────────────────────────────────────
+
+function TenantMaintenanceSection({
+  tenantId,
+  propertyId,
+}: {
+  tenantId: string
+  propertyId: string
+}) {
+  const [requests, setRequests] = useState<TenantMaintenanceRequest[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showModal, setShowModal] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitSuccess, setSubmitSuccess] = useState(false)
+
+  // Form state
+  const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
+  const [priority, setPriority] = useState<'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'>('MEDIUM')
+
+  const loadRequests = useCallback(async () => {
+    setLoading(true)
+    const res = await fetch(`/api/maintenance?tenantId=${tenantId}`)
+    const json = await res.json()
+    if (json.data) setRequests(json.data)
+    setLoading(false)
+  }, [tenantId])
+
+  useEffect(() => { loadRequests() }, [loadRequests])
+
+  async function submit() {
+    if (!title.trim() || !description.trim()) return
+    setSubmitting(true)
+    const res = await fetch('/api/maintenance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ propertyId, tenantId, title, description, priority }),
+    })
+    setSubmitting(false)
+    if (res.ok) {
+      setSubmitSuccess(true)
+      setTitle('')
+      setDescription('')
+      setPriority('MEDIUM')
+      await loadRequests()
+      setTimeout(() => { setSubmitSuccess(false); setShowModal(false) }, 2000)
+    }
+  }
+
   return (
     <div className="bg-white rounded-2xl border border-gray-100 p-5">
       <div className="flex items-center gap-3 mb-4">
         <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center text-green-600">
-          {icon}
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
         </div>
-        <h2 className="text-gray-900 font-semibold">{title}</h2>
+        <h2 className="text-gray-900 font-semibold flex-1">Maintenance Requests</h2>
+        <button
+          onClick={() => setShowModal(true)}
+          className="flex items-center gap-1.5 text-sm bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded-lg transition-colors"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          New request
+        </button>
       </div>
-      <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center">
-        <p className="text-gray-400 text-sm">Coming soon</p>
-      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-4">
+          <div className="w-5 h-5 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : requests.length === 0 ? (
+        <div className="text-center py-6 border-2 border-dashed border-gray-100 rounded-xl">
+          <p className="text-gray-400 text-sm">No maintenance requests yet.</p>
+          <button
+            onClick={() => setShowModal(true)}
+            className="mt-2 text-sm text-green-600 hover:text-green-700 transition-colors"
+          >
+            Submit your first request
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {requests.map((req) => (
+            <div key={req.id} className="flex items-start gap-3 p-3 rounded-xl border border-gray-100 bg-gray-50">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-gray-900 text-sm font-medium">{req.title}</p>
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${MAINT_STATUS_CLS[req.status]}`}>
+                    {MAINT_STATUS_LABEL[req.status]}
+                  </span>
+                </div>
+                <p className="text-gray-500 text-xs mt-0.5 truncate">{req.description}</p>
+                <p className="text-gray-400 text-xs mt-0.5">
+                  {new Date(req.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* New request modal */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl border border-gray-200 w-full max-w-md p-5 shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-gray-900 font-semibold">New Maintenance Request</h3>
+              <button
+                onClick={() => setShowModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {submitSuccess ? (
+              <div className="text-center py-6">
+                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-3">
+                  <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <p className="text-gray-700 font-medium">Request submitted!</p>
+                <p className="text-gray-400 text-sm mt-1">Your landlord has been notified.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                  <input
+                    type="text"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="e.g. Boiler not heating water"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/40 focus:border-green-500 transition-colors"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                  <select
+                    value={priority}
+                    onChange={(e) => setPriority(e.target.value as typeof priority)}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500/40 focus:border-green-500 transition-colors"
+                  >
+                    {PRIORITY_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label} — {o.hint}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                  <textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    rows={4}
+                    placeholder="Describe the issue in detail..."
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/40 focus:border-green-500 transition-colors resize-none"
+                  />
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={submit}
+                    disabled={submitting || !title.trim() || !description.trim()}
+                    className="flex-1 bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white font-medium py-2 rounded-lg transition-colors text-sm"
+                  >
+                    {submitting ? 'Submitting…' : 'Submit request'}
+                  </button>
+                  <button
+                    onClick={() => setShowModal(false)}
+                    className="text-sm text-gray-500 hover:text-gray-700 px-3 py-2 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -535,7 +873,7 @@ export default function TenantDashboardClient({ tenant, property }: Props) {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
               </div>
-              <h2 className="text-gray-900 font-semibold">Documents</h2>
+              <h2 className="text-gray-900 font-semibold">Property Documents</h2>
             </div>
             <DocumentsSection propertyId={property.id} />
           </div>
@@ -546,16 +884,8 @@ export default function TenantDashboardClient({ tenant, property }: Props) {
           {/* Rent payments */}
           <TenantPaymentsSection propertyId={property.id} />
 
-          {/* Maintenance placeholder */}
-          <PlaceholderSection
-            title="Maintenance requests"
-            icon={
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            }
-          />
+          {/* Maintenance requests */}
+          <TenantMaintenanceSection tenantId={tenant.id} propertyId={property.id} />
         </div>
       </main>
     </div>

@@ -7,6 +7,17 @@ import DocumentUploadModal from '@/components/shared/DocumentUploadModal'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+interface FinancialReport {
+  id: string
+  status: string
+  totalScore: number | null
+  grade: string | null
+  aiSummary: string | null
+  breakdown: Record<string, number> | null
+  appliedRules: Array<{ key: string; description: string; points: number }> | null
+  verificationToken: string
+}
+
 interface Property {
   id: string
   name: string | null
@@ -16,6 +27,7 @@ interface Property {
   postcode: string
   status: string
   type: string
+  requireFinancialVerification: boolean
   tenants: Tenant[]
   complianceDocs: ComplianceDoc[]
   tenancies: Tenancy[]
@@ -29,6 +41,7 @@ interface Tenant {
   status: string
   inviteToken: string
   documents: { documentType: string; expiryDate: string | null }[]
+  financialReports: FinancialReport[]
 }
 
 interface ComplianceDoc {
@@ -660,7 +673,7 @@ function ComplianceSection({ propertyId }: { propertyId: string }) {
   return (
     <div className="bg-white/4 border border-white/8 rounded-xl p-4 mb-5">
       <div className="flex items-center justify-between mb-4">
-        <p className="text-xs text-white/40 uppercase tracking-wide font-medium">Compliance & Documents</p>
+        <p className="text-xs text-white/40 uppercase tracking-wide font-medium">Property Documents</p>
         <button
           onClick={() => setShowModal(true)}
           className="flex items-center gap-1.5 text-sm bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded-lg transition-colors"
@@ -772,6 +785,225 @@ function ComplianceSection({ propertyId }: { propertyId: string }) {
   )
 }
 
+// ── Property Maintenance section ─────────────────────────────────────────────
+
+interface MaintenanceRequest {
+  id: string
+  title: string
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
+  status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED'
+  createdAt: string
+  tenant: { name: string }
+}
+
+const MAINT_PRIORITY_BADGE: Record<string, string> = {
+  URGENT: 'bg-red-500/20 text-red-300',
+  HIGH:   'bg-orange-500/20 text-orange-300',
+  MEDIUM: 'bg-yellow-500/20 text-yellow-300',
+  LOW:    'bg-white/8 text-white/40',
+}
+
+const MAINT_STATUS_BADGE: Record<string, string> = {
+  OPEN:        'bg-blue-500/15 text-blue-300',
+  IN_PROGRESS: 'bg-amber-500/15 text-amber-300',
+  RESOLVED:    'bg-green-500/15 text-green-300',
+}
+
+const MAINT_STATUS_LABEL: Record<string, string> = {
+  OPEN: 'Open', IN_PROGRESS: 'In progress', RESOLVED: 'Resolved',
+}
+
+function PropertyMaintenanceSection({ propertyId }: { propertyId: string }) {
+  const [requests, setRequests] = useState<MaintenanceRequest[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch(`/api/maintenance?propertyId=${propertyId}&status=OPEN`)
+      .then((r) => r.json())
+      .then((json) => { if (json.data) setRequests(json.data) })
+      .finally(() => setLoading(false))
+  }, [propertyId])
+
+  return (
+    <div className="bg-white/4 border border-white/8 rounded-xl p-4 mb-5">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-xs text-white/40 uppercase tracking-wide font-medium">Maintenance</p>
+        <a
+          href={`/dashboard/maintenance?propertyId=${propertyId}`}
+          className="text-xs text-green-400 hover:text-green-300 transition-colors"
+        >
+          View all →
+        </a>
+      </div>
+      {loading ? (
+        <div className="flex justify-center py-4">
+          <div className="w-5 h-5 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : requests.length === 0 ? (
+        <p className="text-white/30 text-sm italic">No open maintenance requests</p>
+      ) : (
+        <div>
+          {requests.map((req, i) => (
+            <a
+              key={req.id}
+              href={`/dashboard/maintenance/${req.id}`}
+              className={`flex items-center gap-3 py-2.5 ${i > 0 ? 'border-t border-white/6' : ''} hover:bg-white/3 -mx-4 px-4 transition-colors`}
+            >
+              <span className={`shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full ${MAINT_PRIORITY_BADGE[req.priority]}`}>
+                {req.priority}
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className="text-white text-sm font-medium truncate">{req.title}</p>
+                <p className="text-white/40 text-xs">{req.tenant.name}</p>
+              </div>
+              <span className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${MAINT_STATUS_BADGE[req.status]}`}>
+                {MAINT_STATUS_LABEL[req.status]}
+              </span>
+              <svg className="w-4 h-4 text-white/20 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Financial score helpers ────────────────────────────────────────────────────
+
+function gradeStyle(grade: string | null): { bg: string; text: string; border: string } {
+  if (!grade) return { bg: 'bg-white/8', text: 'text-white/50', border: 'border-white/10' }
+  if (grade === 'Excellent' || grade === 'Good') return { bg: 'bg-green-500/15', text: 'text-green-300', border: 'border-green-500/20' }
+  if (grade === 'Fair') return { bg: 'bg-yellow-500/15', text: 'text-yellow-300', border: 'border-yellow-500/20' }
+  if (grade === 'Poor') return { bg: 'bg-orange-500/15', text: 'text-orange-300', border: 'border-orange-500/20' }
+  return { bg: 'bg-red-500/15', text: 'text-red-300', border: 'border-red-500/20' }
+}
+
+function FinancialScoreBadge({ report }: { report: FinancialReport }) {
+  const [expanded, setExpanded] = useState(false)
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
+
+  if (report.status === 'PROCESSING' || report.status === 'PENDING') {
+    return (
+      <div className="mt-3 flex items-center gap-2 text-xs text-white/40">
+        <div className="w-3.5 h-3.5 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+        Analysing statement…
+      </div>
+    )
+  }
+
+  if (report.status === 'FAILED' || report.totalScore === null) {
+    return (
+      <div className="mt-3 text-xs text-red-400/70">Financial analysis failed</div>
+    )
+  }
+
+  const { bg, text, border } = gradeStyle(report.grade)
+
+  return (
+    <div className={`mt-3 rounded-xl border ${border} p-3`}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className={`${bg} ${text} rounded-lg px-3 py-1.5 flex items-center gap-2`}>
+            <span className="font-bold text-lg leading-none">{report.totalScore}</span>
+            <span className="text-xs font-medium opacity-80">/100</span>
+          </div>
+          <span className={`text-sm font-semibold ${text}`}>{report.grade}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <a
+            href={`${appUrl}/verify/${report.verificationToken}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-white/40 hover:text-green-400 transition-colors"
+          >
+            Verify report →
+          </a>
+        </div>
+      </div>
+
+      {report.aiSummary && (
+        <div className="mt-2">
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="flex items-center gap-1 text-xs text-white/40 hover:text-white/60 transition-colors"
+          >
+            <svg className={`w-3 h-3 transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+            {expanded ? 'Hide' : 'Read'} analysis
+          </button>
+          {expanded && (
+            <div className="mt-2">
+              <p className="text-white/50 text-xs leading-relaxed">{report.aiSummary}</p>
+              {report.breakdown && Object.keys(report.breakdown).length > 0 && (
+                <div className="mt-2 space-y-1">
+                  {Object.entries(report.breakdown).map(([cat, pts]) => (
+                    <div key={cat} className="flex items-center justify-between text-xs">
+                      <span className="text-white/30 capitalize">{cat.toLowerCase()}</span>
+                      <span className={pts >= 0 ? 'text-green-400' : 'text-red-400'}>
+                        {pts >= 0 ? '+' : ''}{pts}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Financial verification toggle ─────────────────────────────────────────────
+
+function FinancialVerificationToggle({
+  propertyId,
+  initialValue,
+}: {
+  propertyId: string
+  initialValue: boolean
+}) {
+  const [enabled, setEnabled] = useState(initialValue)
+  const [saving, setSaving] = useState(false)
+
+  async function toggle() {
+    const next = !enabled
+    setSaving(true)
+    const res = await fetch(`/api/properties/${propertyId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requireFinancialVerification: next }),
+    })
+    if (res.ok) setEnabled(next)
+    setSaving(false)
+  }
+
+  return (
+    <div className="flex items-center justify-between py-3 border-t border-white/8">
+      <div>
+        <p className="text-white/70 text-sm font-medium">Require financial verification from applicants</p>
+        <p className="text-white/30 text-xs mt-0.5">Applicants must upload bank statements to apply</p>
+      </div>
+      <button
+        onClick={toggle}
+        disabled={saving}
+        className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none disabled:opacity-50
+          ${enabled ? 'bg-green-500' : 'bg-white/15'}`}
+        role="switch"
+        aria-checked={enabled}
+      >
+        <span
+          className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform
+            ${enabled ? 'translate-x-6' : 'translate-x-1'}`}
+        />
+      </button>
+    </div>
+  )
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function PropertyPage() {
@@ -828,7 +1060,7 @@ export default function PropertyPage() {
     <div className="p-4 lg:p-8 max-w-3xl">
 
       {/* Back */}
-      <Link href="/dashboard" className="inline-flex items-center gap-1 text-sm text-white/40 hover:text-white/70 transition-colors mb-6">
+      <Link href="/dashboard/properties" className="inline-flex items-center gap-1 text-sm text-white/40 hover:text-white/70 transition-colors mb-6">
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
         </svg>
@@ -907,6 +1139,9 @@ export default function PropertyPage() {
       {/* ── Rent Payments section ───────────────────────────────────────────── */}
       {activeTenancy && <RentPaymentsSection propertyId={property.id} />}
 
+      {/* ── Maintenance section ──────────────────────────────────────────────── */}
+      <PropertyMaintenanceSection propertyId={property.id} />
+
       {/* ── Applications section ─────────────────────────────────────────────── */}
       {showApplications && <div className="bg-white/4 border border-white/8 rounded-xl p-4 mb-5">
         <p className="text-xs text-white/40 uppercase tracking-wide font-medium mb-3">Applications</p>
@@ -925,19 +1160,35 @@ export default function PropertyPage() {
           </div>
         </div>
 
+        {/* Financial verification toggle */}
+        <FinancialVerificationToggle
+          propertyId={property.id}
+          initialValue={property.requireFinancialVerification}
+        />
+
         {/* Candidate list */}
         {candidates.length > 0 ? (
-          <div className="space-y-2 mt-4 border-t border-white/8 pt-4">
+          <div className="space-y-3 mt-4 border-t border-white/8 pt-4">
             <p className="text-xs text-white/40 font-medium mb-2">Received ({candidates.length})</p>
-            {candidates.map((c) => (
-              <div key={c.id} className="flex items-center justify-between py-2.5 border-b border-white/6 last:border-0">
-                <div>
-                  <p className="text-white text-sm font-medium">{c.name}</p>
-                  <p className="text-white/40 text-xs">{c.email}</p>
+            {candidates.map((c) => {
+              const report = c.financialReports[0] ?? null
+              return (
+                <div key={c.id} className="py-2.5 border-b border-white/6 last:border-0">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-white text-sm font-medium">{c.name}</p>
+                      <p className="text-white/40 text-xs">{c.email}</p>
+                    </div>
+                    <StatusBadge status={c.status} config={tenantStatusConfig} />
+                  </div>
+                  {report ? (
+                    <FinancialScoreBadge report={report} />
+                  ) : (
+                    <p className="mt-1.5 text-xs text-white/25 italic">No financial verification submitted</p>
+                  )}
                 </div>
-                <StatusBadge status={c.status} config={tenantStatusConfig} />
-              </div>
-            ))}
+              )
+            })}
           </div>
         ) : (
           <p className="text-white/30 text-sm italic mt-3">No applications yet</p>
