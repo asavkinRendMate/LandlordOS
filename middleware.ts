@@ -31,6 +31,14 @@ export async function middleware(request: NextRequest) {
 
   const path = request.nextUrl.pathname
 
+  // Admin panel auth guard (separate from Supabase auth)
+  if (path.startsWith('/admin') && path !== '/admin/login') {
+    const adminSession = request.cookies.get('admin_session')?.value
+    if (adminSession !== 'authenticated') {
+      return NextResponse.redirect(new URL('/admin/login', request.url))
+    }
+  }
+
   // Redirect unauthenticated users away from protected areas
   if ((path.startsWith('/dashboard') || path.startsWith('/tenant/dashboard')) && !user) {
     return NextResponse.redirect(new URL('/login', request.url))

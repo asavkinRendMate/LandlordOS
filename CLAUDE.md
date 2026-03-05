@@ -34,11 +34,15 @@
 │   ├── (dashboard)/              # Protected landlord dashboard
 │   │   ├── layout.tsx            # Dashboard shell with sidebar (DashboardShell)
 │   │   └── dashboard/
-│   │       ├── page.tsx          # Overview: property cards + compliance alert bar
+│   │       ├── page.tsx          # Overview: property cards, active maintenance preview, compliance alerts
 │   │       ├── onboarding/       # First-run wizard (4 steps: property → occupancy → tenant → done)
+│   │       ├── maintenance/
+│   │       │   ├── page.tsx      # Maintenance list: all requests with status tabs + priority sort
+│   │       │   └── [id]/page.tsx # Maintenance detail: status mgmt, photos, timeline (client component)
 │   │       └── properties/
+│   │           ├── page.tsx      # Properties list: all property cards + compliance alert bar
 │   │           ├── [id]/
-│   │           │   ├── page.tsx  # Property detail: compliance & docs, tenant card, applications
+│   │           │   ├── page.tsx  # Property detail: compliance & docs, tenant card, applications, scoring
 │   │           │   └── tenant/
 │   │           │       └── [tenantId]/
 │   │           │           ├── page.tsx    # Tenant detail: server component, auth check, serialize dates
@@ -47,17 +51,19 @@
 │   │               └── page.tsx  # Add property wizard (3 steps, same form as onboarding)
 │   ├── (marketing)/              # Public marketing site
 │   │   ├── layout.tsx
-│   │   ├── page.tsx              # Landing page + waitlist form
+│   │   ├── page.tsx              # Landing page + waitlist form + closed beta modal
 │   │   ├── privacy/              # Privacy policy page
-│   │   └── terms/                # Terms of service page
+│   │   ├── terms/                # Terms of service page
+│   │   └── verify/[token]/       # Financial report verification (public, token-based)
 │   ├── (tenant)/                 # Tenant-facing pages
 │   │   ├── layout.tsx
 │   │   ├── apply/[propertyId]/   # Application form (public, no auth)
+│   │   ├── passport/             # Financial Passport landing page (email capture, pre-launch)
 │   │   └── tenant/
 │   │       ├── join/[token]/     # Tenant onboarding / confirm details
 │   │       └── dashboard/        # Tenant portal (auth-protected)
 │   │           ├── page.tsx      # Server: fetch tenant + property, gate auth
-│   │           └── client.tsx    # Client: property card, landlord docs, my docs, rent payments
+│   │           └── client.tsx    # Client: property card, landlord docs, my docs, rent payments, maintenance
 │   ├── auth/callback/            # Supabase magic-link callback
 │   └── api/                      # API routes (all return { data, error })
 │       ├── address/              # OS Places postcode lookup
@@ -67,12 +73,22 @@
 │       │   └── [id]/
 │       │       ├── route.ts      # GET: signed URL; DELETE: remove from storage + DB
 │       │       └── acknowledge/  # POST: tenant marks document as reviewed
+│       ├── maintenance/
+│       │   ├── route.ts          # GET: list requests (landlord or tenant); POST: create request
+│       │   └── [id]/
+│       │       ├── route.ts      # GET: request detail; PATCH: update status/priority
+│       │       └── photos/
+│       │           ├── route.ts      # GET: list photos (signed URLs); POST: upload photo
+│       │           └── [photoId]/route.ts  # DELETE: remove photo (uploader or landlord)
 │       ├── payments/
 │       │   ├── route.ts          # GET: list RentPayments for property (landlord + tenant auth)
 │       │   └── [id]/route.ts     # PATCH: mark payment received (date, amount, note)
 │       ├── properties/
 │       │   ├── route.ts          # GET: list; POST: create + seed ComplianceDocs
-│       │   └── [id]/route.ts     # GET: property with relations (incl. tenant docs summary)
+│       │   └── [id]/route.ts     # GET: property with relations; PATCH: update settings
+│       ├── scoring/
+│       │   ├── upload/route.ts   # POST: upload bank statement PDF, trigger AI analysis
+│       │   └── [reportId]/route.ts  # GET: report status/results; POST: re-trigger analysis
 │       ├── tenancies/route.ts    # POST: create tenancy + Tenant record in $transaction
 │       ├── tenant/
 │       │   ├── apply/
@@ -92,12 +108,17 @@
 │   ├── dashboard/
 │   │   └── shell.tsx             # DashboardShell: sidebar, mobile drawer, context switcher
 │   └── shared/
-│       └── DocumentUploadModal.tsx  # Reusable drag-and-drop upload modal (property + tenant docs)
+│       ├── DocumentUploadModal.tsx  # Reusable drag-and-drop upload modal (property + tenant docs)
+│       └── Footer.tsx            # Shared footer (marketing + dashboard variants)
 ├── lib/
 │   ├── env.ts                    # Zod-validated env vars (server-only)
+│   ├── maintenance-storage.ts    # Supabase Storage helpers for maintenance-photos bucket
 │   ├── payments.ts               # generateUpcomingPayments, updatePaymentStatuses helpers
 │   ├── prisma.ts                 # Prisma client singleton
 │   ├── resend.ts                 # Resend email client (console fallback if key not set)
+│   ├── scoring/
+│   │   ├── engine.ts             # AI scoring engine: Claude API bank statement analysis
+│   │   └── index.ts              # Barrel export: analyzeStatement
 │   ├── storage.ts                # Supabase Storage helpers (uploadFile, getSignedUrl, deleteFile)
 │   │                             # Supports multiple buckets via optional bucket param
 │   ├── os-places.ts              # OS Places API (postcode → address lookup)
@@ -107,7 +128,8 @@
 │       ├── client.ts             # Browser client factory (anon key)
 │       └── server.ts             # Server client factory (service role, bypasses RLS)
 ├── prisma/
-│   └── schema.prisma             # Single source of truth for DB schema
+│   ├── schema.prisma             # Single source of truth for DB schema
+│   └── seed-scoring.ts           # Seed script: 30 scoring rules + ScoringConfig v1
 ├── supabase/
 │   └── migrations/               # SQL migration files (applied via supabase db push)
 └── middleware.ts                  # Protects /dashboard/* and /tenant/dashboard
@@ -145,12 +167,15 @@ model Property {
   type             PropertyType   @default(FLAT)
   status           PropertyStatus @default(VACANT)
   applicationToken String?        @unique @map("application_token")
+  requireFinancialVerification Boolean @default(false) @map("require_financial_verification")
   createdAt        DateTime       @default(now()) @map("created_at")
   updatedAt        DateTime       @updatedAt @map("updated_at")
-  tenancies        Tenancy[]
-  complianceDocs   ComplianceDoc[]    // legacy — dashboard overview only
-  tenants          Tenant[]
-  documents        PropertyDocument[]
+  tenancies           Tenancy[]
+  complianceDocs      ComplianceDoc[]    // legacy — dashboard overview only
+  tenants             Tenant[]
+  documents           PropertyDocument[]
+  maintenanceRequests MaintenanceRequest[]
+  financialReports    FinancialReport[]
   @@map("properties")
 }
 
@@ -246,9 +271,11 @@ model Tenant {
   confirmedAt DateTime?    @map("confirmed_at")
   createdAt   DateTime     @default(now()) @map("created_at")
   updatedAt   DateTime     @updatedAt @map("updated_at")
-  tenancies       Tenancy[]
-  documents       TenantDocument[]
-  acknowledgments DocumentAcknowledgment[]
+  tenancies           Tenancy[]
+  documents           TenantDocument[]
+  acknowledgments     DocumentAcknowledgment[]
+  maintenanceRequests MaintenanceRequest[]
+  financialReports    FinancialReport[]
   @@map("tenants")
 }
 
@@ -310,6 +337,103 @@ model DocumentAcknowledgment {
   @@unique([documentId, tenantId])
   @@map("document_acknowledgments")
 }
+
+// ── MaintenanceRequest ─────────────────────────────────────────────────────────
+enum MaintenanceStatus   { OPEN IN_PROGRESS RESOLVED }
+enum MaintenancePriority { LOW MEDIUM HIGH URGENT }
+
+model MaintenanceRequest {
+  id             String              @id @default(uuid())
+  propertyId     String              @map("property_id")
+  property       Property            @relation(...)
+  tenantId       String              @map("tenant_id")
+  tenant         Tenant              @relation(...)
+  title          String
+  description    String
+  priority       MaintenancePriority @default(MEDIUM)
+  status         MaintenanceStatus   @default(OPEN)
+  inProgressAt   DateTime?           @map("in_progress_at")
+  resolvedAt     DateTime?           @map("resolved_at")
+  resolvedBy     String?             @map("resolved_by")
+  createdAt      DateTime            @default(now()) @map("created_at")
+  updatedAt      DateTime            @updatedAt @map("updated_at")
+  statusHistory  MaintenanceStatusHistory[]
+  photos         MaintenancePhoto[]
+  @@map("maintenance_requests")
+}
+
+model MaintenanceStatusHistory {
+  id         String              @id @default(uuid())
+  requestId  String              @map("request_id")
+  request    MaintenanceRequest  @relation(...)
+  fromStatus MaintenanceStatus?  @map("from_status")
+  toStatus   MaintenanceStatus   @map("to_status")
+  changedBy  String              @map("changed_by")
+  changedAt  DateTime            @default(now()) @map("changed_at")
+  note       String?
+  @@map("maintenance_status_history")
+}
+
+model MaintenancePhoto {
+  id         String             @id @default(uuid())
+  requestId  String             @map("request_id")
+  request    MaintenanceRequest @relation(...)
+  uploadedBy String             @map("uploaded_by")
+  role       String             // "TENANT" | "LANDLORD"
+  fileUrl    String             @map("file_url")
+  fileName   String             @map("file_name")
+  fileSize   Int                @map("file_size")
+  uploadedAt DateTime           @default(now()) @map("uploaded_at")
+  caption    String?
+  @@map("maintenance_photos")
+}
+
+// ── Financial Scoring ──────────────────────────────────────────────────────────
+enum ScoringCategory { AFFORDABILITY STABILITY DEBT GAMBLING LIQUIDITY POSITIVE }
+enum ReportType      { LANDLORD_REQUESTED SELF_REQUESTED }
+enum ReportStatus    { PENDING PROCESSING COMPLETED FAILED }
+
+model ScoringRule {
+  id          String          @id @default(uuid())
+  category    ScoringCategory
+  key         String          @unique
+  description String
+  points      Int
+  isActive    Boolean         @default(true) @map("is_active")
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+  @@map("scoring_rules")
+}
+
+model ScoringConfig {
+  id        String   @id @default(uuid())
+  version   Int      @unique
+  isActive  Boolean  @default(false) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  @@map("scoring_configs")
+}
+
+model FinancialReport {
+  id                   String       @id @default(uuid())
+  tenantId             String?      @map("tenant_id")
+  tenant               Tenant?      @relation(...)
+  propertyId           String?      @map("property_id")
+  property             Property?    @relation(...)
+  reportType           ReportType   @map("report_type")
+  status               ReportStatus @default(PENDING)
+  scoringConfigVersion Int          @map("scoring_config_version")
+  totalScore           Int?         @map("total_score")
+  grade                String?      // Excellent / Good / Fair / Poor / High Risk
+  aiSummary            String?      @map("ai_summary")
+  breakdown            Json?        // score by category
+  appliedRules         Json?        @map("applied_rules")
+  verificationToken    String       @unique @default(uuid()) @map("verification_token")
+  pdfUrl               String?      @map("pdf_url")
+  statementFileUrl     String?      @map("statement_file_url")
+  createdAt            DateTime     @default(now()) @map("created_at")
+  updatedAt            DateTime     @updatedAt @map("updated_at")
+  @@map("financial_reports")
+}
 ```
 
 ---
@@ -362,19 +486,24 @@ npx tsc --noEmit         # TypeScript check (there is no npm run type-check scri
   - `extraFields` passes `{ propertyId }` or `{ tenantId }` to the endpoint
 
 ### AI Calls
-- All Claude API calls go through `lib/anthropic.ts`
-- System prompts stored as constants in `lib/prompts/`
+- Claude API calls go through `lib/scoring/engine.ts` (direct `fetch` to `https://api.anthropic.com/v1/messages`)
+- Model: `claude-sonnet-4-20250514`
+- Currently used for: bank statement financial analysis (scoring engine)
 - Never expose raw AI output to users — always parse and validate
 
 ### Supabase Storage
-- File uploads go through `lib/storage.ts` helper (uploadFile, getSignedUrl, deleteFile)
-- All functions accept optional `bucket` param (defaults to `'documents'`)
-- Two private buckets (auto-created on first upload):
+- `lib/storage.ts` — general helpers (uploadFile, getSignedUrl, deleteFile), optional `bucket` param (defaults to `'documents'`)
+- `lib/maintenance-storage.ts` — dedicated helpers for maintenance photos (uploadMaintenancePhoto, getMaintenancePhotoUrl, deleteMaintenancePhoto)
+- Four private buckets (auto-created on first upload):
   - `documents` — property-level documents (PropertyDocument model)
   - `tenant-documents` — tenant-level documents (TenantDocument model)
+  - `maintenance-photos` — maintenance request photos (MaintenancePhoto model)
+  - `bank-statements` — uploaded bank statement PDFs (FinancialReport model)
 - Storage path patterns:
   - Property docs: `/{userId}/{propertyId}/{documentId}/{filename}`
   - Tenant docs: `/{propertyId}/{tenantId}/{documentId}/{filename}`
+  - Maintenance photos: `/{requestId}/{role}/{photoId}-{filename}`
+  - Bank statements: `/{reportId}/{filename}`
 - Always generate signed URLs (60 min expiry) — never expose raw storage paths
 
 ### Rent Payments
@@ -383,6 +512,22 @@ npx tsc --noEmit         # TypeScript check (there is no npm run type-check scri
   - `updatePaymentStatuses()` — transitions PENDING→EXPECTED (due today) and PENDING/EXPECTED→LATE (overdue)
 - Landlord manually marks payments received with date, amount (supports partial), and optional note
 - Statuses: PENDING (future) → EXPECTED (due today) → RECEIVED or LATE; PARTIAL for partial amounts
+
+### Maintenance
+- `MaintenanceRequest` has priority (URGENT/HIGH/MEDIUM/LOW) and status (OPEN/IN_PROGRESS/RESOLVED)
+- `MaintenanceStatusHistory` is an immutable audit trail — all status changes logged with `changedBy` and optional note
+- `MaintenancePhoto` supports upload by tenant or landlord, stored in `maintenance-photos` bucket
+- Dashboard overview shows top 3 active requests (OPEN + IN_PROGRESS), sorted by priority then date
+- `/dashboard/maintenance` lists all requests with status filter tabs
+
+### Financial Scoring
+- `lib/scoring/engine.ts` — AI-powered bank statement analysis via Claude API
+- Flow: upload PDF → create FinancialReport (PENDING) → background `analyzeStatement()` → Claude returns fired rules → score calculated → COMPLETED
+- Score starts at 100, rules add/subtract points. Grades: Excellent (85+), Good (70+), Fair (55+), Poor (40+), High Risk (<40)
+- 30 scoring rules across 6 categories (AFFORDABILITY, STABILITY, DEBT, GAMBLING, LIQUIDITY, POSITIVE)
+- Gambling rule deduplication: only the highest applicable gambling penalty is applied
+- `prisma/seed-scoring.ts` — seed script for rules + ScoringConfig v1 (`npx tsx prisma/seed-scoring.ts`)
+- `/verify/[token]` — public verification page for financial reports (token-based, no auth)
 
 ### Error Handling
 - Use `try/catch` in all async server functions
@@ -416,8 +561,8 @@ STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
 
-# AI (not yet implemented)
-ANTHROPIC_API_KEY=
+# AI
+ANTHROPIC_API_KEY=            # Used by scoring engine (lib/scoring/engine.ts) — optional
 
 # App
 NEXT_PUBLIC_APP_URL=       # e.g. https://letsorted.co.uk (required — used in invite/apply links)

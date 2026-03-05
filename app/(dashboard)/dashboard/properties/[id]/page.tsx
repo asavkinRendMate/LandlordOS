@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import DocumentUploadModal from '@/components/shared/DocumentUploadModal'
+import TenantDetailsForm, { type TenantFormData } from '@/components/shared/TenantDetailsForm'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -957,6 +958,173 @@ function FinancialScoreBadge({ report }: { report: FinancialReport }) {
   )
 }
 
+// ── Add Tenant Modal ──────────────────────────────────────────────────────────
+
+function AddTenantModal({
+  propertyId,
+  onClose,
+  onSuccess,
+}: {
+  propertyId: string
+  onClose: () => void
+  onSuccess: (message: string) => void
+}) {
+  const [tab, setTab] = useState<'full' | 'invite'>('full')
+  const [loading, setLoading] = useState(false)
+  const [inviteName, setInviteName] = useState('')
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleFullSubmit(data: TenantFormData) {
+    setLoading(true)
+    setError(null)
+    const monthlyRent = Math.round(parseFloat(data.monthlyRentStr) * 100)
+    const depositAmount = data.depositAmountStr
+      ? Math.round(parseFloat(data.depositAmountStr) * 100)
+      : undefined
+    const res = await fetch('/api/tenancies', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        propertyId,
+        tenantName: data.tenantName,
+        tenantEmail: data.tenantEmail,
+        tenantPhone: data.tenantPhone || undefined,
+        monthlyRent,
+        paymentDay: data.paymentDay,
+        startDate: new Date(data.startDate).toISOString(),
+        depositAmount,
+        depositScheme: data.depositScheme || undefined,
+        depositRef: data.depositRef || undefined,
+      }),
+    })
+    setLoading(false)
+    const json = await res.json()
+    if (!res.ok) {
+      setError(json.error ?? 'Failed to add tenant')
+      return
+    }
+    onSuccess('Tenant added successfully')
+  }
+
+  async function handleInviteSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!inviteName.trim() || !inviteEmail.trim()) return
+    setLoading(true)
+    setError(null)
+    const res = await fetch('/api/tenant/invite', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ propertyId, name: inviteName.trim(), email: inviteEmail.trim() }),
+    })
+    setLoading(false)
+    const json = await res.json()
+    if (!res.ok) {
+      setError(json.error ?? 'Failed to send invite')
+      return
+    }
+    onSuccess(`Invite sent to ${inviteEmail.trim()}`)
+  }
+
+  const inputClass =
+    'w-full bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-[#1A1A1A] placeholder-[#9CA3AF] text-sm focus:outline-none focus:border-green-500/60 focus:ring-1 focus:ring-green-500/30 transition-colors'
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between p-5 border-b border-gray-100">
+          <h2 className="text-lg font-semibold text-[#1A1A1A]">Add tenant</h2>
+          <button onClick={onClose} className="text-[#9CA3AF] hover:text-[#6B7280] transition-colors">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex border-b border-gray-100">
+          <button
+            onClick={() => setTab('full')}
+            className={`flex-1 py-3 text-sm font-medium transition-colors ${
+              tab === 'full'
+                ? 'text-[#2D6A4F] border-b-2 border-[#2D6A4F]'
+                : 'text-[#9CA3AF] hover:text-[#6B7280]'
+            }`}
+          >
+            Full details
+          </button>
+          <button
+            onClick={() => setTab('invite')}
+            className={`flex-1 py-3 text-sm font-medium transition-colors ${
+              tab === 'invite'
+                ? 'text-[#2D6A4F] border-b-2 border-[#2D6A4F]'
+                : 'text-[#9CA3AF] hover:text-[#6B7280]'
+            }`}
+          >
+            Invite only
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="p-5">
+          {error && (
+            <div className="mb-4 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-red-600 text-sm">
+              {error}
+            </div>
+          )}
+
+          {tab === 'full' ? (
+            <TenantDetailsForm
+              onSubmit={handleFullSubmit}
+              isLoading={loading}
+              submitLabel="Add tenant"
+              variant="light"
+            />
+          ) : (
+            <form onSubmit={handleInviteSubmit} className="space-y-4">
+              <p className="text-[#6B7280] text-sm mb-4">
+                Send an invite email so the tenant can confirm their own details and access their portal.
+              </p>
+              <div>
+                <label className="block text-sm text-[#374151] mb-1.5">Full name</label>
+                <input
+                  value={inviteName}
+                  onChange={(e) => setInviteName(e.target.value)}
+                  placeholder="Jane Smith"
+                  className={inputClass}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-[#374151] mb-1.5">Email</label>
+                <input
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  placeholder="jane@example.com"
+                  className={inputClass}
+                  required
+                />
+              </div>
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-[#2D6A4F] hover:bg-[#245c43] disabled:opacity-50 text-white font-semibold rounded-xl py-3 text-sm transition-colors"
+                >
+                  {loading ? 'Sending…' : 'Send invite'}
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Financial verification toggle ─────────────────────────────────────────────
 
 function FinancialVerificationToggle({
@@ -1012,10 +1180,12 @@ export default function PropertyPage() {
   const [property, setProperty] = useState<Property | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [showAddTenant, setShowAddTenant] = useState(false)
+  const [toast, setToast] = useState<string | null>(null)
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
 
-  useEffect(() => {
+  const fetchProperty = useCallback(() => {
     fetch(`/api/properties/${id}`)
       .then((r) => r.json())
       .then((json) => {
@@ -1025,6 +1195,13 @@ export default function PropertyPage() {
       .catch(() => setError('Failed to load property'))
       .finally(() => setLoading(false))
   }, [id])
+
+  useEffect(() => { fetchProperty() }, [fetchProperty])
+
+  function showToast(message: string) {
+    setToast(message)
+    setTimeout(() => setToast(null), 3000)
+  }
 
   if (loading) {
     return (
@@ -1130,7 +1307,15 @@ export default function PropertyPage() {
                 )}
               </div>
             ) : (
-              <p className="text-[#9CA3AF] text-sm italic">No tenant added yet</p>
+              <button
+                onClick={() => setShowAddTenant(true)}
+                className="inline-flex items-center gap-1.5 text-sm text-[#2D6A4F] hover:text-[#245c43] font-medium transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Add tenant
+              </button>
             )}
           </div>
         )
@@ -1194,6 +1379,26 @@ export default function PropertyPage() {
           <p className="text-[#9CA3AF] text-sm italic mt-3">No applications yet</p>
         )}
       </div>}
+
+      {/* Add Tenant Modal */}
+      {showAddTenant && (
+        <AddTenantModal
+          propertyId={property.id}
+          onClose={() => setShowAddTenant(false)}
+          onSuccess={(message) => {
+            setShowAddTenant(false)
+            fetchProperty()
+            showToast(message)
+          }}
+        />
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-50 bg-[#1A1A1A] text-white px-4 py-3 rounded-xl shadow-lg text-sm font-medium animate-in fade-in slide-in-from-bottom-2">
+          {toast}
+        </div>
+      )}
 
     </div>
   )

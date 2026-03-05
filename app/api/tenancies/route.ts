@@ -11,6 +11,9 @@ const schema = z.object({
   monthlyRent: z.number().int().positive(), // pence
   paymentDay: z.number().int().min(1).max(31),
   startDate: z.string().datetime(),
+  depositAmount: z.number().int().nonnegative().optional(), // pence
+  depositScheme: z.string().optional(),
+  depositRef: z.string().optional(),
 })
 
 export async function POST(req: Request) {
@@ -30,8 +33,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
     }
 
-    const { propertyId, tenantName, tenantEmail, tenantPhone, monthlyRent, paymentDay, startDate } =
-      result.data
+    const {
+      propertyId, tenantName, tenantEmail, tenantPhone,
+      monthlyRent, paymentDay, startDate,
+      depositAmount, depositScheme, depositRef,
+    } = result.data
 
     // Confirm the property belongs to this user
     const property = await prisma.property.findFirst({
@@ -69,6 +75,9 @@ export async function POST(req: Request) {
           startDate: new Date(startDate),
           status: 'ACTIVE',
           portalToken: crypto.randomUUID(),
+          depositAmount: depositAmount ?? null,
+          depositScheme: depositScheme ?? null,
+          depositRef: depositRef ?? null,
         },
       })
     })

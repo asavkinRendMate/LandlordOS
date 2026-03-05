@@ -194,19 +194,23 @@ Status: `[ ]` todo · `[x]` done · `[-]` in progress · `[~]` skipped/deferred
 - [ ] Send escalation email to landlord after 7 days overdue
 
 ### Tenant Portal (auth-required, already live at `/tenant/dashboard` — extend with:)
-- [ ] Read-only rent payment history view (status per month)
-- [ ] Maintenance request form: category, description, photo upload
-- [ ] Submitted requests show status (Open / In Progress / Resolved)
+- [x] Read-only rent payment history view (status per month)
+- [x] Maintenance request form: title, description, priority
+- [x] Submitted requests show status (Open / In Progress / Resolved)
 - [ ] "Give notice" button with explanation of 2-month minimum
 
 ### Maintenance Tickets
-- [ ] Ticket created from tenant portal submission
-- [ ] Landlord notification email: category, description, photos
-- [ ] Maintenance tab on property: list all tickets with status and date
-- [ ] Ticket detail: full description, photos, status dropdown, comment field
-- [ ] **Awaab's Law:** if DAMP_MOULD → set `respondBy = createdAt + 24h`, show countdown timer in red
+- [x] `MaintenanceRequest` model with priority (LOW/MEDIUM/HIGH/URGENT) and status (OPEN/IN_PROGRESS/RESOLVED)
+- [x] `MaintenanceStatusHistory` model — immutable audit trail for all status changes
+- [x] `MaintenancePhoto` model — photo uploads with `maintenance-photos` Supabase Storage bucket
+- [x] Maintenance request created from tenant portal submission (POST /api/maintenance)
+- [ ] Landlord notification email on submission
+- [x] `/dashboard/maintenance` — list all requests with status filter tabs and priority sort
+- [x] `/dashboard/maintenance/[id]` — detail page: description, photos, status dropdown, timeline
+- [x] Photo upload and deletion (landlord + tenant), max 20 per request, 10 MB limit
+- [ ] **Awaab's Law:** category field, DAMP_MOULD → `respondBy = createdAt + 24h`, countdown timer
 - [ ] Status change → notification email to tenant
-- [ ] All actions logged with timestamp (audit trail)
+- [x] All status changes logged with timestamp and actor (MaintenanceStatusHistory)
 
 ### Section 13 — Rent Increase
 - [ ] "Raise rent" button in Tenancy section
@@ -327,19 +331,36 @@ Status: `[ ]` todo · `[x]` done · `[-]` in progress · `[~]` skipped/deferred
 - [ ] Query: compliance docs (Gas Safety, EPC, EICR) expiring in 30, 14, 7 days → digest email per landlord
 - [ ] Query: deposit unprotected after 28 days → urgent email
 
-### Bank Statement AI Parsing
-- [ ] `POST /api/ai/parse-bank-statement` — accepts uploaded PDF/image
+### AI Financial Scoring Engine — IMPLEMENTED
+- [x] `ScoringRule` model (30 rules across 6 categories: AFFORDABILITY, STABILITY, DEBT, GAMBLING, LIQUIDITY, POSITIVE)
+- [x] `ScoringConfig` model (versioned config, one active at a time)
+- [x] `FinancialReport` model (PENDING → PROCESSING → COMPLETED/FAILED)
+- [x] `lib/scoring/engine.ts` — Claude API (claude-sonnet-4-20250514) analyses bank statement PDFs
+- [x] `POST /api/scoring/upload` — upload bank statement PDF, trigger background analysis
+- [x] `GET /api/scoring/[reportId]` — poll report status and results
+- [x] `POST /api/scoring/[reportId]` — re-trigger analysis (admin use)
+- [x] `/verify/[token]` — public financial report verification page
+- [x] `/passport` — Financial Passport landing page (pre-launch email capture)
+- [x] `prisma/seed-scoring.ts` — seeds 30 rules + ScoringConfig v1
+- [x] Property has `requireFinancialVerification` flag
+- [x] Property detail page shows scoring results inline per tenant (grade, score, summary)
+- [ ] PDF report generation from FinancialReport data
+- [ ] Stripe Payment Intent for scoring (currently free)
+
+### Bank Statement AI Auto-Match (Rent Tracker)
 - [ ] Claude extracts transactions, identifies rent credits matching `monthlyRent` amount
 - [ ] Return structured `{ matchedPayments: [{ date, amount, reference }] }`
 - [ ] UI: "Auto-match" button in rent tracker reconciles parsed results with RentPayment records
 
-### Maintenance Requests (Tenant Portal)
-- [ ] `MaintenanceTicket` model: propertyId, tenantId, category, description, photoUrls[], status, respondBy
-- [ ] Ticket submission form in tenant portal
+### Maintenance Requests (Tenant Portal) — IMPLEMENTED
+- [x] `MaintenanceRequest` model: propertyId, tenantId, title, description, priority, status
+- [x] `MaintenanceStatusHistory` + `MaintenancePhoto` models
+- [x] Ticket submission form in tenant portal
 - [ ] Landlord notification email on submission
-- [ ] Maintenance tab on property detail: list all tickets with status/date
-- [ ] Ticket detail: full description, photos, status dropdown, landlord comment
-- [ ] **Awaab's Law:** if category=DAMP_MOULD → `respondBy = createdAt + 24h`, countdown timer shown in red
+- [x] Maintenance tab on dashboard: list all tickets with status/date/priority filter
+- [x] Ticket detail: full description, photos, status dropdown, status timeline
+- [ ] **Awaab's Law:** add category field, if DAMP_MOULD → `respondBy = createdAt + 24h`, countdown timer
+- [ ] Landlord comment/note field on ticket detail (currently only status-change notes)
 
 ### Settings Page
 - [ ] `/dashboard/settings` — profile name (editable), email (read-only, from Supabase Auth)
@@ -354,6 +375,19 @@ Status: `[ ]` todo · `[x]` done · `[-]` in progress · `[~]` skipped/deferred
 - [ ] Webhook: `customer.subscription.updated`, `invoice.payment_failed`
 - [ ] Block dashboard features if subscription lapsed → upgrade prompt
 - [ ] Stripe Customer Portal link in Settings
+
+### Closed Beta Access — IMPLEMENTED
+- [x] "Closed Beta" button on landing page navbar (secondary, left of "Join the waitlist")
+- [x] Modal: access code input (type=password), shake animation on wrong code, redirect to /login on correct
+- [x] Hardcoded code `4577`, stored in sessionStorage — soft friction only, not real security
+
+### Row Level Security (RLS) — IMPLEMENTED
+- [x] RLS enabled on all tables (15/15 tables secured)
+- [x] First batch (20260305–20260309): users, properties, tenancies, compliance_docs, waitlist, tenants, property_documents, document_acknowledgments, rent_payments
+- [x] Second batch (20260315): maintenance_requests, maintenance_photos, maintenance_status_history, tenant_documents, financial_reports, scoring_configs, scoring_rules
+- [x] Landlord access via `properties.user_id = auth.uid()::text`
+- [x] Tenant access via `tenants.user_id = auth.uid()::text`
+- [x] scoring_configs/scoring_rules: authenticated read-only (managed via DB)
 
 ### Making Tax Digital (MTD) — Landlord Income
 - [ ] Track income (RentPayment RECEIVED) and expenses per property

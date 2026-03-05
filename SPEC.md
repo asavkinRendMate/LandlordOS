@@ -192,6 +192,46 @@ Applicant fills in at `/apply/[propertyId]`:
 
 ---
 
+### 4b. AI Financial Scoring (implemented)
+
+Bank statement analysis powered by Claude API. Evaluates tenant financial health using a rule-based scoring system.
+
+#### Models
+- `ScoringRule` — 30 rules across 6 categories (AFFORDABILITY, STABILITY, DEBT, GAMBLING, LIQUIDITY, POSITIVE). Each rule has a unique key, description, point value (positive or negative), and active flag.
+- `ScoringConfig` — versioned configuration snapshots. One active at a time. Financial reports reference the config version used.
+- `FinancialReport` — the scoring result. Links to tenant and property (both optional). Statuses: PENDING → PROCESSING → COMPLETED or FAILED.
+
+#### Flow
+1. Landlord uploads tenant's bank statement PDF via property detail page
+2. `POST /api/scoring/upload` — file stored in `bank-statements` bucket, FinancialReport created (PENDING)
+3. Background: `analyzeStatement()` runs asynchronously
+   - Downloads PDF from storage, converts to base64
+   - Sends to Claude API with all active rule descriptions and monthly rent context
+   - Claude returns: fired rule keys, monthly income, average balance, rent-to-income ratio, summary, confidence level
+   - Gambling rules deduplicated (only highest penalty applied)
+   - Score calculated: starts at 100, rules add/subtract points, clamped to 0–100
+   - Grade assigned: Excellent (85+), Good (70+), Fair (55+), Poor (40+), High Risk (<40)
+   - Report saved with score, grade, AI summary, breakdown by category, applied rules
+4. Frontend polls `GET /api/scoring/[reportId]` for results
+5. Results shown inline on property detail page per tenant: grade badge, score, AI summary
+
+#### Verification
+- Each report has a unique `verificationToken`
+- Public verification page at `/verify/[token]` — shows grade, score, summary, date
+- No auth required — designed for sharing with landlords/agents
+
+#### Configuration
+- `prisma/seed-scoring.ts` seeds 30 rules + ScoringConfig v1
+- Rules can be deactivated individually; config versioning tracks which rules were active for each report
+- Property has `requireFinancialVerification` flag (toggleable by landlord)
+
+#### Not yet implemented
+- Stripe payment for scoring (currently free)
+- PDF report generation
+- Financial Passport product (`/passport` page exists as pre-launch landing)
+
+---
+
 ### 5. Move-In Process
 
 #### Deposit
@@ -243,25 +283,48 @@ Implemented via the `RentPayment` model. Status enum: `PENDING → EXPECTED → 
 
 **GoCardless Direct Debit (planned):** future integration to auto-collect rent and reconcile against RentPayment records automatically.
 
-#### Tenant Portal
+#### Tenant Portal (implemented)
 Accessible at `/tenant/dashboard` — requires magic link sign-in (email). Tenant can:
-- View property address and key tenancy details
+- View property address and key tenancy details (landlord name, landlord email)
 - Download and acknowledge landlord-uploaded PropertyDocuments (mark as reviewed)
 - Upload their own TenantDocuments (passport, R2R, income proof, bank statements, etc.)
-- View rent payment status (read-only) — planned
+- View rent payment status (read-only)
+- Submit maintenance requests (title, description) and view submitted requests with status
 - If the tenant's account is also a landlord: "Switch to landlord dashboard" context switcher in nav
-- Planned: submit maintenance requests, give notice
+- Planned: give notice, photo upload on maintenance requests from portal
 
-#### Maintenance Tickets
-Landlord view:
-- List of all open tickets across all properties
-- Per ticket: category, description, photos, date submitted, status, legal deadline
-- **Awaab's Law timer:** if category = DAMP_MOULD, `respondBy = createdAt + 24 hours`
-- Landlord can:
-  - Change status (Open → In Progress → Resolved)
-  - Add internal comment
-  - Message tenant (logged in ticket)
-- Full audit trail — all actions timestamped
+#### Maintenance Requests (implemented)
+Model: `MaintenanceRequest` with priority (LOW/MEDIUM/HIGH/URGENT) and status (OPEN/IN_PROGRESS/RESOLVED). Related models: `MaintenanceStatusHistory` (immutable audit trail) and `MaintenancePhoto` (photo uploads).
+
+**Landlord view:**
+- `/dashboard/maintenance` — list all requests across all properties, filterable by status (All/Open/In Progress/Resolved), sorted by priority then date
+- `/dashboard/maintenance/[id]` — detail page with full description, photo gallery, status management, timeline of all status changes
+- Dashboard overview shows top 3 active requests (OPEN + IN_PROGRESS) in "Active Maintenance" section
+- Landlord can: change status (Open → In Progress → Resolved), change priority, add note on status change
+
+**Tenant view:**
+- Tenant portal shows maintenance form (title, description) and list of submitted requests with status
+- Tenant can submit new requests (creates MaintenanceRequest + initial StatusHistory entry)
+
+**Photo system:**
+- Both landlord and tenant can upload photos (JPEG/PNG/WebP, max 10 MB, max 20 per request)
+- Stored in `maintenance-photos` Supabase Storage bucket at `/{requestId}/{role}/{photoId}-{filename}`
+- Tenant can delete own photos; landlord can delete any photo
+- Signed URLs (60 min expiry) for viewing
+
+**API routes:**
+- `GET /api/maintenance` — list requests (landlord: by property, tenant: by tenantId)
+- `POST /api/maintenance` — create request (requires propertyId, tenantId, title, description)
+- `GET /api/maintenance/[id]` — full detail with status history and photos
+- `PATCH /api/maintenance/[id]` — update status/priority (landlord only)
+- `GET/POST /api/maintenance/[id]/photos` — list/upload photos
+- `DELETE /api/maintenance/[id]/photos/[photoId]` — delete photo
+
+**Not yet implemented:**
+- Category field (no DAMP_MOULD category yet)
+- Awaab's Law timer (`respondBy` field)
+- Notification emails on submission or status change
+- Landlord comments/notes independent of status changes
 
 #### Section 13 Notice (Rent Increase)
 - Landlord can raise rent maximum once per 12 months

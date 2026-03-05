@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
+import TenantDetailsForm, { type TenantFormData } from '@/components/shared/TenantDetailsForm'
 
 // ── Shared field styles ───────────────────────────────────────────────────────
 
@@ -80,17 +81,7 @@ const propertySchema = z.object({
   type: z.enum(['FLAT', 'HOUSE', 'HMO', 'OTHER']),
 })
 
-const tenantSchema = z.object({
-  tenantName: z.string().min(1, 'Tenant name is required'),
-  tenantEmail: z.string().email('Enter a valid email'),
-  tenantPhone: z.string().optional(),
-  monthlyRentStr: z.string().min(1, 'Monthly rent is required'),
-  paymentDay: z.number().int().min(1).max(31),
-  startDate: z.string().min(1, 'Start date is required'),
-})
-
 type PropertyValues = z.infer<typeof propertySchema>
-type TenantValues = z.infer<typeof tenantSchema>
 
 interface OsAddress {
   uprn: string
@@ -246,64 +237,6 @@ function OccupancyStep({ onHasTenant, onVacant }: { onHasTenant: () => void; onV
   )
 }
 
-// ── Step 3 — Tenant details ───────────────────────────────────────────────────
-
-function TenantForm({ onNext, onBack, submitting }: { onNext: (v: TenantValues) => void; onBack: () => void; submitting: boolean }) {
-  const { register, handleSubmit, formState: { errors } } =
-    useForm<TenantValues>({ resolver: zodResolver(tenantSchema), defaultValues: { paymentDay: 1 } })
-
-  return (
-    <form id="wizard-form" onSubmit={handleSubmit(onNext)} className="space-y-4">
-      <div>
-        <Label htmlFor="tenantName">Full name</Label>
-        <input id="tenantName" {...register('tenantName')} placeholder="Jane Smith" className={inputClass} />
-        <FieldError message={errors.tenantName?.message} />
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="tenantEmail">Email</Label>
-          <input id="tenantEmail" type="email" {...register('tenantEmail')} placeholder="jane@example.com" className={inputClass} />
-          <FieldError message={errors.tenantEmail?.message} />
-        </div>
-        <div>
-          <Label htmlFor="tenantPhone">Phone <span className="text-white/30">(optional)</span></Label>
-          <input id="tenantPhone" type="tel" {...register('tenantPhone')} placeholder="07700 900000" className={inputClass} />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="monthlyRentStr">Monthly rent (£)</Label>
-          <input id="monthlyRentStr" {...register('monthlyRentStr')} placeholder="1200" className={inputClass} />
-          <FieldError message={errors.monthlyRentStr?.message} />
-        </div>
-        <div>
-          <Label htmlFor="paymentDay">Payment day</Label>
-          <input id="paymentDay" type="number" min={1} max={31}
-            {...register('paymentDay', { valueAsNumber: true })} className={inputClass} />
-          <FieldError message={errors.paymentDay?.message} />
-        </div>
-      </div>
-
-      <div>
-        <Label htmlFor="startDate">Tenancy start date</Label>
-        <input id="startDate" type="date" {...register('startDate')} className={inputClass} />
-        <FieldError message={errors.startDate?.message} />
-      </div>
-
-      <div className="pt-2 flex flex-col gap-3">
-        <button type="submit" disabled={submitting} className="w-full bg-green-500 hover:bg-green-400 disabled:opacity-50 text-white font-semibold rounded-xl py-3 text-sm transition-colors">
-          {submitting ? 'Saving…' : 'Add property'}
-        </button>
-        <button type="button" onClick={onBack} className="text-sm text-white/30 hover:text-white/60 transition-colors text-center">
-          ← Back
-        </button>
-      </div>
-    </form>
-  )
-}
-
 // ── Step 4 — All done ─────────────────────────────────────────────────────────
 
 function AllDone({ propertyId, portalToken }: { propertyId: string; portalToken?: string }) {
@@ -445,7 +378,7 @@ export default function OnboardingPage() {
     if (id) { setCreatedPropertyId(id); setStep(4) }
   }
 
-  async function handleStep3(tenantValues: TenantValues) {
+  async function handleStep3(tenantValues: TenantFormData) {
     if (!propertyData) return
     setSubmitting(true); setError(null)
 
@@ -454,6 +387,9 @@ export default function OnboardingPage() {
     setCreatedPropertyId(propertyId)
 
     const monthlyRent = Math.round(parseFloat(tenantValues.monthlyRentStr) * 100)
+    const depositAmount = tenantValues.depositAmountStr
+      ? Math.round(parseFloat(tenantValues.depositAmountStr) * 100)
+      : undefined
     const tenancyRes = await fetch('/api/tenancies', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -465,6 +401,9 @@ export default function OnboardingPage() {
         monthlyRent,
         paymentDay: tenantValues.paymentDay,
         startDate: new Date(tenantValues.startDate).toISOString(),
+        depositAmount,
+        depositScheme: tenantValues.depositScheme || undefined,
+        depositRef: tenantValues.depositRef || undefined,
       }),
     })
 
@@ -519,7 +458,17 @@ export default function OnboardingPage() {
           ) : step === 2 ? (
             <OccupancyStep onHasTenant={() => setStep(3)} onVacant={handleVacant} />
           ) : step === 3 ? (
-            <TenantForm onNext={handleStep3} onBack={() => setStep(2)} submitting={submitting} />
+            <div>
+              <TenantDetailsForm
+                onSubmit={handleStep3}
+                isLoading={submitting}
+                submitLabel="Add property"
+                variant="dark"
+              />
+              <button type="button" onClick={() => setStep(2)} className="w-full mt-3 text-sm text-white/30 hover:text-white/60 transition-colors text-center">
+                ← Back
+              </button>
+            </div>
           ) : (
             <AllDone propertyId={createdPropertyId ?? ''} portalToken={createdPortalToken} />
           )}
