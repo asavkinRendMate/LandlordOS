@@ -7,11 +7,19 @@ import type { Property, PropertyDocument, Tenancy, Tenant, MaintenanceRequest, M
 // ── Status helpers ────────────────────────────────────────────────────────────
 
 const statusConfig: Record<string, { label: string; dot: string; badge: string }> = {
-  VACANT:           { label: 'Vacant',                dot: 'bg-white/30',   badge: 'bg-white/10 text-white/50' },
-  APPLICATION_OPEN: { label: 'Accepting applications', dot: 'bg-blue-400',   badge: 'bg-blue-500/15 text-blue-300' },
-  OFFER_ACCEPTED:   { label: 'Offer accepted',         dot: 'bg-yellow-400', badge: 'bg-yellow-500/15 text-yellow-300' },
-  ACTIVE:           { label: 'Active',                 dot: 'bg-green-400',  badge: 'bg-green-500/15 text-green-300' },
-  NOTICE_GIVEN:     { label: 'Notice given',           dot: 'bg-orange-400', badge: 'bg-orange-500/15 text-orange-300' },
+  VACANT:           { label: 'Vacant',                dot: 'bg-gray-400',   badge: 'bg-gray-100 text-gray-500' },
+  APPLICATION_OPEN: { label: 'Accepting applications', dot: 'bg-blue-400',   badge: 'bg-blue-100 text-blue-700' },
+  OFFER_ACCEPTED:   { label: 'Offer accepted',         dot: 'bg-yellow-400', badge: 'bg-yellow-100 text-yellow-800' },
+  ACTIVE:           { label: 'Active',                 dot: 'bg-green-400',  badge: 'bg-green-100 text-green-700' },
+  NOTICE_GIVEN:     { label: 'Notice given',           dot: 'bg-orange-400', badge: 'bg-orange-100 text-orange-700' },
+}
+
+const statusTopBorder: Record<string, string> = {
+  ACTIVE:           'border-t-green-500',
+  VACANT:           'border-t-gray-300',
+  APPLICATION_OPEN: 'border-t-blue-400',
+  OFFER_ACCEPTED:   'border-t-yellow-400',
+  NOTICE_GIVEN:     'border-t-amber-400',
 }
 
 const complianceLabels: Record<string, string> = {
@@ -23,7 +31,7 @@ const complianceLabels: Record<string, string> = {
 
 function getComplianceColor(docs: PropertyDocument[], type: string): string {
   const matches = docs.filter((d) => d.documentType === type)
-  if (!matches.length) return 'bg-white/20'
+  if (!matches.length) return 'bg-gray-300'
   const best = [...matches].sort((a, b) => {
     const tA = a.expiryDate ? new Date(a.expiryDate).getTime() : Infinity
     const tB = b.expiryDate ? new Date(b.expiryDate).getTime() : Infinity
@@ -71,10 +79,10 @@ type MaintenanceWithRelations = MaintenanceRequest & {
 const priorityOrder: Record<MaintenancePriority, number> = { URGENT: 0, HIGH: 1, MEDIUM: 2, LOW: 3 }
 
 const priorityBadge: Record<MaintenancePriority, string> = {
-  URGENT: 'bg-red-500/20 text-red-300',
-  HIGH:   'bg-orange-500/20 text-orange-300',
-  MEDIUM: 'bg-yellow-500/20 text-yellow-300',
-  LOW:    'bg-white/8 text-white/40',
+  URGENT: 'bg-red-100 text-red-700',
+  HIGH:   'bg-orange-100 text-orange-700',
+  MEDIUM: 'bg-yellow-100 text-yellow-800',
+  LOW:    'bg-gray-100 text-gray-500',
 }
 
 // ── Property card ─────────────────────────────────────────────────────────────
@@ -83,19 +91,20 @@ function PropertyCard({ property }: { property: PropertyWithRelations }) {
   const config = statusConfig[property.status] ?? statusConfig.VACANT
   const activeTenancy = property.tenancies[0] ?? null
   const docTypes = ['GAS_SAFETY', 'EPC', 'EICR', 'HOW_TO_RENT'] as const
+  const topBorder = statusTopBorder[property.status] ?? 'border-t-gray-300'
 
   return (
     <Link
       href={`/dashboard/properties/${property.id}`}
-      className="block bg-white/4 border border-white/8 rounded-xl p-4 hover:bg-white/6 hover:border-white/14 transition-all"
+      className={`block bg-white border border-black/[0.06] border-t-[3px] ${topBorder} rounded-xl p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)] hover:-translate-y-px transition-all duration-150`}
     >
       {/* Header */}
       <div className="flex items-start justify-between gap-2 mb-3">
         <div className="min-w-0">
-          <p className="text-white font-medium text-sm leading-snug truncate">
+          <p className="text-[#1A1A1A] font-medium text-sm leading-snug truncate">
             {property.name ?? property.line1}
           </p>
-          <p className="text-white/40 text-xs mt-0.5 truncate">
+          <p className="text-[#9CA3AF] text-xs mt-0.5 truncate">
             {property.name ? `${property.line1}, ` : ''}{property.city}, {property.postcode}
           </p>
         </div>
@@ -106,14 +115,14 @@ function PropertyCard({ property }: { property: PropertyWithRelations }) {
       </div>
 
       {/* Rent / tenant */}
-      <p className="text-white/60 text-xs mb-3 truncate">
+      <p className="text-[#6B7280] text-xs mb-3 truncate">
         {activeTenancy ? (
           <>
-            <span className="text-white/80 font-medium">{formatRent(activeTenancy.monthlyRent)}</span>
+            <span className="text-[#374151] font-medium">{formatRent(activeTenancy.monthlyRent)}</span>
             {activeTenancy.tenant?.name && <span className="ml-1.5">· {activeTenancy.tenant.name}</span>}
           </>
         ) : (
-          <span className="text-white/30 italic">No active tenancy</span>
+          <span className="text-[#9CA3AF] italic">No active tenancy</span>
         )}
       </p>
 
@@ -124,7 +133,7 @@ function PropertyCard({ property }: { property: PropertyWithRelations }) {
           return (
             <div key={type} className="flex items-center gap-1">
               <div className={`w-2 h-2 rounded-full shrink-0 ${color}`} />
-              <span className="text-xs text-white/30">{complianceLabels[type]}</span>
+              <span className="text-xs text-[#9CA3AF]">{complianceLabels[type]}</span>
             </div>
           )
         })}
@@ -140,17 +149,17 @@ function MaintenanceRow({ req }: { req: MaintenanceWithRelations }) {
   return (
     <Link
       href={`/dashboard/maintenance/${req.id}`}
-      className="flex items-center gap-3 py-2.5 border-b border-white/6 last:border-0 hover:bg-white/3 -mx-4 px-4 transition-colors"
+      className="flex items-center gap-3 py-2.5 border-b border-gray-100 last:border-0 hover:bg-gray-50 -mx-4 px-4 transition-colors"
     >
       <span className={`shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full ${priorityBadge[req.priority]}`}>
         {req.priority}
       </span>
       <div className="flex-1 min-w-0">
-        <p className="text-white text-sm font-medium truncate">{req.title}</p>
-        <p className="text-white/40 text-xs truncate">{propertyLabel} · {req.tenant.name}</p>
+        <p className="text-[#1A1A1A] text-sm font-medium truncate">{req.title}</p>
+        <p className="text-[#9CA3AF] text-xs truncate">{propertyLabel} · {req.tenant.name}</p>
       </div>
-      <span className="shrink-0 text-white/30 text-xs">{timeAgo(new Date(req.createdAt))}</span>
-      <svg className="w-4 h-4 text-white/20 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <span className="shrink-0 text-[#9CA3AF] text-xs">{timeAgo(new Date(req.createdAt))}</span>
+      <svg className="w-4 h-4 text-[#D1D5DB] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
       </svg>
     </Link>
@@ -185,7 +194,7 @@ export default async function DashboardPage({
       orderBy: { createdAt: 'asc' },
     }),
     prisma.maintenanceRequest.findMany({
-      where: { property: { userId: user.id }, status: 'OPEN' },
+      where: { property: { userId: user.id }, status: { in: ['OPEN', 'IN_PROGRESS'] } },
       include: {
         property: { select: { name: true, line1: true } },
         tenant:   { select: { name: true } },
@@ -227,9 +236,9 @@ export default async function DashboardPage({
     <div className="p-4 lg:p-8">
       {/* Alert bar */}
       {alerts.length > 0 && (
-        <div className="mb-5 bg-yellow-500/10 border border-yellow-500/25 rounded-xl px-4 py-3 space-y-1">
+        <div className="mb-5 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 space-y-1 animate-fade-in-up" style={{ animationDelay: '0ms' }}>
           {alerts.map((a, i) => (
-            <p key={i} className="text-yellow-300 text-sm">
+            <p key={i} className="text-amber-700 text-sm">
               <span className="font-medium">{a.type} certificate</span> expires{' '}
               {a.expiryDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} — {a.property}
             </p>
@@ -238,15 +247,15 @@ export default async function DashboardPage({
       )}
 
       {/* Maintenance preview */}
-      <div className="bg-white/4 border border-white/8 rounded-xl p-4 mb-5">
+      <div className="bg-white border border-black/[0.06] rounded-xl p-4 mb-5 shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] animate-fade-in-up" style={{ animationDelay: '0ms' }}>
         <div className="flex items-center justify-between mb-1">
-          <p className="text-xs text-white/40 uppercase tracking-wide font-medium">Open Maintenance</p>
-          <Link href="/dashboard/maintenance" className="text-xs text-green-400 hover:text-green-300 transition-colors">
+          <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium">Active Maintenance</p>
+          <Link href="/dashboard/maintenance" className="text-xs text-[#2D6A4F] hover:text-[#245c43] transition-colors">
             View all →
           </Link>
         </div>
         {topRequests.length === 0 ? (
-          <p className="text-white/30 text-sm italic py-2">No open maintenance requests</p>
+          <p className="text-[#9CA3AF] text-sm italic py-2">No active maintenance requests</p>
         ) : (
           <div>
             {topRequests.map((req) => (
@@ -257,18 +266,18 @@ export default async function DashboardPage({
       </div>
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-white text-xl font-semibold">Properties</h1>
+      <div className="flex items-center justify-between mb-4 animate-fade-in-up" style={{ animationDelay: '80ms' }}>
+        <h1 className="text-[#1A1A1A] text-xl font-semibold">Properties</h1>
         <Link
           href="/dashboard/properties"
-          className="text-xs text-white/40 hover:text-white/70 transition-colors"
+          className="text-xs text-[#6B7280] hover:text-[#374151] transition-colors"
         >
           View all →
         </Link>
       </div>
 
       {/* Grid — 1 col mobile, 2 col sm+ */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-fade-in-up" style={{ animationDelay: '160ms' }}>
         {properties.map((p) => (
           <PropertyCard key={p.id} property={p} />
         ))}

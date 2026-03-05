@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import DocumentUploadModal from '@/components/shared/DocumentUploadModal'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -592,6 +592,28 @@ interface TenantMaintenanceRequest {
   priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
   status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED'
   createdAt: string
+  updatedAt: string
+}
+
+interface MaintStatusHistory {
+  id: string
+  fromStatus: string | null
+  toStatus: string
+  changedAt: string
+  note: string | null
+}
+
+interface MaintPhoto {
+  id: string
+  role: string
+  signedUrl: string | null
+  caption: string | null
+  uploadedAt: string
+}
+
+interface RequestDetail {
+  statusHistory: MaintStatusHistory[]
+  photos: MaintPhoto[]
 }
 
 const MAINT_STATUS_CLS: Record<string, string> = {
@@ -604,12 +626,52 @@ const MAINT_STATUS_LABEL: Record<string, string> = {
   OPEN: 'Open', IN_PROGRESS: 'In progress', RESOLVED: 'Resolved',
 }
 
+const MAINT_TIMELINE_DOT: Record<string, string> = {
+  OPEN:        'bg-blue-400',
+  IN_PROGRESS: 'bg-amber-400',
+  RESOLVED:    'bg-green-500',
+}
+
 const PRIORITY_OPTIONS: Array<{ value: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'; label: string; hint: string }> = [
   { value: 'LOW',    label: 'Low',    hint: 'Not urgent, minor issue' },
   { value: 'MEDIUM', label: 'Medium', hint: 'Needs attention soon' },
   { value: 'HIGH',   label: 'High',   hint: 'Significant issue' },
   { value: 'URGENT', label: 'Urgent', hint: 'Safety concern or emergency' },
 ]
+
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+const MAX_PHOTO_SIZE = 10 * 1024 * 1024
+const MAX_PHOTOS = 10
+
+async function compressImage(file: File, maxPx = 1920, quality = 0.82): Promise<File> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file)
+    const img = new window.Image()
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      const scale = Math.min(1, maxPx / Math.max(img.width, img.height))
+      const w = Math.round(img.width * scale)
+      const h = Math.round(img.height * scale)
+      const canvas = document.createElement('canvas')
+      canvas.width = w
+      canvas.height = h
+      const ctx = canvas.getContext('2d')
+      if (!ctx) { resolve(file); return }
+      ctx.drawImage(img, 0, 0, w, h)
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) { resolve(file); return }
+          const name = file.name.replace(/\.[^.]+$/, '.jpg')
+          resolve(new File([blob], name, { type: 'image/jpeg' }))
+        },
+        'image/jpeg',
+        quality,
+      )
+    }
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file) }
+    img.src = url
+  })
+}
 
 // ── Tenant Maintenance section ────────────────────────────────────────────────
 
@@ -624,12 +686,22 @@ function TenantMaintenanceSection({
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [uploadingPhotos, setUploadingPhotos] = useState(false)
   const [submitSuccess, setSubmitSuccess] = useState(false)
 
   // Form state
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [priority, setPriority] = useState<'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'>('MEDIUM')
+
+  // Photo upload state
+  const photoInputRef = useRef<HTMLInputElement>(null)
+  const [pendingPhotos, setPendingPhotos] = useState<Array<{ file: File; preview: string; caption: string }>>([])
+
+  // Expanded detail state (Part 7)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [loadingDetail, setLoadingDetail] = useState<string | null>(null)
+  const [detailCache, setDetailCache] = useState<Record<string, RequestDetail>>({})
 
   const loadRequests = useCallback(async () => {
     setLoading(true)
@@ -641,6 +713,62 @@ function TenantMaintenanceSection({
 
   useEffect(() => { loadRequests() }, [loadRequests])
 
+  async function loadDetail(id: string) {
+    if (detailCache[id] || loadingDetail === id) return
+    setLoadingDetail(id)
+    const [detailRes, photosRes] = await Promise.all([
+      fetch(`/api/maintenance/${id}`),
+      fetch(`/api/maintenance/${id}/photos`),
+    ])
+    const [detailJson, photosJson] = await Promise.all([detailRes.json(), photosRes.json()])
+    setDetailCache((prev) => ({
+      ...prev,
+      [id]: {
+        statusHistory: detailJson.data?.statusHistory ?? [],
+        photos: photosJson.data ?? [],
+      },
+    }))
+    setLoadingDetail(null)
+  }
+
+  function toggleExpand(id: string) {
+    if (expandedId === id) {
+      setExpandedId(null)
+    } else {
+      setExpandedId(id)
+      loadDetail(id)
+    }
+  }
+
+  // Photo handlers
+  function addFiles(files: FileList | null) {
+    if (!files) return
+    const valid: Array<{ file: File; preview: string; caption: string }> = []
+    for (const file of Array.from(files)) {
+      if (!ALLOWED_IMAGE_TYPES.includes(file.type)) continue
+      if (file.size > MAX_PHOTO_SIZE) continue
+      if (pendingPhotos.length + valid.length >= MAX_PHOTOS) break
+      valid.push({ file, preview: URL.createObjectURL(file), caption: '' })
+    }
+    setPendingPhotos((prev) => [...prev, ...valid])
+  }
+
+  function removePhoto(i: number) {
+    setPendingPhotos((prev) => {
+      URL.revokeObjectURL(prev[i].preview)
+      return prev.filter((_, idx) => idx !== i)
+    })
+  }
+
+  function updateCaption(i: number, caption: string) {
+    setPendingPhotos((prev) => prev.map((p, idx) => idx === i ? { ...p, caption } : p))
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault()
+    addFiles(e.dataTransfer.files)
+  }
+
   async function submit() {
     if (!title.trim() || !description.trim()) return
     setSubmitting(true)
@@ -649,15 +777,47 @@ function TenantMaintenanceSection({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ propertyId, tenantId, title, description, priority }),
     })
-    setSubmitting(false)
-    if (res.ok) {
-      setSubmitSuccess(true)
-      setTitle('')
-      setDescription('')
-      setPriority('MEDIUM')
-      await loadRequests()
-      setTimeout(() => { setSubmitSuccess(false); setShowModal(false) }, 2000)
+    if (!res.ok) { setSubmitting(false); return }
+    const json = await res.json()
+    const reqId: string = json.data?.id
+
+    // Upload photos sequentially (compressed before upload)
+    if (reqId && pendingPhotos.length > 0) {
+      setSubmitting(false)
+      setUploadingPhotos(true)
+      for (const p of pendingPhotos) {
+        const compressed = await compressImage(p.file)
+        const fd = new FormData()
+        fd.append('file', compressed)
+        fd.append('role', 'TENANT')
+        if (p.caption) fd.append('caption', p.caption)
+        await fetch(`/api/maintenance/${reqId}/photos`, { method: 'POST', body: fd }).catch(console.error)
+      }
+      pendingPhotos.forEach((p) => URL.revokeObjectURL(p.preview))
+      setPendingPhotos([])
+      setUploadingPhotos(false)
+    } else {
+      setSubmitting(false)
     }
+
+    setSubmitSuccess(true)
+    setTitle('')
+    setDescription('')
+    setPriority('MEDIUM')
+    await loadRequests()
+    setTimeout(() => { setSubmitSuccess(false); setShowModal(false) }, 2000)
+  }
+
+  function openModal() {
+    setPendingPhotos([])
+    setSubmitSuccess(false)
+    setShowModal(true)
+  }
+
+  function closeModal() {
+    pendingPhotos.forEach((p) => URL.revokeObjectURL(p.preview))
+    setPendingPhotos([])
+    setShowModal(false)
   }
 
   return (
@@ -671,7 +831,7 @@ function TenantMaintenanceSection({
         </div>
         <h2 className="text-gray-900 font-semibold flex-1">Maintenance Requests</h2>
         <button
-          onClick={() => setShowModal(true)}
+          onClick={openModal}
           className="flex items-center gap-1.5 text-sm bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded-lg transition-colors"
         >
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -689,7 +849,7 @@ function TenantMaintenanceSection({
         <div className="text-center py-6 border-2 border-dashed border-gray-100 rounded-xl">
           <p className="text-gray-400 text-sm">No maintenance requests yet.</p>
           <button
-            onClick={() => setShowModal(true)}
+            onClick={openModal}
             className="mt-2 text-sm text-green-600 hover:text-green-700 transition-colors"
           >
             Submit your first request
@@ -697,33 +857,135 @@ function TenantMaintenanceSection({
         </div>
       ) : (
         <div className="space-y-2">
-          {requests.map((req) => (
-            <div key={req.id} className="flex items-start gap-3 p-3 rounded-xl border border-gray-100 bg-gray-50">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-gray-900 text-sm font-medium">{req.title}</p>
-                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${MAINT_STATUS_CLS[req.status]}`}>
-                    {MAINT_STATUS_LABEL[req.status]}
-                  </span>
-                </div>
-                <p className="text-gray-500 text-xs mt-0.5 truncate">{req.description}</p>
-                <p className="text-gray-400 text-xs mt-0.5">
-                  {new Date(req.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                </p>
+          {requests.map((req) => {
+            const isExpanded = expandedId === req.id
+            const isLoadingThis = loadingDetail === req.id
+            const detail = detailCache[req.id]
+            return (
+              <div key={req.id} className="rounded-xl border border-gray-100 overflow-hidden">
+                {/* Row header */}
+                <button
+                  onClick={() => toggleExpand(req.id)}
+                  className="w-full flex items-center gap-3 p-3 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-gray-900 text-sm font-medium">{req.title}</p>
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${MAINT_STATUS_CLS[req.status]}`}>
+                        {MAINT_STATUS_LABEL[req.status]}
+                      </span>
+                    </div>
+                    <p className="text-gray-400 text-xs mt-0.5">
+                      Updated {new Date(req.updatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </p>
+                  </div>
+                  <svg
+                    className={`w-4 h-4 text-gray-400 shrink-0 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                    fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                {/* Expanded detail */}
+                {isExpanded && (
+                  <div className="border-t border-gray-100 p-3 bg-white">
+                    {isLoadingThis ? (
+                      <div className="flex justify-center py-3">
+                        <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+                      </div>
+                    ) : detail ? (
+                      <div className="space-y-4">
+                        <p className="text-gray-600 text-sm">{req.description}</p>
+
+                        {/* Status timeline */}
+                        {detail.statusHistory.length > 0 && (
+                          <div>
+                            <p className="text-xs font-medium text-gray-500 mb-2">Status history</p>
+                            <div className="space-y-2">
+                              {detail.statusHistory.map((h) => (
+                                <div key={h.id} className="flex gap-2.5 items-start">
+                                  <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${MAINT_TIMELINE_DOT[h.toStatus] ?? 'bg-gray-400'}`} />
+                                  <div>
+                                    <p className="text-xs text-gray-700 font-medium">{MAINT_STATUS_LABEL[h.toStatus] ?? h.toStatus}</p>
+                                    <p className="text-gray-400 text-xs">
+                                      {new Date(h.changedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                    </p>
+                                    {h.note && <p className="text-gray-500 text-xs mt-0.5 italic">&ldquo;{h.note}&rdquo;</p>}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Tenant photos */}
+                        {detail.photos.filter(p => p.role === 'TENANT').length > 0 && (
+                          <div>
+                            <p className="text-xs font-medium text-gray-500 mb-2">Your photos</p>
+                            <div className="grid grid-cols-3 gap-2">
+                              {detail.photos.filter(p => p.role === 'TENANT').map((photo) => (
+                                <div key={photo.id}>
+                                  {photo.signedUrl ? (
+                                    <a href={photo.signedUrl} target="_blank" rel="noopener noreferrer">
+                                      <img src={photo.signedUrl} alt={photo.caption ?? ''} className="w-full aspect-square object-cover rounded-lg" />
+                                    </a>
+                                  ) : (
+                                    <div className="w-full aspect-square bg-gray-100 rounded-lg flex items-center justify-center">
+                                      <svg className="w-5 h-5 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                      </svg>
+                                    </div>
+                                  )}
+                                  {photo.caption && <p className="text-gray-400 text-xs mt-1 truncate">{photo.caption}</p>}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Landlord proof photos (RESOLVED only) */}
+                        {req.status === 'RESOLVED' && detail.photos.filter(p => p.role === 'LANDLORD').length > 0 && (
+                          <div>
+                            <p className="text-xs font-medium text-gray-500 mb-2">Resolved — proof photos</p>
+                            <div className="grid grid-cols-3 gap-2">
+                              {detail.photos.filter(p => p.role === 'LANDLORD').map((photo) => (
+                                <div key={photo.id}>
+                                  {photo.signedUrl ? (
+                                    <a href={photo.signedUrl} target="_blank" rel="noopener noreferrer">
+                                      <img src={photo.signedUrl} alt={photo.caption ?? ''} className="w-full aspect-square object-cover rounded-lg" />
+                                    </a>
+                                  ) : (
+                                    <div className="w-full aspect-square bg-gray-100 rounded-lg flex items-center justify-center">
+                                      <svg className="w-5 h-5 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                      </svg>
+                                    </div>
+                                  )}
+                                  {photo.caption && <p className="text-gray-400 text-xs mt-1 truncate">{photo.caption}</p>}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
       {/* New request modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl border border-gray-200 w-full max-w-md p-5 shadow-xl">
+          <div className="bg-white rounded-2xl border border-gray-200 w-full max-w-md p-5 shadow-xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-gray-900 font-semibold">New Maintenance Request</h3>
               <button
-                onClick={() => setShowModal(false)}
+                onClick={closeModal}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -781,16 +1043,72 @@ function TenantMaintenanceSection({
                   />
                 </div>
 
+                {/* Photo upload (Part 4) */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Add photos <span className="text-gray-400 font-normal">(optional)</span>
+                  </label>
+                  <div
+                    onDrop={handleDrop}
+                    onDragOver={(e) => e.preventDefault()}
+                    onClick={() => photoInputRef.current?.click()}
+                    className="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center cursor-pointer hover:border-green-400 hover:bg-green-50/30 transition-colors"
+                  >
+                    <svg className="w-6 h-6 text-gray-300 mx-auto mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <p className="text-gray-400 text-sm">Drop photos here or click to select</p>
+                    <p className="text-gray-300 text-xs mt-0.5">JPEG, PNG, WebP · max 10MB · up to {MAX_PHOTOS} photos</p>
+                    <input
+                      ref={photoInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      multiple
+                      hidden
+                      onChange={(e) => addFiles(e.target.files)}
+                    />
+                  </div>
+                  {pendingPhotos.length > 0 && (
+                    <>
+                      <p className="text-gray-400 text-xs mt-1.5">Photos help your landlord understand the issue faster.</p>
+                      <div className="grid grid-cols-3 gap-2 mt-3">
+                        {pendingPhotos.map((p, i) => (
+                          <div key={i} className="relative group">
+                            <div className="relative aspect-square">
+                              <img src={p.preview} alt="" className="w-full h-full object-cover rounded-lg" />
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); removePhoto(i) }}
+                                className="absolute top-1 right-1 w-5 h-5 bg-black/60 rounded-full text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity leading-none"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                            <input
+                              type="text"
+                              value={p.caption}
+                              onChange={(e) => updateCaption(i, e.target.value)}
+                              placeholder="Caption…"
+                              className="mt-1 w-full text-xs border border-gray-200 rounded px-2 py-1 text-gray-700 placeholder-gray-300 focus:outline-none focus:ring-1 focus:ring-green-500/40"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+
                 <div className="flex gap-3">
                   <button
                     onClick={submit}
-                    disabled={submitting || !title.trim() || !description.trim()}
+                    disabled={submitting || uploadingPhotos || !title.trim() || !description.trim()}
                     className="flex-1 bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white font-medium py-2 rounded-lg transition-colors text-sm"
                   >
-                    {submitting ? 'Submitting…' : 'Submit request'}
+                    {submitting ? 'Submitting…' : uploadingPhotos ? 'Uploading photos…' : 'Submit request'}
                   </button>
                   <button
-                    onClick={() => setShowModal(false)}
+                    onClick={closeModal}
                     className="text-sm text-gray-500 hover:text-gray-700 px-3 py-2 transition-colors"
                   >
                     Cancel

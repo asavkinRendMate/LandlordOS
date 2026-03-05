@@ -7,11 +7,19 @@ import type { Property, PropertyDocument, Tenancy, Tenant } from '@prisma/client
 // ── Status helpers ────────────────────────────────────────────────────────────
 
 const statusConfig: Record<string, { label: string; dot: string; badge: string }> = {
-  VACANT:           { label: 'Vacant',                dot: 'bg-white/30',   badge: 'bg-white/10 text-white/50' },
-  APPLICATION_OPEN: { label: 'Accepting applications', dot: 'bg-blue-400',   badge: 'bg-blue-500/15 text-blue-300' },
-  OFFER_ACCEPTED:   { label: 'Offer accepted',         dot: 'bg-yellow-400', badge: 'bg-yellow-500/15 text-yellow-300' },
-  ACTIVE:           { label: 'Active',                 dot: 'bg-green-400',  badge: 'bg-green-500/15 text-green-300' },
-  NOTICE_GIVEN:     { label: 'Notice given',           dot: 'bg-orange-400', badge: 'bg-orange-500/15 text-orange-300' },
+  VACANT:           { label: 'Vacant',                dot: 'bg-gray-400',   badge: 'bg-gray-100 text-gray-500' },
+  APPLICATION_OPEN: { label: 'Accepting applications', dot: 'bg-blue-400',   badge: 'bg-blue-100 text-blue-700' },
+  OFFER_ACCEPTED:   { label: 'Offer accepted',         dot: 'bg-yellow-400', badge: 'bg-yellow-100 text-yellow-800' },
+  ACTIVE:           { label: 'Active',                 dot: 'bg-green-400',  badge: 'bg-green-100 text-green-700' },
+  NOTICE_GIVEN:     { label: 'Notice given',           dot: 'bg-orange-400', badge: 'bg-orange-100 text-orange-700' },
+}
+
+const statusTopBorder: Record<string, string> = {
+  ACTIVE:           'border-t-green-500',
+  VACANT:           'border-t-gray-300',
+  APPLICATION_OPEN: 'border-t-blue-400',
+  OFFER_ACCEPTED:   'border-t-yellow-400',
+  NOTICE_GIVEN:     'border-t-amber-400',
 }
 
 const complianceLabels: Record<string, string> = {
@@ -23,7 +31,7 @@ const complianceLabels: Record<string, string> = {
 
 function getComplianceColor(docs: PropertyDocument[], type: string): string {
   const matches = docs.filter((d) => d.documentType === type)
-  if (!matches.length) return 'bg-white/20'
+  if (!matches.length) return 'bg-gray-300'
   const best = [...matches].sort((a, b) => {
     const tA = a.expiryDate ? new Date(a.expiryDate).getTime() : Infinity
     const tB = b.expiryDate ? new Date(b.expiryDate).getTime() : Infinity
@@ -56,18 +64,19 @@ function PropertyCard({ property }: { property: PropertyWithRelations }) {
   const config = statusConfig[property.status] ?? statusConfig.VACANT
   const activeTenancy = property.tenancies[0] ?? null
   const docTypes = ['GAS_SAFETY', 'EPC', 'EICR', 'HOW_TO_RENT'] as const
+  const topBorder = statusTopBorder[property.status] ?? 'border-t-gray-300'
 
   return (
     <Link
       href={`/dashboard/properties/${property.id}`}
-      className="block bg-white/4 border border-white/8 rounded-xl p-4 hover:bg-white/6 hover:border-white/14 transition-all"
+      className={`block bg-white border border-black/[0.06] border-t-[3px] ${topBorder} rounded-xl p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)] hover:-translate-y-px transition-all duration-150`}
     >
       <div className="flex items-start justify-between gap-2 mb-3">
         <div className="min-w-0">
-          <p className="text-white font-medium text-sm leading-snug truncate">
+          <p className="text-[#1A1A1A] font-medium text-sm leading-snug truncate">
             {property.name ?? property.line1}
           </p>
-          <p className="text-white/40 text-xs mt-0.5 truncate">
+          <p className="text-[#9CA3AF] text-xs mt-0.5 truncate">
             {property.name ? `${property.line1}, ` : ''}{property.city}, {property.postcode}
           </p>
         </div>
@@ -77,14 +86,14 @@ function PropertyCard({ property }: { property: PropertyWithRelations }) {
         </span>
       </div>
 
-      <p className="text-white/60 text-xs mb-3 truncate">
+      <p className="text-[#6B7280] text-xs mb-3 truncate">
         {activeTenancy ? (
           <>
-            <span className="text-white/80 font-medium">{formatRent(activeTenancy.monthlyRent)}</span>
+            <span className="text-[#374151] font-medium">{formatRent(activeTenancy.monthlyRent)}</span>
             {activeTenancy.tenant?.name && <span className="ml-1.5">· {activeTenancy.tenant.name}</span>}
           </>
         ) : (
-          <span className="text-white/30 italic">No active tenancy</span>
+          <span className="text-[#9CA3AF] italic">No active tenancy</span>
         )}
       </p>
 
@@ -94,7 +103,7 @@ function PropertyCard({ property }: { property: PropertyWithRelations }) {
           return (
             <div key={type} className="flex items-center gap-1">
               <div className={`w-2 h-2 rounded-full shrink-0 ${color}`} />
-              <span className="text-xs text-white/30">{complianceLabels[type]}</span>
+              <span className="text-xs text-[#9CA3AF]">{complianceLabels[type]}</span>
             </div>
           )
         })}
@@ -142,9 +151,9 @@ export default async function PropertiesPage() {
     <div className="p-4 lg:p-8">
       {/* Alert bar */}
       {alerts.length > 0 && (
-        <div className="mb-5 bg-yellow-500/10 border border-yellow-500/25 rounded-xl px-4 py-3 space-y-1">
+        <div className="mb-5 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 space-y-1 animate-fade-in-up" style={{ animationDelay: '0ms' }}>
           {alerts.map((a, i) => (
-            <p key={i} className="text-yellow-300 text-sm">
+            <p key={i} className="text-amber-700 text-sm">
               <span className="font-medium">{a.type} certificate</span> expires{' '}
               {a.expiryDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} — {a.property}
             </p>
@@ -153,8 +162,8 @@ export default async function PropertiesPage() {
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-5">
-        <h1 className="text-white text-xl font-semibold">My Properties</h1>
+      <div className="flex items-center justify-between mb-5 animate-fade-in-up" style={{ animationDelay: '0ms' }}>
+        <h1 className="text-[#1A1A1A] text-xl font-semibold">My Properties</h1>
         <Link
           href="/dashboard/properties/new"
           className="inline-flex items-center gap-1.5 bg-green-500 hover:bg-green-400 text-white text-sm font-semibold px-3.5 py-2 rounded-lg transition-colors"
@@ -167,8 +176,8 @@ export default async function PropertiesPage() {
       </div>
 
       {properties.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-white/40 text-sm mb-4">No properties yet</p>
+        <div className="text-center py-12 animate-fade-in-up" style={{ animationDelay: '80ms' }}>
+          <p className="text-[#9CA3AF] text-sm mb-4">No properties yet</p>
           <Link
             href="/dashboard/properties/new"
             className="inline-flex items-center gap-1.5 bg-green-500 hover:bg-green-400 text-white text-sm font-semibold px-3.5 py-2 rounded-lg transition-colors"
@@ -177,7 +186,7 @@ export default async function PropertiesPage() {
           </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-fade-in-up" style={{ animationDelay: '80ms' }}>
           {properties.map((p) => (
             <PropertyCard key={p.id} property={p} />
           ))}

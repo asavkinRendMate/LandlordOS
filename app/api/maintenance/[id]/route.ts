@@ -19,12 +19,13 @@ export async function GET(
       include: {
         property: { select: { id: true, name: true, line1: true, city: true, userId: true } },
         tenant:   { select: { id: true, name: true, userId: true } },
+        statusHistory: { orderBy: { changedAt: 'asc' } },
+        photos:        { orderBy: { uploadedAt: 'asc' } },
       },
     })
 
     if (!request) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-    // Allow property owner or the tenant
     const isOwner  = request.property.userId === user.id
     const isTenant = request.tenant.userId === user.id
     if (!isOwner && !isTenant) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -39,6 +40,7 @@ export async function GET(
 const patchSchema = z.object({
   status:   z.enum(['OPEN', 'IN_PROGRESS', 'RESOLVED']).optional(),
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
+  note:     z.string().max(500).optional(),
 })
 
 // PATCH /api/maintenance/[id]
@@ -64,16 +66,43 @@ export async function PATCH(
     const parsed = patchSchema.safeParse(body)
     if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
-    const { status, priority } = parsed.data
+    const { status, priority, note } = parsed.data
 
-    const updated = await prisma.maintenanceRequest.update({
-      where: { id },
-      data: {
-        ...(status !== undefined ? { status } : {}),
-        ...(priority !== undefined ? { priority } : {}),
-        ...(status === 'RESOLVED' ? { resolvedAt: new Date(), resolvedBy: user.id } : {}),
-        ...(status === 'OPEN' ? { resolvedAt: null, resolvedBy: null } : {}),
-      },
+    const updated = await prisma.$transaction(async (tx) => {
+      // Build update data
+      const updateData: Record<string, unknown> = {}
+      if (priority !== undefined) updateData.priority = priority
+      if (status !== undefined) {
+        updateData.status = status
+        if (status === 'IN_PROGRESS') {
+          updateData.inProgressAt = new Date()
+        }
+        if (status === 'RESOLVED') {
+          updateData.resolvedAt = new Date()
+          updateData.resolvedBy = user.id
+        }
+        if (status === 'OPEN') {
+          updateData.resolvedAt = null
+          updateData.resolvedBy = null
+          updateData.inProgressAt = null
+        }
+
+        // Create status history entry
+        await tx.maintenanceStatusHistory.create({
+          data: {
+            requestId: id,
+            fromStatus: request.status,
+            toStatus: status,
+            changedBy: user.id,
+            note: note ?? null,
+          },
+        })
+      }
+
+      return tx.maintenanceRequest.update({
+        where: { id },
+        data: updateData,
+      })
     })
 
     return NextResponse.json({ data: updated })

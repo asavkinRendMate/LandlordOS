@@ -17,7 +17,7 @@ const navItems = [
     exact: true,
     showBadge: false,
     icon: (
-      <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg className="w-[18px] h-[18px] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" />
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 21V12h6v9" />
       </svg>
@@ -29,7 +29,7 @@ const navItems = [
     exact: false,
     showBadge: false,
     icon: (
-      <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg className="w-[18px] h-[18px] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
       </svg>
     ),
@@ -40,7 +40,7 @@ const navItems = [
     exact: false,
     showBadge: true,
     icon: (
-      <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg className="w-[18px] h-[18px] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
       </svg>
@@ -52,7 +52,7 @@ const navItems = [
     exact: false,
     showBadge: false,
     icon: (
-      <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg className="w-[18px] h-[18px] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
       </svg>
@@ -81,10 +81,10 @@ function NavLinks({
             key={item.href}
             href={item.href}
             onClick={onNavigate}
-            className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
               active
-                ? 'bg-white/10 text-white'
-                : 'text-white/50 hover:text-white/80 hover:bg-white/5'
+                ? 'bg-[#2D6A4F]/10 text-[#2D6A4F]'
+                : 'text-[#6B7280] hover:text-[#1A1A1A] hover:bg-gray-50'
             }`}
           >
             {item.icon}
@@ -103,15 +103,15 @@ function NavLinks({
 
 function UserFooter({ email, onSignOut }: { email: string; onSignOut: () => void }) {
   return (
-    <div className="px-3 py-4 border-t border-white/8">
-      <div className="px-3 py-2 mb-1">
-        <p className="text-xs text-white/40 truncate">{email}</p>
+    <div className="px-3 py-4 border-t border-gray-100">
+      <div className="px-3 py-1.5 mb-1">
+        <p className="text-xs text-[#9CA3AF] truncate">{email}</p>
       </div>
       <button
         onClick={onSignOut}
-        className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-sm text-white/40 hover:text-white/70 hover:bg-white/5 transition-colors"
+        className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-sm text-[#9CA3AF] hover:text-[#1A1A1A] hover:bg-gray-50 transition-all duration-150"
       >
-        <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className="w-[18px] h-[18px] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
         </svg>
         Sign out
@@ -127,9 +127,9 @@ function ContextSwitcher() {
     <div className="px-3 pb-3">
       <a
         href="/tenant/dashboard"
-        className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-green-400/80 hover:text-green-300 hover:bg-green-500/8 transition-colors border border-green-500/20"
+        className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-[#2D6A4F] hover:bg-green-50 transition-all duration-150 border border-green-200"
       >
-        <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className="w-[18px] h-[18px] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
         </svg>
         My Rental
@@ -164,19 +164,19 @@ export function DashboardShell({
   }
 
   return (
-    <div className="min-h-screen bg-[#0f1a0f]">
+    <div className="min-h-screen bg-[#F7F8F6]">
 
       {/* ── Desktop layout (lg+) ────────────────────────────────────────────── */}
       <div className="hidden lg:flex min-h-screen">
-        <aside className="w-56 shrink-0 flex flex-col border-r border-white/8">
-          <div className="px-5 py-5 border-b border-white/8">
-            <Image src="/logo-white.svg" alt="LetSorted" width={120} height={40} />
+        <aside className="w-56 shrink-0 flex flex-col bg-white border-r border-black/[0.06]">
+          <div className="px-5 py-5 border-b border-gray-100">
+            <Image src="/logo.svg" alt="LetSorted" width={120} height={40} />
           </div>
           <NavLinks openMaintenanceCount={openMaintenanceCount} />
           {hasTenantProfile && <ContextSwitcher />}
           <UserFooter email={user.email ?? ''} onSignOut={handleSignOut} />
         </aside>
-        <main className="flex-1 min-w-0 overflow-auto flex flex-col">
+        <main className="flex-1 min-w-0 overflow-auto flex flex-col bg-[#F7F8F6]">
           <div className="flex-1">{children}</div>
           <Footer variant="app" />
         </main>
@@ -186,10 +186,10 @@ export function DashboardShell({
       <div className="lg:hidden flex flex-col min-h-screen">
 
         {/* Sticky top bar */}
-        <header className="sticky top-0 z-30 h-14 bg-[#0f1a0f]/95 backdrop-blur-sm border-b border-white/8 flex items-center justify-between px-4 shrink-0">
+        <header className="sticky top-0 z-30 h-14 bg-white/95 backdrop-blur-sm border-b border-black/[0.06] flex items-center justify-between px-4 shrink-0">
           <button
             onClick={() => setDrawerOpen(true)}
-            className="w-9 h-9 flex items-center justify-center rounded-lg text-white/60 hover:text-white hover:bg-white/8 transition-colors"
+            className="w-9 h-9 flex items-center justify-center rounded-lg text-[#6B7280] hover:text-[#1A1A1A] hover:bg-gray-100 transition-all duration-150"
             aria-label="Open navigation"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -197,32 +197,32 @@ export function DashboardShell({
             </svg>
           </button>
 
-          <Image src="/logo-white.svg" alt="LetSorted" width={100} height={33} />
+          <Image src="/logo.svg" alt="LetSorted" width={100} height={33} />
 
-          <div className="w-8 h-8 rounded-full bg-green-500/20 border border-green-500/30 flex items-center justify-center">
-            <span className="text-green-400 text-xs font-semibold">{initials}</span>
+          <div className="w-8 h-8 rounded-full bg-[#2D6A4F]/10 border border-[#2D6A4F]/20 flex items-center justify-center">
+            <span className="text-[#2D6A4F] text-xs font-semibold">{initials}</span>
           </div>
         </header>
 
         {/* Drawer backdrop */}
         {drawerOpen && (
           <div
-            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm"
             onClick={() => setDrawerOpen(false)}
           />
         )}
 
         {/* Slide-in drawer */}
         <div
-          className={`fixed top-0 left-0 z-50 h-full w-64 bg-[#0f1a0f] border-r border-white/8 flex flex-col transition-transform duration-200 ease-out ${
+          className={`fixed top-0 left-0 z-50 h-full w-64 bg-white border-r border-black/[0.06] flex flex-col transition-transform duration-200 ease-out ${
             drawerOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
         >
-          <div className="px-5 py-4 border-b border-white/8 flex items-center justify-between">
-            <Image src="/logo-white.svg" alt="LetSorted" width={120} height={40} />
+          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+            <Image src="/logo.svg" alt="LetSorted" width={120} height={40} />
             <button
               onClick={() => setDrawerOpen(false)}
-              className="w-8 h-8 flex items-center justify-center rounded-lg text-white/40 hover:text-white hover:bg-white/8 transition-colors"
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-[#9CA3AF] hover:text-[#1A1A1A] hover:bg-gray-100 transition-all duration-150"
               aria-label="Close navigation"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -236,7 +236,7 @@ export function DashboardShell({
         </div>
 
         {/* Page content */}
-        <main className="flex-1 min-w-0 overflow-auto flex flex-col">
+        <main className="flex-1 min-w-0 overflow-auto flex flex-col bg-[#F7F8F6]">
           <div className="flex-1">{children}</div>
           <Footer variant="app" />
         </main>

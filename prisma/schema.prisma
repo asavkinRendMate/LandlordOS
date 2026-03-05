@@ -288,21 +288,53 @@ enum MaintenancePriority {
 }
 
 model MaintenanceRequest {
-  id          String              @id @default(uuid())
-  propertyId  String              @map("property_id")
-  property    Property            @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  tenantId    String              @map("tenant_id")
-  tenant      Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  title       String
-  description String
-  priority    MaintenancePriority @default(MEDIUM)
-  status      MaintenanceStatus   @default(OPEN)
-  resolvedAt  DateTime?           @map("resolved_at")
-  resolvedBy  String?             @map("resolved_by")
-  createdAt   DateTime            @default(now()) @map("created_at")
-  updatedAt   DateTime            @updatedAt @map("updated_at")
+  id             String              @id @default(uuid())
+  propertyId     String              @map("property_id")
+  property       Property            @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  tenantId       String              @map("tenant_id")
+  tenant         Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  title          String
+  description    String
+  priority       MaintenancePriority @default(MEDIUM)
+  status         MaintenanceStatus   @default(OPEN)
+  inProgressAt   DateTime?           @map("in_progress_at")
+  resolvedAt     DateTime?           @map("resolved_at")
+  resolvedBy     String?             @map("resolved_by")
+  createdAt      DateTime            @default(now()) @map("created_at")
+  updatedAt      DateTime            @updatedAt @map("updated_at")
+
+  statusHistory  MaintenanceStatusHistory[]
+  photos         MaintenancePhoto[]
 
   @@map("maintenance_requests")
+}
+
+model MaintenanceStatusHistory {
+  id        String              @id @default(uuid())
+  requestId String              @map("request_id")
+  request   MaintenanceRequest  @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  fromStatus MaintenanceStatus? @map("from_status")
+  toStatus   MaintenanceStatus  @map("to_status")
+  changedBy  String             @map("changed_by")
+  changedAt  DateTime           @default(now()) @map("changed_at")
+  note       String?
+
+  @@map("maintenance_status_history")
+}
+
+model MaintenancePhoto {
+  id         String             @id @default(uuid())
+  requestId  String             @map("request_id")
+  request    MaintenanceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  uploadedBy String             @map("uploaded_by")
+  role       String             // "TENANT" | "LANDLORD"
+  fileUrl    String             @map("file_url")
+  fileName   String             @map("file_name")
+  fileSize   Int                @map("file_size")
+  uploadedAt DateTime           @default(now()) @map("uploaded_at")
+  caption    String?
+
+  @@map("maintenance_photos")
 }
 
 // ── Financial Scoring ──────────────────────────────────────────────────────────

@@ -103,8 +103,20 @@ export async function POST(req: NextRequest) {
     })
     if (!tenant) return NextResponse.json({ error: 'Tenant not found or forbidden' }, { status: 403 })
 
-    const request = await prisma.maintenanceRequest.create({
-      data: { propertyId, tenantId, title, description, priority: priority ?? 'MEDIUM' },
+    const [request] = await prisma.$transaction(async (tx) => {
+      const req = await tx.maintenanceRequest.create({
+        data: { propertyId, tenantId, title, description, priority: priority ?? 'MEDIUM' },
+      })
+      await tx.maintenanceStatusHistory.create({
+        data: {
+          requestId: req.id,
+          fromStatus: null,
+          toStatus: 'OPEN',
+          changedBy: tenantId,
+          note: 'Request submitted',
+        },
+      })
+      return [req]
     })
 
     return NextResponse.json({ data: request }, { status: 201 })

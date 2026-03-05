@@ -8,8 +8,8 @@ interface FooterProps {
 export default function Footer({ variant }: FooterProps) {
   if (variant === 'app') {
     return (
-      <footer className="border-t border-white/8 px-6 py-4 bg-[#0f1a0f]">
-        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1 text-xs text-white/25">
+      <footer className="border-t border-black/[0.06] px-6 py-4 bg-[#F7F8F6]">
+        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1 text-xs text-[#9CA3AF]">
           <span>© 2026 Rendmate Ltd. All rights reserved.</span>
           <span>LetSorted is not a law firm and does not provide legal advice.</span>
         </div>
