@@ -52,16 +52,22 @@ export async function POST(req: Request, { params }: { params: { token: string }
     if (!tenant) return NextResponse.json({ error: 'not_found' }, { status: 404 })
     if (tenant.confirmedAt) return NextResponse.json({ error: 'already_confirmed' }, { status: 400 })
 
-    // Update tenant record
-    await prisma.tenant.update({
-      where: { id: tenant.id },
-      data: {
-        name: result.data.name,
-        phone: result.data.phone ?? tenant.phone,
-        confirmedAt: new Date(),
-        status: 'TENANT',
-      },
-    })
+    // Update tenant record + set property status to ACTIVE
+    await prisma.$transaction([
+      prisma.tenant.update({
+        where: { id: tenant.id },
+        data: {
+          name: result.data.name,
+          phone: result.data.phone ?? tenant.phone,
+          confirmedAt: new Date(),
+          status: 'TENANT',
+        },
+      }),
+      prisma.property.update({
+        where: { id: tenant.propertyId },
+        data: { status: 'ACTIVE' },
+      }),
+    ])
 
     // Send magic link via Supabase Auth
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'

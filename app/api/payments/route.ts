@@ -41,12 +41,14 @@ export async function GET(req: Request) {
       await updatePaymentStatuses()
     }
 
-    // Last 12 months + all upcoming
+    if (!activeTenancy) return NextResponse.json({ data: [] })
+
+    // Last 12 months + all upcoming — scoped to the single active tenancy
     const since = new Date()
     since.setMonth(since.getMonth() - 12)
 
     const payments = await prisma.rentPayment.findMany({
-      where: { tenancy: { propertyId }, dueDate: { gte: since } },
+      where: { tenancyId: activeTenancy.id, dueDate: { gte: since } },
       orderBy: { dueDate: 'desc' },
     })
 
