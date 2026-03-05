@@ -78,7 +78,6 @@ const DOC_TYPE_LABELS: Record<string, string> = {
   OTHER: 'Other',
 }
 
-const EXPIRY_DOC_TYPES = new Set(['GAS_SAFETY', 'EPC', 'EICR'])
 
 const TENANT_STRIP_TYPES = ['RIGHT_TO_RENT', 'PASSPORT', 'PROOF_OF_INCOME', 'BANK_STATEMENTS'] as const
 const TENANT_STRIP_LABELS: Record<string, string> = {
