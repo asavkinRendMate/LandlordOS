@@ -126,7 +126,7 @@ export default function PrivacyPage() {
                 <ul className="list-disc list-outside ml-5 space-y-1.5">
                   <li><strong>Right to access</strong> — request a copy of the data we hold about you</li>
                   <li><strong>Right to correction</strong> — request that inaccurate data be corrected</li>
-                  <li><strong>Right to erasure</strong> — request deletion of your data ("right to be forgotten")</li>
+                  <li><strong>Right to erasure</strong> — request deletion of your data (&ldquo;right to be forgotten&rdquo;)</li>
                   <li><strong>Right to data portability</strong> — receive your data in a portable format</li>
                 </ul>
                 <p className="mt-4">
