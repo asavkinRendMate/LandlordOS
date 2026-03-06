@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { sendEmail } from '@/lib/resend'
+import { applicationReceivedHtml, newApplicationHtml } from '@/lib/email-templates'
 
 const schema = z.object({
   propertyId: z.string().min(1),
@@ -40,30 +41,30 @@ export async function POST(req: Request) {
     })
 
     const propertyAddress = [property.line1, property.city, property.postcode].filter(Boolean).join(', ')
-    const landlordFirstName = property.user.name?.split(' ')[0] ?? 'your landlord'
+    const landlordFirstName = property.user.name?.trim() ? property.user.name.split(' ')[0] : 'Your landlord'
 
     // Email to applicant
     await sendEmail({
       to: email,
       subject: `Application received — ${propertyAddress}`,
-      html: `
-        <p>Hi ${name.split(' ')[0]},</p>
-        <p>Thanks for applying for <strong>${propertyAddress}</strong>. ${landlordFirstName} will be in touch if your application is successful.</p>
-        <p>— The LetSorted team</p>
-      `,
+      html: applicationReceivedHtml({
+        firstName: name.split(' ')[0],
+        propertyAddress,
+        landlordFirstName,
+      }),
     })
 
     // Email to landlord
     await sendEmail({
       to: property.user.email,
       subject: `New application for ${propertyAddress}`,
-      html: `
-        <p>Hi ${landlordFirstName},</p>
-        <p>You have a new application for <strong>${propertyAddress}</strong> from <strong>${name}</strong> (${email}).</p>
-        ${message ? `<p>Their message: <em>"${message}"</em></p>` : ''}
-        <p>Log in to LetSorted to view and manage this application.</p>
-        <p>— The LetSorted team</p>
-      `,
+      html: newApplicationHtml({
+        landlordFirstName,
+        propertyAddress,
+        applicantName: name,
+        applicantEmail: email,
+        message: message ?? undefined,
+      }),
     })
 
     return NextResponse.json({ data: { tenantId: tenant.id } }, { status: 201 })

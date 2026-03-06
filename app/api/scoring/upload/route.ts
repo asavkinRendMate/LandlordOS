@@ -31,6 +31,7 @@ export async function POST(req: Request) {
     const tenantId = formData.get('tenantId') as string | null
     const reportType = formData.get('reportType') as string | null
     const applicantName = formData.get('applicantName') as string | null
+    const declaredIncome = formData.get('declaredIncome') as string | null
 
     // Validate files
     if (files.length === 0) {
@@ -73,6 +74,7 @@ export async function POST(req: Request) {
         status: 'PENDING',
         scoringConfigVersion: config.version,
         applicantName: applicantName ?? null,
+        declaredIncomePence: declaredIncome ? Math.round(Number(declaredIncome) * 100) : null,
       },
     })
 

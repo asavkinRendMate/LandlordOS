@@ -250,7 +250,7 @@ export default async function DashboardPage({
       <div className="bg-white border border-black/[0.06] rounded-xl p-4 mb-5 shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] animate-fade-in-up" style={{ animationDelay: '0ms' }}>
         <div className="flex items-center justify-between mb-1">
           <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium">Active Maintenance</p>
-          <Link href="/dashboard/maintenance" className="text-xs text-[#2D6A4F] hover:text-[#245c43] transition-colors">
+          <Link href="/dashboard/maintenance" className="text-xs text-[#16a34a] hover:text-[#15803d] transition-colors">
             View all →
           </Link>
         </div>

@@ -39,6 +39,11 @@ const rules: { category: ScoringCategory; key: string; description: string; poin
   { category: 'GAMBLING', key: 'GAMBLING_ABOVE_10_PCT',        description: 'Gambling exceeds 10% of monthly income',                             points: -40 },
   { category: 'GAMBLING', key: 'GAMBLING_4_PLUS_MONTHS',       description: 'Gambling detected in 4 or more months out of 6',                    points: -10 },
 
+  // INCOME DISCREPANCY
+  { category: 'AFFORDABILITY', key: 'INCOME_SLIGHT_DISCREPANCY',       description: 'Declared income is 10-30% higher than evidenced income',      points: -10 },
+  { category: 'AFFORDABILITY', key: 'INCOME_SIGNIFICANT_DISCREPANCY',  description: 'Declared income is 30-50% higher than evidenced income',      points: -25 },
+  { category: 'AFFORDABILITY', key: 'INCOME_MAJOR_DISCREPANCY',        description: 'Declared income is more than double evidenced income',        points: -40 },
+
   // POSITIVE
   { category: 'POSITIVE', key: 'REGULAR_SAVINGS',              description: 'Regular transfers to savings account detected',                       points:  10 },
   { category: 'POSITIVE', key: 'CONFIRMED_RENT_HISTORY',       description: 'Previous rent payments visible in statement',                        points:  15 },

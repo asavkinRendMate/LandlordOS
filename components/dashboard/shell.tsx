@@ -3,10 +3,11 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 import Footer from '@/components/shared/Footer'
+import CrispChat from '@/components/shared/CrispChat'
 
 // ── Nav config ────────────────────────────────────────────────────────────────
 
@@ -83,7 +84,7 @@ function NavLinks({
             onClick={onNavigate}
             className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
               active
-                ? 'bg-[#2D6A4F]/10 text-[#2D6A4F]'
+                ? 'bg-[#16a34a]/10 text-[#16a34a]'
                 : 'text-[#6B7280] hover:text-[#1A1A1A] hover:bg-gray-50'
             }`}
           >
@@ -101,12 +102,23 @@ function NavLinks({
   )
 }
 
-function UserFooter({ email, onSignOut }: { email: string; onSignOut: () => void }) {
+function UserFooter({ email, onSignOut, onOpenChat }: { email: string; onSignOut: () => void; onOpenChat?: () => void }) {
   return (
     <div className="px-3 py-4 border-t border-gray-100">
       <div className="px-3 py-1.5 mb-1">
         <p className="text-xs text-[#9CA3AF] truncate">{email}</p>
       </div>
+      {onOpenChat && (
+        <button
+          onClick={onOpenChat}
+          className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-sm text-[#9CA3AF] hover:text-[#16a34a] hover:bg-green-50 transition-all duration-150"
+        >
+          <svg className="w-[18px] h-[18px] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
+          </svg>
+          Chat with support
+        </button>
+      )}
       <button
         onClick={onSignOut}
         className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-sm text-[#9CA3AF] hover:text-[#1A1A1A] hover:bg-gray-50 transition-all duration-150"
@@ -127,7 +139,7 @@ function ContextSwitcher() {
     <div className="px-3 pb-3">
       <a
         href="/tenant/dashboard"
-        className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-[#2D6A4F] hover:bg-green-50 transition-all duration-150 border border-green-200"
+        className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-[#16a34a] hover:bg-green-50 transition-all duration-150 border border-green-200"
       >
         <svg className="w-[18px] h-[18px] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -163,8 +175,18 @@ export function DashboardShell({
     router.push('/login')
   }
 
+  const handleOpenChat = useCallback(() => {
+    if (typeof window !== 'undefined' && window.$crisp) {
+      window.$crisp.push(['do', 'chat:open'])
+    }
+  }, [])
+
   return (
     <div className="min-h-screen bg-[#F7F8F6]">
+      <CrispChat
+        user={{ email: user.email ?? '', name: user.user_metadata?.name ?? null, id: user.id }}
+        role="landlord"
+      />
 
       {/* ── Desktop layout (lg+) ────────────────────────────────────────────── */}
       <div className="hidden lg:flex min-h-screen">
@@ -174,7 +196,7 @@ export function DashboardShell({
           </div>
           <NavLinks openMaintenanceCount={openMaintenanceCount} />
           {hasTenantProfile && <ContextSwitcher />}
-          <UserFooter email={user.email ?? ''} onSignOut={handleSignOut} />
+          <UserFooter email={user.email ?? ''} onSignOut={handleSignOut} onOpenChat={handleOpenChat} />
         </aside>
         <main className="flex-1 min-w-0 overflow-auto flex flex-col bg-[#F7F8F6]">
           <div className="flex-1">{children}</div>
@@ -199,8 +221,19 @@ export function DashboardShell({
 
           <Image src="/logo.svg" alt="LetSorted" width={100} height={33} />
 
-          <div className="w-8 h-8 rounded-full bg-[#2D6A4F]/10 border border-[#2D6A4F]/20 flex items-center justify-center">
-            <span className="text-[#2D6A4F] text-xs font-semibold">{initials}</span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleOpenChat}
+              className="w-8 h-8 flex items-center justify-center rounded-full text-[#6B7280] hover:text-[#16a34a] hover:bg-[#16a34a]/10 transition-all duration-150"
+              title="Chat with support"
+            >
+              <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
+              </svg>
+            </button>
+            <div className="w-8 h-8 rounded-full bg-[#16a34a]/10 border border-[#16a34a]/20 flex items-center justify-center">
+              <span className="text-[#16a34a] text-xs font-semibold">{initials}</span>
+            </div>
           </div>
         </header>
 
@@ -232,7 +265,7 @@ export function DashboardShell({
           </div>
           <NavLinks onNavigate={() => setDrawerOpen(false)} openMaintenanceCount={openMaintenanceCount} />
           {hasTenantProfile && <ContextSwitcher />}
-          <UserFooter email={user.email ?? ''} onSignOut={handleSignOut} />
+          <UserFooter email={user.email ?? ''} onSignOut={handleSignOut} onOpenChat={handleOpenChat} />
         </div>
 
         {/* Page content */}

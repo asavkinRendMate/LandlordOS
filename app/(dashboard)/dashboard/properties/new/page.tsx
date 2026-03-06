@@ -9,10 +9,10 @@ import { zodResolver } from '@hookform/resolvers/zod'
 // ── Shared field styles ───────────────────────────────────────────────────────
 
 const inputClass =
-  'w-full bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-[#1A1A1A] placeholder-gray-400 text-sm focus:outline-none focus:border-[#2D6A4F] focus:ring-1 focus:ring-[#2D6A4F]/20 transition-colors'
+  'w-full bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-[#1A1A1A] placeholder-gray-400 text-sm focus:outline-none focus:border-[#16a34a] focus:ring-1 focus:ring-[#16a34a]/20 transition-colors'
 
 const selectClass =
-  'w-full bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-[#1A1A1A] text-sm focus:outline-none focus:border-[#2D6A4F] focus:ring-1 focus:ring-[#2D6A4F]/20 transition-colors appearance-none'
+  'w-full bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-[#1A1A1A] text-sm focus:outline-none focus:border-[#16a34a] focus:ring-1 focus:ring-[#16a34a]/20 transition-colors appearance-none'
 
 function FieldError({ message }: { message?: string }) {
   if (!message) return null
@@ -37,9 +37,9 @@ function StepPills({ current, total }: { current: number; total: number }) {
           key={n}
           className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold transition-all ${
             n === current
-              ? 'bg-[#2D6A4F] text-white'
+              ? 'bg-[#16a34a] text-white'
               : n < current
-              ? 'bg-[#2D6A4F]/15 text-[#2D6A4F]'
+              ? 'bg-[#16a34a]/15 text-[#16a34a]'
               : 'bg-gray-100 text-[#9CA3AF]'
           }`}
         >
@@ -184,7 +184,7 @@ function PropertyForm({ onNext }: { onNext: (v: PropertyValues) => void }) {
       </div>
 
       <div className="pt-2">
-        <button type="submit" className="w-full bg-[#2D6A4F] hover:bg-[#245c43] disabled:opacity-50 text-white font-semibold rounded-xl py-3 text-sm transition-colors">
+        <button type="submit" className="w-full bg-[#16a34a] hover:bg-[#15803d] disabled:opacity-50 text-white font-semibold rounded-xl py-3 text-sm transition-colors">
           Continue
         </button>
       </div>
@@ -198,7 +198,7 @@ function OccupancyStep({ onHasTenant, onVacant }: { onHasTenant: () => void; onV
   return (
     <div className="space-y-3">
       <button onClick={onHasTenant}
-        className="w-full flex items-center gap-4 bg-white border border-gray-200 hover:border-[#2D6A4F]/30 hover:bg-gray-50 rounded-xl p-4 text-left transition-all">
+        className="w-full flex items-center gap-4 bg-white border border-gray-200 hover:border-[#16a34a]/30 hover:bg-gray-50 rounded-xl p-4 text-left transition-all">
         <div className="w-9 h-9 rounded-lg bg-green-100 flex items-center justify-center shrink-0">
           <svg className="w-4.5 h-4.5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -211,7 +211,7 @@ function OccupancyStep({ onHasTenant, onVacant }: { onHasTenant: () => void; onV
       </button>
 
       <button onClick={onVacant}
-        className="w-full flex items-center gap-4 bg-white border border-gray-200 hover:border-[#2D6A4F]/30 hover:bg-gray-50 rounded-xl p-4 text-left transition-all">
+        className="w-full flex items-center gap-4 bg-white border border-gray-200 hover:border-[#16a34a]/30 hover:bg-gray-50 rounded-xl p-4 text-left transition-all">
         <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
           <svg className="w-4.5 h-4.5 text-[#9CA3AF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
@@ -275,7 +275,7 @@ function TenantForm({ onNext, onBack, submitting }: { onNext: (v: TenantValues) 
       </div>
 
       <div className="pt-2 flex flex-col gap-3">
-        <button type="submit" disabled={submitting} className="w-full bg-[#2D6A4F] hover:bg-[#245c43] disabled:opacity-50 text-white font-semibold rounded-xl py-3 text-sm transition-colors">
+        <button type="submit" disabled={submitting} className="w-full bg-[#16a34a] hover:bg-[#15803d] disabled:opacity-50 text-white font-semibold rounded-xl py-3 text-sm transition-colors">
           {submitting ? 'Saving…' : 'Add property'}
         </button>
         <button type="button" onClick={onBack} className="text-sm text-[#9CA3AF] hover:text-[#6B7280] transition-colors text-center">
@@ -392,7 +392,7 @@ export default function NewPropertyPage() {
 
           {submitting && step !== 3 ? (
             <div className="flex items-center justify-center py-16">
-              <div className="w-6 h-6 border-2 border-[#2D6A4F] border-t-transparent rounded-full animate-spin" />
+              <div className="w-6 h-6 border-2 border-[#16a34a] border-t-transparent rounded-full animate-spin" />
             </div>
           ) : step === 1 ? (
             <PropertyForm onNext={handleStep1} />

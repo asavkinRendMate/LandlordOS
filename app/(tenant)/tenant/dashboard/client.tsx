@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import DocumentUploadModal from '@/components/shared/DocumentUploadModal'
+import { openCrispChat } from '@/components/shared/CrispChat'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -1128,6 +1129,21 @@ function TenantMaintenanceSection({
 export default function TenantDashboardClient({ tenant, property }: Props) {
   const router = useRouter()
 
+  // Identify tenant to Crisp (widget loaded by tenant layout)
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.$crisp) return
+    window.$crisp.push(['set', 'user:email', [tenant.email]])
+    window.$crisp.push(['set', 'user:nickname', [tenant.name]])
+    window.$crisp.push([
+      'set',
+      'session:data',
+      [[
+        ['role', 'tenant'],
+        ['tenantId', tenant.id],
+      ]],
+    ])
+  }, [tenant])
+
   async function signOut() {
     await createClient().auth.signOut()
     router.push('/login')
@@ -1150,6 +1166,15 @@ export default function TenantDashboardClient({ tenant, property }: Props) {
             </svg>
             Landlord account
           </Link>
+          <button
+            onClick={openCrispChat}
+            className="w-8 h-8 flex items-center justify-center rounded-full text-gray-500 hover:text-green-700 hover:bg-green-100/60 transition-all duration-150"
+            title="Chat with support"
+          >
+            <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
+            </svg>
+          </button>
           <button
             onClick={signOut}
             className="text-xs text-gray-500 hover:text-gray-800 transition-colors"

@@ -15,8 +15,10 @@ model User {
   email          String     @unique
   name           String?
   createdAt      DateTime   @default(now()) @map("created_at")
-  properties     Property[]
-  tenantProfiles Tenant[]
+  properties        Property[]
+  tenantProfiles    Tenant[]
+  screeningPackages ScreeningPackage[]
+  screeningInvites  ScreeningInvite[]
 
   @@map("users")
 }
@@ -403,10 +405,92 @@ model FinancialReport {
   jointApplicants      Json?        @map("joint_applicants")
   hasUnverifiedFiles   Boolean      @default(false) @map("has_unverified_files")
   verificationWarning  String?      @map("verification_warning")
+  declaredIncomePence  Int?         @map("declared_income_pence")
   validationResults    Json?        @map("validation_results")
   failureReason        String?      @map("failure_reason")
+  screeningUsageId     String?      @unique @map("screening_usage_id")
+  screeningUsage       ScreeningPackageUsage? @relation(fields: [screeningUsageId], references: [id])
+  inviteId             String?      @map("invite_id")
+  invite               ScreeningInvite? @relation(fields: [inviteId], references: [id])
+  isLocked             Boolean      @default(true) @map("is_locked")
+  monthlyRentPence     Int?         @map("monthly_rent_pence")
   createdAt            DateTime     @default(now()) @map("created_at")
   updatedAt            DateTime     @updatedAt @map("updated_at")
 
   @@map("financial_reports")
+}
+
+// ── Screening Invites ─────────────────────────────────────────────────────────
+
+enum ScreeningInviteStatus {
+  PENDING
+  STARTED
+  COMPLETED
+  PAID
+  EXPIRED
+}
+
+model ScreeningInvite {
+  id               String                @id @default(uuid())
+  landlordId       String                @map("landlord_id")
+  landlord         User                  @relation(fields: [landlordId], references: [id], onDelete: Cascade)
+  candidateName    String                @map("candidate_name")
+  candidateEmail   String                @map("candidate_email")
+  propertyAddress  String                @map("property_address")
+  monthlyRentPence Int                   @map("monthly_rent_pence")
+  status           ScreeningInviteStatus @default(PENDING)
+  token            String                @unique @default(uuid())
+  createdAt        DateTime              @default(now()) @map("created_at")
+  updatedAt        DateTime              @default(now()) @map("updated_at")
+
+  reports FinancialReport[]
+
+  @@map("screening_invites")
+}
+
+// ── Screening Packages ───────────────────────────────────────────────────────
+
+enum ScreeningPackageType {
+  SINGLE
+  TRIPLE
+  SIXER
+  TEN
+}
+
+enum ScreeningPaymentStatus {
+  PENDING
+  MOCK_PAID
+  PAID
+  REFUNDED
+}
+
+model ScreeningPackage {
+  id            String                  @id @default(uuid())
+  userId        String                  @map("user_id")
+  user          User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  packageType   ScreeningPackageType    @map("package_type")
+  totalCredits  Int                     @map("total_credits")
+  usedCredits   Int                     @default(0) @map("used_credits")
+  pricePence    Int                     @map("price_pence")
+  paymentStatus ScreeningPaymentStatus  @default(PENDING) @map("payment_status")
+  stripeSessionId String?              @map("stripe_session_id")
+  createdAt     DateTime                @default(now()) @map("created_at")
+  updatedAt     DateTime                @updatedAt @map("updated_at")
+
+  usages ScreeningPackageUsage[]
+
+  @@map("screening_packages")
+}
+
+model ScreeningPackageUsage {
+  id              String           @id @default(uuid())
+  packageId       String           @map("package_id")
+  package         ScreeningPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  candidateName   String           @map("candidate_name")
+  monthlyRentPence Int             @map("monthly_rent_pence")
+  createdAt       DateTime         @default(now()) @map("created_at")
+
+  report FinancialReport?
+
+  @@map("screening_package_usages")
 }

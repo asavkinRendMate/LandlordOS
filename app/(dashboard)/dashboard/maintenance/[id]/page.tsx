@@ -355,7 +355,7 @@ function ResolveModal({
               onDrop={handleDrop}
               onDragOver={(e) => e.preventDefault()}
               onClick={() => inputRef.current?.click()}
-              className="border border-dashed border-gray-200 hover:border-[#2D6A4F]/40 rounded-xl p-4 text-center cursor-pointer transition-colors"
+              className="border border-dashed border-gray-200 hover:border-[#16a34a]/40 rounded-xl p-4 text-center cursor-pointer transition-colors"
             >
               <svg className="w-6 h-6 text-[#9CA3AF] mx-auto mb-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
@@ -393,7 +393,7 @@ function ResolveModal({
                       value={p.caption}
                       onChange={(e) => updateCaption(i, e.target.value)}
                       placeholder="Caption…"
-                      className="mt-1 w-full text-xs bg-gray-50 border border-gray-200 rounded px-2 py-1 text-[#1A1A1A] placeholder-gray-400 focus:outline-none focus:border-[#2D6A4F]/40"
+                      className="mt-1 w-full text-xs bg-gray-50 border border-gray-200 rounded px-2 py-1 text-[#1A1A1A] placeholder-gray-400 focus:outline-none focus:border-[#16a34a]/40"
                     />
                   </div>
                 ))}
@@ -411,7 +411,7 @@ function ResolveModal({
               onChange={(e) => setNote(e.target.value)}
               rows={3}
               placeholder="e.g. Plumber fixed the leak, new pipes installed"
-              className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-[#1A1A1A] text-sm placeholder-gray-400 focus:outline-none focus:border-[#2D6A4F]/50 transition-colors resize-none"
+              className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-[#1A1A1A] text-sm placeholder-gray-400 focus:outline-none focus:border-[#16a34a]/50 transition-colors resize-none"
             />
           </div>
 
@@ -420,7 +420,7 @@ function ResolveModal({
             <button
               onClick={() => confirm(false)}
               disabled={submitting}
-              className="w-full bg-[#2D6A4F] hover:bg-[#245c43] disabled:opacity-50 text-white font-medium py-2.5 rounded-xl transition-colors text-sm"
+              className="w-full bg-[#16a34a] hover:bg-[#15803d] disabled:opacity-50 text-white font-medium py-2.5 rounded-xl transition-colors text-sm"
             >
               {submitting
                 ? (photos.length > 0 ? 'Uploading photos…' : 'Closing request…')
@@ -524,7 +524,7 @@ export default function MaintenanceDetailPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-3.5rem)]">
-        <div className="w-7 h-7 border-2 border-[#2D6A4F] border-t-transparent rounded-full animate-spin" />
+        <div className="w-7 h-7 border-2 border-[#16a34a] border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
@@ -533,7 +533,7 @@ export default function MaintenanceDetailPage() {
     return (
       <div className="p-8 text-center">
         <p className="text-[#6B7280]">{error ?? 'Not found'}</p>
-        <Link href="/dashboard/maintenance" className="mt-4 inline-block text-sm text-[#2D6A4F] hover:text-[#245c43]">
+        <Link href="/dashboard/maintenance" className="mt-4 inline-block text-sm text-[#16a34a] hover:text-[#15803d]">
           ← Back to maintenance
         </Link>
       </div>
@@ -586,7 +586,7 @@ export default function MaintenanceDetailPage() {
                 <span className="text-[#6B7280] w-24 shrink-0">Property</span>
                 <Link
                   href={`/dashboard/properties/${request.property.id}`}
-                  className="text-[#2D6A4F] hover:text-[#245c43] transition-colors truncate"
+                  className="text-[#16a34a] hover:text-[#15803d] transition-colors truncate"
                 >
                   {propertyLabel}
                 </Link>
@@ -608,7 +608,7 @@ export default function MaintenanceDetailPage() {
               {request.resolvedAt && (
                 <div className="flex items-center gap-2">
                   <span className="text-[#6B7280] w-24 shrink-0">Resolved</span>
-                  <span className="text-[#2D6A4F]">{fmtDT(request.resolvedAt)}</span>
+                  <span className="text-[#16a34a]">{fmtDT(request.resolvedAt)}</span>
                 </div>
               )}
             </div>
@@ -678,7 +678,7 @@ export default function MaintenanceDetailPage() {
             {request.status === 'RESOLVED' ? (
               <div className="space-y-3">
                 {request.resolvedAt && (
-                  <p className="text-[#2D6A4F] text-xs">
+                  <p className="text-[#16a34a] text-xs">
                     Resolved {fmtDate(request.resolvedAt)}
                   </p>
                 )}
@@ -704,7 +704,7 @@ export default function MaintenanceDetailPage() {
                 <button
                   onClick={() => setShowResolveModal(true)}
                   disabled={patching}
-                  className="w-full text-sm bg-[#2D6A4F] hover:bg-[#245c43] text-white font-medium px-3 py-2 rounded-lg transition-colors disabled:opacity-50"
+                  className="w-full text-sm bg-[#16a34a] hover:bg-[#15803d] text-white font-medium px-3 py-2 rounded-lg transition-colors disabled:opacity-50"
                 >
                   Mark as resolved
                 </button>

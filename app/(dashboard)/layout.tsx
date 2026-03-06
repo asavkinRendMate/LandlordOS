@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createAuthClient } from '@/lib/supabase/auth'
 import { prisma } from '@/lib/prisma'
 import { DashboardShell } from '@/components/dashboard/shell'
+import NameModalGate from '@/components/dashboard/NameModalGate'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = createAuthClient()
@@ -21,13 +22,23 @@ export default async function DashboardLayout({ children }: { children: React.Re
     where: { property: { userId: user.id }, status: 'OPEN' },
   }).catch(() => 0)
 
+  // Check if landlord needs to set their name (new user, no name, not a tenant-only user)
+  const dbUser = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { name: true },
+  }).catch(() => null)
+
+  const needsName = !tenantProfile && (!dbUser?.name || dbUser.name.trim().length === 0)
+
   return (
     <DashboardShell
       user={user}
       hasTenantProfile={!!tenantProfile}
       openMaintenanceCount={openMaintenanceCount}
     >
-      {children}
+      <NameModalGate needsName={needsName}>
+        {children}
+      </NameModalGate>
     </DashboardShell>
   )
 }

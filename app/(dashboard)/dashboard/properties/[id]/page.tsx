@@ -388,7 +388,7 @@ function AppLinkEmailForm({ propertyId }: { propertyId: string }) {
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         placeholder="applicant@email.com"
-        className="flex-1 min-w-0 bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-[#1A1A1A] text-sm placeholder-gray-400 focus:outline-none focus:border-[#2D6A4F] focus:ring-1 focus:ring-[#2D6A4F]/20 transition-colors"
+        className="flex-1 min-w-0 bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-[#1A1A1A] text-sm placeholder-gray-400 focus:outline-none focus:border-[#16a34a] focus:ring-1 focus:ring-[#16a34a]/20 transition-colors"
       />
       <button
         onClick={send}
@@ -489,7 +489,7 @@ function MarkReceivedForm({ payment, onSaved, onClose }: { payment: RentPayment;
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-[#1A1A1A] text-xs focus:outline-none focus:border-[#2D6A4F] focus:ring-1 focus:ring-[#2D6A4F]/20 transition-colors"
+            className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-[#1A1A1A] text-xs focus:outline-none focus:border-[#16a34a] focus:ring-1 focus:ring-[#16a34a]/20 transition-colors"
           />
         </div>
         <div>
@@ -500,7 +500,7 @@ function MarkReceivedForm({ payment, onSaved, onClose }: { payment: RentPayment;
             min="0.01"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-[#1A1A1A] text-xs focus:outline-none focus:border-[#2D6A4F] focus:ring-1 focus:ring-[#2D6A4F]/20 transition-colors"
+            className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-[#1A1A1A] text-xs focus:outline-none focus:border-[#16a34a] focus:ring-1 focus:ring-[#16a34a]/20 transition-colors"
           />
         </div>
       </div>
@@ -511,14 +511,14 @@ function MarkReceivedForm({ payment, onSaved, onClose }: { payment: RentPayment;
           value={note}
           onChange={(e) => setNote(e.target.value)}
           placeholder="e.g. paid via bank transfer"
-          className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-[#1A1A1A] text-xs placeholder-gray-400 focus:outline-none focus:border-[#2D6A4F] focus:ring-1 focus:ring-[#2D6A4F]/20 transition-colors"
+          className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-[#1A1A1A] text-xs placeholder-gray-400 focus:outline-none focus:border-[#16a34a] focus:ring-1 focus:ring-[#16a34a]/20 transition-colors"
         />
       </div>
       <div className="flex gap-2">
         <button
           onClick={save}
           disabled={saving}
-          className="flex-1 bg-[#2D6A4F] hover:bg-[#245c43] disabled:opacity-50 text-white text-xs font-medium py-1.5 rounded-lg transition-colors"
+          className="flex-1 bg-[#16a34a] hover:bg-[#15803d] disabled:opacity-50 text-white text-xs font-medium py-1.5 rounded-lg transition-colors"
         >
           {saving ? 'Saving…' : 'Confirm'}
         </button>
@@ -715,7 +715,7 @@ function ComplianceSection({ propertyId }: { propertyId: string }) {
         <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium">Property Documents</p>
         <button
           onClick={() => setShowModal(true)}
-          className="flex items-center gap-1.5 text-sm bg-[#2D6A4F] hover:bg-[#245c43] text-white px-3 py-1.5 rounded-lg transition-colors"
+          className="flex items-center gap-1.5 text-sm bg-[#16a34a] hover:bg-[#15803d] text-white px-3 py-1.5 rounded-lg transition-colors"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -759,7 +759,7 @@ function ComplianceSection({ propertyId }: { propertyId: string }) {
           <p className="text-[#9CA3AF] text-sm">No documents uploaded yet.</p>
           <button
             onClick={() => setShowModal(true)}
-            className="mt-2 text-sm text-[#2D6A4F] hover:text-[#245c43] transition-colors"
+            className="mt-2 text-sm text-[#16a34a] hover:text-[#15803d] transition-colors"
           >
             Upload your first document
           </button>
@@ -869,7 +869,7 @@ function PropertyMaintenanceSection({ propertyId }: { propertyId: string }) {
         <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium">Maintenance</p>
         <a
           href={`/dashboard/maintenance?propertyId=${propertyId}`}
-          className="text-xs text-[#2D6A4F] hover:text-[#245c43] transition-colors"
+          className="text-xs text-[#16a34a] hover:text-[#15803d] transition-colors"
         >
           View all →
         </a>
@@ -997,7 +997,7 @@ function FinancialScoreBadge({ report }: { report: FinancialReport }) {
             href={`${appUrl}/verify/${report.verificationToken}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-xs text-[#9CA3AF] hover:text-[#2D6A4F] transition-colors"
+            className="text-xs text-[#9CA3AF] hover:text-[#16a34a] transition-colors"
           >
             Verify report →
           </a>
@@ -1197,7 +1197,7 @@ function AddTenantModal({
             onClick={() => setTab('full')}
             className={`flex-1 py-3 text-sm font-medium transition-colors ${
               tab === 'full'
-                ? 'text-[#2D6A4F] border-b-2 border-[#2D6A4F]'
+                ? 'text-[#16a34a] border-b-2 border-[#16a34a]'
                 : 'text-[#9CA3AF] hover:text-[#6B7280]'
             }`}
           >
@@ -1207,7 +1207,7 @@ function AddTenantModal({
             onClick={() => setTab('invite')}
             className={`flex-1 py-3 text-sm font-medium transition-colors ${
               tab === 'invite'
-                ? 'text-[#2D6A4F] border-b-2 border-[#2D6A4F]'
+                ? 'text-[#16a34a] border-b-2 border-[#16a34a]'
                 : 'text-[#9CA3AF] hover:text-[#6B7280]'
             }`}
           >
@@ -1260,7 +1260,7 @@ function AddTenantModal({
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-[#2D6A4F] hover:bg-[#245c43] disabled:opacity-50 text-white font-semibold rounded-xl py-3 text-sm transition-colors"
+                  className="w-full bg-[#16a34a] hover:bg-[#15803d] disabled:opacity-50 text-white font-semibold rounded-xl py-3 text-sm transition-colors"
                 >
                   {loading ? 'Sending…' : 'Send invite'}
                 </button>
@@ -1363,7 +1363,7 @@ export default function PropertyPage() {
     return (
       <div className="p-8 text-center">
         <p className="text-[#6B7280]">{error ?? 'Property not found'}</p>
-        <button onClick={() => router.back()} className="mt-4 text-sm text-[#2D6A4F] hover:text-[#245c43]">← Back</button>
+        <button onClick={() => router.back()} className="mt-4 text-sm text-[#16a34a] hover:text-[#15803d]">← Back</button>
       </div>
     )
   }
@@ -1422,7 +1422,7 @@ export default function PropertyPage() {
                   className="flex flex-wrap items-center justify-between gap-3 mb-3 group"
                 >
                   <div>
-                    <p className="text-[#1A1A1A] font-medium group-hover:text-[#2D6A4F] transition-colors">{currentTenant.name}</p>
+                    <p className="text-[#1A1A1A] font-medium group-hover:text-[#16a34a] transition-colors">{currentTenant.name}</p>
                     <p className="text-[#6B7280] text-sm">{currentTenant.email}</p>
                     {currentTenant.phone && <p className="text-[#9CA3AF] text-xs mt-0.5">{currentTenant.phone}</p>}
                   </div>
@@ -1457,7 +1457,7 @@ export default function PropertyPage() {
             ) : (
               <button
                 onClick={() => setShowAddTenant(true)}
-                className="inline-flex items-center gap-1.5 text-sm text-[#2D6A4F] hover:text-[#245c43] font-medium transition-colors"
+                className="inline-flex items-center gap-1.5 text-sm text-[#16a34a] hover:text-[#15803d] font-medium transition-colors"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />

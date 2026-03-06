@@ -51,7 +51,7 @@ const styles = {
     error: 'mt-1 text-xs text-red-500',
     hint: 'mt-1 text-xs text-[#9CA3AF]',
     button:
-      'w-full bg-[#2D6A4F] hover:bg-[#245c43] disabled:opacity-50 text-white font-semibold rounded-xl py-3 text-sm transition-colors',
+      'w-full bg-[#16a34a] hover:bg-[#15803d] disabled:opacity-50 text-white font-semibold rounded-xl py-3 text-sm transition-colors',
   },
 }
 

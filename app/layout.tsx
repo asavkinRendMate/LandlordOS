@@ -1,7 +1,9 @@
 import type { Metadata } from 'next'
 import { Plus_Jakarta_Sans } from 'next/font/google'
-import Script from 'next/script'
+import CookieConsent from '@/components/shared/CookieConsent'
 import './globals.css'
+import 'vanilla-cookieconsent/dist/cookieconsent.css'
+import './cookie-consent-overrides.css'
 
 const font = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -22,14 +24,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
       </head>
-      <body className={`${font.className} antialiased`}>{children}</body>
-      <Script src="https://www.googletagmanager.com/gtag/js?id=G-7291K98VLB" strategy="afterInteractive" />
-      <Script id="google-analytics" strategy="afterInteractive">{`
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-        gtag('config', 'G-7291K98VLB');
-      `}</Script>
+      <body className={`${font.className} antialiased`}>
+        {children}
+        <CookieConsent />
+      </body>
     </html>
   )
 }

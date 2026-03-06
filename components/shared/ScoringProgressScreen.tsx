@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 
 const STEPS = [
   { label: 'Uploading documents', delay: 0 },
@@ -43,13 +44,13 @@ export default function ScoringProgressScreen({ fileCount, isComplete }: Scoring
   }, [isComplete])
 
   return (
-    <div className="min-h-screen bg-[#f0f7f4] flex items-center justify-center p-4">
-      <div className="max-w-sm w-full">
-        <div className="text-center mb-8">
-          <span className="text-[#0f1a0f] font-bold text-xl tracking-tight">LetSorted</span>
+    <div className="fixed inset-0 bg-[#F7F8F6] flex items-center justify-center">
+      <div className="flex flex-col items-center w-full max-w-[480px] px-6 -mt-[40px]">
+        <div className="mb-6">
+          <Image src="/logo.svg" alt="LetSorted" width={150} height={50} priority />
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        <div className="bg-white rounded-2xl shadow-[0_2px_16px_rgba(0,0,0,0.08)] p-8 w-full">
           <div className="flex items-center gap-3 mb-5">
             <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center shrink-0">
               <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">

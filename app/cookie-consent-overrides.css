@@ -1,0 +1,30 @@
+#cc-main {
+  /* Primary button (Accept all) */
+  --cc-btn-primary-bg: #16a34a;
+  --cc-btn-primary-hover-bg: #15803d;
+  --cc-btn-primary-border-color: #16a34a;
+  --cc-btn-primary-hover-border-color: #15803d;
+  --cc-btn-primary-color: #ffffff;
+  --cc-btn-primary-hover-color: #ffffff;
+
+  /* Secondary button (Necessary only, Manage preferences) */
+  --cc-btn-secondary-bg: #ffffff;
+  --cc-btn-secondary-hover-bg: #f0f7f4;
+  --cc-btn-secondary-color: #16a34a;
+  --cc-btn-secondary-hover-color: #15803d;
+  --cc-btn-secondary-border-color: #16a34a;
+  --cc-btn-secondary-hover-border-color: #15803d;
+
+  /* Toggle switches */
+  --cc-toggle-on-bg: #16a34a;
+  --cc-toggle-off-bg: #d1d5db;
+  --cc-toggle-on-knob-bg: #ffffff;
+
+  /* Modal & overlay */
+  --cc-overlay-bg: rgba(0, 0, 0, 0.3);
+  --cc-modal-border-radius: 12px;
+  --cc-btn-border-radius: 8px;
+
+  /* Typography */
+  --cc-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}

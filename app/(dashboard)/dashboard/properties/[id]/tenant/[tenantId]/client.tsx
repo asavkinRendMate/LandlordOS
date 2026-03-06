@@ -103,7 +103,7 @@ function DocRow({
             {doc.expiryDate && <span>· expires {formatDate(doc.expiryDate)}</span>}
             <button
               onClick={() => onDownload(doc.id, doc.fileName)}
-              className="text-[#2D6A4F] hover:text-[#245c43] transition-colors"
+              className="text-[#16a34a] hover:text-[#15803d] transition-colors"
               title="Download"
             >
               ↓
@@ -224,7 +224,7 @@ export default function TenantDetailClient({
     : r2rStatus === 'expired' ? 'Expired' : 'Missing'
 
   const editInputClass =
-    'w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-[#1A1A1A] placeholder-gray-400 text-sm focus:outline-none focus:border-[#2D6A4F] focus:ring-1 focus:ring-[#2D6A4F]/20 transition-colors'
+    'w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-[#1A1A1A] placeholder-gray-400 text-sm focus:outline-none focus:border-[#16a34a] focus:ring-1 focus:ring-[#16a34a]/20 transition-colors'
 
   return (
     <div className="p-4 lg:p-8 max-w-3xl">
@@ -317,7 +317,7 @@ export default function TenantDetailClient({
               <button
                 onClick={saveEdit}
                 disabled={saving}
-                className="bg-[#2D6A4F] hover:bg-[#245c43] disabled:opacity-50 text-white text-sm font-medium px-4 py-1.5 rounded-lg transition-colors"
+                className="bg-[#16a34a] hover:bg-[#15803d] disabled:opacity-50 text-white text-sm font-medium px-4 py-1.5 rounded-lg transition-colors"
               >
                 {saving ? 'Saving…' : 'Save'}
               </button>
@@ -352,7 +352,7 @@ export default function TenantDetailClient({
           <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium">Required Documents</p>
           <button
             onClick={() => openUpload()}
-            className="flex items-center gap-1.5 text-sm bg-[#2D6A4F] hover:bg-[#245c43] text-white px-3 py-1.5 rounded-lg transition-colors"
+            className="flex items-center gap-1.5 text-sm bg-[#16a34a] hover:bg-[#15803d] text-white px-3 py-1.5 rounded-lg transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -380,7 +380,7 @@ export default function TenantDetailClient({
           <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium">Other Documents</p>
           <button
             onClick={() => openUpload()}
-            className="flex items-center gap-1.5 text-sm bg-[#2D6A4F] hover:bg-[#245c43] text-white px-3 py-1.5 rounded-lg transition-colors"
+            className="flex items-center gap-1.5 text-sm bg-[#16a34a] hover:bg-[#15803d] text-white px-3 py-1.5 rounded-lg transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />

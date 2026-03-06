@@ -8,6 +8,26 @@ const BUCKET = 'bank-statements'
 const COMPRESS_THRESHOLD = 2 * 1024 * 1024 // 2 MB
 const SIX_MONTHS_MS = 6 * 30 * 24 * 60 * 60 * 1000
 
+/** Strip chain-of-thought / scoring working from AI summary before saving. */
+function cleanSummary(summary: string): string {
+  const cutoff = summary.indexOf('Starting score:')
+  if (cutoff !== -1) {
+    return summary.substring(0, cutoff).trim()
+  }
+  const patterns = [
+    /\s*Score calculation:[\s\S]*$/,
+    /\s*Applied:[\s\S]*$/,
+    /\s*Deductions:[\s\S]*$/,
+    /\s*Final score:[\s\S]*$/,
+    /\s*Running total:[\s\S]*$/,
+  ]
+  let clean = summary
+  for (const pattern of patterns) {
+    clean = clean.replace(pattern, '')
+  }
+  return clean.trim()
+}
+
 // ── Module-level cache for formatted rules string ────────────────────────────
 // Built once on first use per server lifetime, not per request.
 
@@ -25,9 +45,43 @@ async function getRulesCompact(): Promise<{
   const rules = await prisma.scoringRule.findMany({ where: { isActive: true } })
   if (rules.length === 0) throw new Error('No active scoring rules found')
 
-  cachedRulesCompact = rules
-    .map((r) => `${r.key}: ${r.points >= 0 ? '+' : ''}${r.points}pts`)
+  // Log rules loaded from DB
+  const first3 = rules.slice(0, 3).map((r) => `${r.key}(${r.points >= 0 ? '+' : ''}${r.points})`)
+  console.log(`[scoring] Rules loaded: ${rules.length} rules, showing first 3: ${first3.join(', ')}`)
+
+  // Build mandatory deduction/bonus format with descriptions
+  const penalties = rules.filter((r) => r.points < 0)
+  const bonuses = rules.filter((r) => r.points > 0)
+  const neutral = rules.filter((r) => r.points === 0)
+
+  const mandatoryDeductions = penalties
+    .map((r) => `- ${r.key}: DEDUCT ${Math.abs(r.points)} points — "${r.description}". This is non-negotiable regardless of other positive factors.`)
     .join('\n')
+
+  const mandatoryBonuses = bonuses
+    .map((r) => `- ${r.key}: ADD ${r.points} points — "${r.description}"`)
+    .join('\n')
+
+  const neutralRules = neutral
+    .map((r) => `- ${r.key}: 0 points — "${r.description}"`)
+    .join('\n')
+
+  cachedRulesCompact = `SCORING SYSTEM — NON-NEGOTIABLE RULES
+You MUST apply the following deductions and bonuses. These are MANDATORY, not guidelines.
+The score starts at 100. Apply all matching rules. No exceptions. No leniency.
+
+MANDATORY DEDUCTIONS (apply ALL that match — do not skip any):
+${mandatoryDeductions}
+
+MANDATORY BONUSES (apply ALL that match):
+${mandatoryBonuses}
+
+${neutralRules ? `NEUTRAL (fire but 0 points):\n${neutralRules}\n` : ''}
+CRITICAL: You must fire EVERY rule whose condition is met. Do not omit deductions because the applicant has positive factors. Deductions and bonuses are independent — apply both.
+
+Show your working in the summary like:
+"Starting score: 100. Applied: REGULAR_INCOME_PATTERN(+10)=110, RENT_35_TO_40_PCT(-15)=95, GAMBLING_ANY(-10)=85. Final: 85/100."
+This working MUST appear at the end of your summary.`
 
   cachedRuleMap = new Map(
     rules.map((r) => [r.key, { key: r.key, description: r.description, points: r.points, category: r.category }]),
@@ -91,13 +145,22 @@ function scoreToGrade(score: number): string {
 
 // ── Gambling stacking: only apply highest gambling penalty ────────────────────
 
-function deduplicateGamblingRules(firedKeys: string[]): string[] {
+function deduplicateStackingRules(firedKeys: string[]): string[] {
+  // Gambling: only highest penalty
   const hasAbove10 = firedKeys.includes('GAMBLING_ABOVE_10_PCT')
   const hasAbove5  = firedKeys.includes('GAMBLING_ABOVE_5_PCT')
 
+  // Income discrepancy: only highest penalty
+  const hasMajor = firedKeys.includes('INCOME_MAJOR_DISCREPANCY')
+  const hasSignificant = firedKeys.includes('INCOME_SIGNIFICANT_DISCREPANCY')
+
   return firedKeys.filter((key) => {
+    // Gambling dedup
     if (key === 'GAMBLING_ABOVE_5_PCT' && hasAbove10) return false
     if (key === 'GAMBLING_ANY' && (hasAbove10 || hasAbove5)) return false
+    // Income discrepancy dedup
+    if (key === 'INCOME_SIGNIFICANT_DISCREPANCY' && hasMajor) return false
+    if (key === 'INCOME_SLIGHT_DISCREPANCY' && (hasMajor || hasSignificant)) return false
     return true
   })
 }
@@ -241,8 +304,16 @@ Rules:
   const textBlock = result.content.find((b) => b.type === 'text')
   if (!textBlock?.text) throw new Error('No text response from Claude for name verification')
 
-  const cleaned = textBlock.text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
-  return JSON.parse(cleaned) as NameVerificationResult
+  let jsonStr = textBlock.text.trim()
+  jsonStr = jsonStr.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
+  if (!jsonStr.startsWith('{') && !jsonStr.startsWith('[')) {
+    const firstBrace = jsonStr.indexOf('{')
+    const lastBrace = jsonStr.lastIndexOf('}')
+    if (firstBrace !== -1 && lastBrace > firstBrace) {
+      jsonStr = jsonStr.slice(firstBrace, lastBrace + 1)
+    }
+  }
+  return JSON.parse(jsonStr) as NameVerificationResult
 }
 
 // ── Rate limit error class ──────────────────────────────────────────────────
@@ -324,7 +395,9 @@ Half B:
 ${JSON.stringify(resultB)}
 
 Return the same JSON format:
-{"firedRules":["KEY"],"monthlyIncome":0,"averageBalance":0,"rentToIncomeRatio":0,"summary":"3-4 sentences.","currency":"GBP","analysedMonths":0,"confidence":"HIGH|MEDIUM|LOW","isJointApplication":false,"jointApplicants":[],"incomeBreakdown":[],"warnings":[]}
+{"firedRules":["KEY"],"monthlyIncome":"<CALCULATED_GBP>","averageBalance":"<CALCULATED_GBP>","rentToIncomeRatio":"<CALCULATED_DECIMAL>","summary":"3-4 sentences.","currency":"GBP","analysedMonths":"<NUMBER>","confidence":"HIGH|MEDIUM|LOW","isJointApplication":false,"jointApplicants":[],"incomeBreakdown":[],"warnings":[]}
+
+CRITICAL: Replace all angle-bracket placeholders with actual calculated numeric values. Never return zero unless the statements genuinely show zero.
 
 Rules (fire key if pattern detected):
 ${rulesText}
@@ -356,8 +429,16 @@ Notes: De-duplicate firedRules. Average the averageBalance. Sum monthly income c
   const textBlock = result.content.find((b) => b.type === 'text')
   if (!textBlock?.text) throw new Error('No text response from Claude for synthesis')
 
-  const cleaned = textBlock.text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
-  return JSON.parse(cleaned) as ClaudeAnalysisResponse
+  let jsonStr = textBlock.text.trim()
+  jsonStr = jsonStr.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
+  if (!jsonStr.startsWith('{')) {
+    const firstBrace = jsonStr.indexOf('{')
+    const lastBrace = jsonStr.lastIndexOf('}')
+    if (firstBrace !== -1 && lastBrace > firstBrace) {
+      jsonStr = jsonStr.slice(firstBrace, lastBrace + 1)
+    }
+  }
+  return JSON.parse(jsonStr) as ClaudeAnalysisResponse
 }
 
 // ── Main analysis call (supports multiple PDFs) ──────────────────────────────
@@ -367,8 +448,10 @@ async function callClaudeAnalysis(
   monthlyRentPence: number,
   rulesText: string,
   apiKey: string,
+  declaredIncomePence?: number | null,
 ): Promise<ClaudeAnalysisResponse> {
   const rentPounds = (monthlyRentPence / 100).toFixed(2)
+  const declaredIncomePounds = declaredIncomePence ? (declaredIncomePence / 100).toFixed(2) : null
 
   // Build document blocks for each PDF
   const documentBlocks: Array<Record<string, unknown>> = []
@@ -391,7 +474,7 @@ async function callClaudeAnalysis(
     .map((f) => `- ${f.fileName}: ${f.ownershipNote}`)
     .join('\n')
 
-  const systemPrompt = 'You are a financial analyst reviewing bank statements for a UK rental property. Analyse all statements and respond ONLY with valid JSON.'
+  const systemPrompt = `You are a strict financial compliance analyst reviewing bank statements for a UK rental property. You MUST apply scoring rules mechanically — every rule whose condition is met MUST be fired. You are not allowed to exercise leniency or skip penalties. Respond ONLY with valid JSON.`
 
   const userPrompt = `Analyse these bank statements. Monthly rent: £${rentPounds}.
 
@@ -399,19 +482,37 @@ Files:
 ${ownershipSummary}
 
 Return JSON:
-{"firedRules":["KEY"],"monthlyIncome":0,"averageBalance":0,"rentToIncomeRatio":0,"summary":"3-4 sentences on financial health, strengths, risks, recommendation.","currency":"GBP","analysedMonths":0,"confidence":"HIGH|MEDIUM|LOW","isJointApplication":false,"jointApplicants":[{"name":"","income":0}],"incomeBreakdown":[{"name":"","monthlyIncome":0}],"warnings":[]}
+{"firedRules":["KEY"],"monthlyIncome":"<CALCULATED_GBP>","averageBalance":"<CALCULATED_GBP>","rentToIncomeRatio":"<CALCULATED_DECIMAL>","summary":"3-4 sentences on financial health, strengths, risks, recommendation. Do NOT include scoring calculations or working in this field.","scoreBreakdown":"Starting score: 100. Applied: RULE(+/-X)=Y, ... Final: Z/100.","currency":"GBP","analysedMonths":"<NUMBER>","confidence":"HIGH|MEDIUM|LOW","isJointApplication":false,"jointApplicants":[{"name":"","income":"<CALCULATED_GBP>"}],"incomeBreakdown":[{"name":"","monthlyIncome":"<CALCULATED_GBP>"}],"warnings":[]}
 
-Rules (fire key if pattern detected):
+CRITICAL: The angle-bracket placeholders above (e.g. <CALCULATED_GBP>) mean you MUST calculate and insert the real numeric values from the bank statements. monthlyIncome and averageBalance must be actual GBP figures, NOT zero. Zero is only correct if the statements genuinely show no income and no balance across all months. If you can read any transactions at all, calculate the real figures.
+
 ${rulesText}
 
-IMPORTANT — Self-transfers must be excluded from expenses:
-Do NOT count the following as expenses or outgoings:
-- Transfers where the reference contains: '2myself', 'to myself', 'savings', 'isa', 'transfer to self', or any variation suggesting the account holder is moving money between their own accounts
-- Transfers TO the account holder's own name (e.g. 'Bill Payment to [same name as account holder]')
-- Transfers with references like 'barclays 2myself', 'lloyds savings', 'monzo pot', 'marcus savings' etc.
-These represent the applicant moving money to their own savings/ISAs — treat as SAVINGS behaviour, not expenses. If you identify self-transfers, note this in your summary (e.g. 'Applicant regularly transfers £X/month to savings — positive financial behaviour, excluded from expenses'). When calculating average balance, if you detect regular self-transfers to savings, mention that true available funds may be higher than the current account balance suggests.
+ADDITIONAL ANALYSIS RULES:
 
-Notes: Only fire the single highest gambling rule. monthlyIncome/averageBalance/rentToIncomeRatio are combined across all statements in GBP. Set isJointApplication true + fill jointApplicants/incomeBreakdown if multiple people. Convert foreign currency to GBP.`
+Self-transfers must be excluded from expenses:
+Do NOT count transfers to self (savings, ISA, 'to myself', same-name transfers) as outgoings. Treat as savings behaviour, note in summary.
+
+${declaredIncomePounds ? `DECLARED vs ACTUAL INCOME CHECK (MANDATORY):
+Applicant declared monthly income: £${declaredIncomePounds}
+Compare with actual average monthly income from statements.
+You MUST fire the matching rule:
+- Actual >= 90% of declared: no penalty
+- Actual 70-89% of declared: you MUST fire INCOME_SLIGHT_DISCREPANCY
+- Actual 50-69% of declared: you MUST fire INCOME_SIGNIFICANT_DISCREPANCY
+- Actual < 50% of declared: you MUST fire INCOME_MAJOR_DISCREPANCY
+There are no exceptions to this. Calculate the percentage and fire the rule.
+
+` : ''}SELF-EMPLOYED AND COMPANY DIRECTORS:
+Include salary + dividends + director's loan repayments as income. Do not penalise income arriving in multiple streams if the applicant appears self-employed.
+
+GAMBLING RULE: Only fire the single highest gambling rule (GAMBLING_ABOVE_10_PCT > GAMBLING_ABOVE_5_PCT > GAMBLING_ANY). But GAMBLING_4_PLUS_MONTHS fires independently.
+
+AFFORDABILITY: Calculate rent-to-income ratio = rent / net monthly income. You MUST fire exactly one: RENT_BELOW_25_PCT, RENT_25_TO_30_PCT, RENT_30_TO_35_PCT, RENT_35_TO_40_PCT, or RENT_ABOVE_40_PCT. This is mandatory — every analysis must have exactly one affordability band.
+
+Combined figures: monthlyIncome/averageBalance/rentToIncomeRatio combined across all statements in GBP. Convert foreign currency. Set isJointApplication true + fill jointApplicants/incomeBreakdown if multiple people.
+
+IMPORTANT: Your response must be valid JSON only. Do not include your scoring working, calculations, or chain of thought in the 'summary' field. The summary field must contain ONLY the human-readable assessment paragraph. Your working (Starting score, deductions, final) goes in the 'scoreBreakdown' field, NEVER in the summary field.`
 
   // Log token estimates
   const systemChars = systemPrompt.length
@@ -456,8 +557,30 @@ Notes: Only fire the single highest gambling rule. monthlyIncome/averageBalance/
   const textBlock = result.content.find((b) => b.type === 'text')
   if (!textBlock?.text) throw new Error('No text response from Claude')
 
-  const cleaned = textBlock.text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
-  return JSON.parse(cleaned) as ClaudeAnalysisResponse
+  // Log raw response for debugging (first 500 chars)
+  console.log(`[scoring] Raw Claude text (first 500 chars): ${textBlock.text.substring(0, 500)}`)
+
+  // Extract JSON — Claude sometimes wraps it in markdown fences or adds prose before/after
+  let jsonStr = textBlock.text.trim()
+
+  // Try stripping markdown code fences first
+  jsonStr = jsonStr.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
+
+  // If the result doesn't start with '{', find the first '{' and last '}'
+  if (!jsonStr.startsWith('{')) {
+    const firstBrace = jsonStr.indexOf('{')
+    const lastBrace = jsonStr.lastIndexOf('}')
+    if (firstBrace !== -1 && lastBrace > firstBrace) {
+      jsonStr = jsonStr.slice(firstBrace, lastBrace + 1)
+    }
+  }
+
+  const parsed = JSON.parse(jsonStr) as ClaudeAnalysisResponse
+
+  // Log raw Claude response before any post-processing
+  console.log(`[scoring] Raw Claude response — firedRules: [${parsed.firedRules.join(', ')}], monthlyIncome: ${parsed.monthlyIncome}, rentToIncomeRatio: ${parsed.rentToIncomeRatio}, averageBalance: ${parsed.averageBalance}, analysedMonths: ${parsed.analysedMonths}, confidence: ${parsed.confidence}`)
+
+  return parsed
 }
 
 // ── Analyse a single PDF (may be split) with synthesis ───────────────────────
@@ -469,6 +592,7 @@ async function analyseSinglePdf(
   monthlyRentPence: number,
   rulesText: string,
   apiKey: string,
+  declaredIncomePence?: number | null,
 ): Promise<ClaudeAnalysisResponse> {
   if (buffers.length === 1) {
     return callClaudeAnalysis(
@@ -476,6 +600,7 @@ async function analyseSinglePdf(
       monthlyRentPence,
       rulesText,
       apiKey,
+      declaredIncomePence,
     )
   }
 
@@ -487,12 +612,14 @@ async function analyseSinglePdf(
       monthlyRentPence,
       rulesText,
       apiKey,
+      declaredIncomePence,
     ),
     callClaudeAnalysis(
       [{ base64: buffers[1].toString('base64'), fileName: `${fileName} (part 2)`, ownershipNote }],
       monthlyRentPence,
       rulesText,
       apiKey,
+      declaredIncomePence,
     ),
   ])
 
@@ -505,7 +632,7 @@ export async function analyzeStatement(reportId: string): Promise<void> {
   // 1. Fetch report
   const report = await prisma.financialReport.findUnique({
     where: { id: reportId },
-    include: { property: true },
+    include: { property: true, invite: { include: { landlord: true } } },
   })
   if (!report) throw new Error(`FinancialReport ${reportId} not found`)
 
@@ -527,7 +654,10 @@ export async function analyzeStatement(reportId: string): Promise<void> {
   })
 
   try {
-    // 3. Fetch active config and rules (rules cached at module level)
+    // 3. Fetch active config and rules
+    // Invalidate cache so rule format changes take effect without server restart
+    cachedRulesCompact = null
+    cachedRuleMap = null
     const [config, { rulesText, ruleMap }] = await Promise.all([
       prisma.scoringConfig.findFirst({ where: { isActive: true } }),
       getRulesCompact(),
@@ -712,8 +842,9 @@ export async function analyzeStatement(reportId: string): Promise<void> {
       }
     }
 
-    // 8. Get monthly rent (in pence) from property tenancy or default to 0
+    // 8. Get monthly rent (in pence): report field first, then tenancy lookup, then 0
     const monthlyRentPence = await (async () => {
+      if (report.monthlyRentPence) return report.monthlyRentPence
       if (!report.propertyId) return 0
       const tenancy = await prisma.tenancy.findFirst({
         where: { propertyId: report.propertyId, status: { in: ['ACTIVE', 'PENDING'] } },
@@ -746,6 +877,7 @@ export async function analyzeStatement(reportId: string): Promise<void> {
         monthlyRentPence,
         rulesText,
         apiKey,
+        report.declaredIncomePence,
       )
     } else {
       // Multiple files or no splits — send all in one call
@@ -754,11 +886,43 @@ export async function analyzeStatement(reportId: string): Promise<void> {
         monthlyRentPence,
         rulesText,
         apiKey,
+        report.declaredIncomePence,
       )
     }
 
+    // 9a. Sanity check: if Claude returned 0 income/balance despite analysing months, retry once
+    if (
+      analysis.analysedMonths > 0 &&
+      analysis.monthlyIncome === 0 &&
+      analysis.averageBalance === 0
+    ) {
+      console.warn(`[scoring] SUSPICIOUS: Claude returned 0 income/balance despite analysedMonths=${analysis.analysedMonths}. Retrying once.`)
+      try {
+        let retryAnalysis: ClaudeAnalysisResponse
+        if (hasSplitFiles && pdfDataList.length === 1) {
+          const pd = pdfDataList[0]
+          const f = statementFiles.find((sf) => sf.index === pd.file.index)!
+          let ownershipNote = 'Ownership not verified'
+          if (f.verificationStatus === 'VERIFIED') ownershipNote = `Verified as belonging to ${applicantName ?? 'applicant'}`
+          else if (f.verificationStatus === 'UNVERIFIED' && f.detectedName) ownershipNote = `Name on statement: ${f.detectedName}`
+          retryAnalysis = await analyseSinglePdf(pd.buffers, f.fileName, ownershipNote, monthlyRentPence, rulesText, apiKey, report.declaredIncomePence)
+        } else {
+          retryAnalysis = await callClaudeAnalysis(pdfFilesForAnalysis, monthlyRentPence, rulesText, apiKey, report.declaredIncomePence)
+        }
+        if (retryAnalysis.monthlyIncome > 0 || retryAnalysis.averageBalance > 0) {
+          console.log(`[scoring] Retry succeeded: monthlyIncome=${retryAnalysis.monthlyIncome}, averageBalance=${retryAnalysis.averageBalance}`)
+          analysis = retryAnalysis
+        } else {
+          console.warn(`[scoring] Retry also returned 0 income/balance. Proceeding with original values.`)
+        }
+      } catch (retryErr) {
+        console.error(`[scoring] Retry failed:`, retryErr)
+        // Proceed with original analysis
+      }
+    }
+
     // 10. Apply gambling deduplication
-    const deduplicatedFiredKeys = deduplicateGamblingRules(analysis.firedRules)
+    const deduplicatedFiredKeys = deduplicateStackingRules(analysis.firedRules)
 
     // 11. Match fired rule keys to DB records
     const appliedRuleRecords = deduplicatedFiredKeys
@@ -769,13 +933,46 @@ export async function analyzeStatement(reportId: string): Promise<void> {
       })
 
     // 12. Calculate score starting at 100
-    const totalScore = Math.min(
+    let totalScore = Math.min(
       100,
       Math.max(
         0,
         appliedRuleRecords.reduce((sum, r) => sum + r.points, 100),
       ),
     )
+
+    // Log calculated score before sanity checks
+    console.log(`[scoring] Calculated score: ${totalScore} from ${appliedRuleRecords.length} applied rules: [${appliedRuleRecords.map((r) => `${r.key}(${r.points >= 0 ? '+' : ''}${r.points})`).join(', ')}]`)
+
+    // 12a. Server-side sanity checks — safety net for when Claude misses penalties
+    // Check income discrepancy
+    if (report.declaredIncomePence && analysis.monthlyIncome > 0) {
+      const declaredPounds = report.declaredIncomePence / 100
+      const actualPounds = analysis.monthlyIncome
+      const ratio = actualPounds / declaredPounds
+
+      if (ratio < 0.5 && totalScore > 60) {
+        console.warn(`[scoring] SANITY CHECK FAILED: income ratio ${(ratio * 100).toFixed(0)}% (actual £${actualPounds.toFixed(0)} vs declared £${declaredPounds.toFixed(0)}) but score=${totalScore}. Capping at 60.`)
+        totalScore = 60
+      } else if (ratio < 0.7 && totalScore > 75) {
+        console.warn(`[scoring] SANITY CHECK: income ratio ${(ratio * 100).toFixed(0)}% but score=${totalScore}. Capping at 75.`)
+        totalScore = 75
+      }
+    }
+
+    // Check statement coverage
+    if (primaryPerson && primaryPerson.coverageDays !== null && primaryPerson.coverageDays < 90 && totalScore > 85) {
+      console.warn(`[scoring] SANITY CHECK: statement coverage only ${primaryPerson.coverageDays} days but score=${totalScore}. Capping at 85.`)
+      totalScore = 85
+    }
+
+    // Check rent-to-income — if > 40%, score cannot be above 70
+    // Claude may return as decimal (0.43) or percentage (43) — normalise
+    const rentToIncomeNorm = analysis.rentToIncomeRatio > 1 ? analysis.rentToIncomeRatio / 100 : analysis.rentToIncomeRatio
+    if (rentToIncomeNorm > 0.4 && totalScore > 70) {
+      console.warn(`[scoring] SANITY CHECK: rent-to-income ${(rentToIncomeNorm * 100).toFixed(0)}% but score=${totalScore}. Capping at 70.`)
+      totalScore = 70
+    }
 
     // 13. Build breakdown by category
     const breakdown: Record<string, number> = {}
@@ -824,7 +1021,7 @@ export async function analyzeStatement(reportId: string): Promise<void> {
         status: 'COMPLETED',
         totalScore,
         grade,
-        aiSummary: analysis.summary,
+        aiSummary: cleanSummary(analysis.summary),
         breakdown,
         appliedRules: appliedRuleRecords,
         scoringConfigVersion: config.version,
@@ -837,6 +1034,35 @@ export async function analyzeStatement(reportId: string): Promise<void> {
         validationResults: validationResults as unknown as Prisma.InputJsonValue,
       },
     })
+
+    // 19. If this report came from an invite, update invite status and notify landlord
+    if (report.inviteId && report.invite) {
+      try {
+        await prisma.screeningInvite.update({
+          where: { id: report.inviteId },
+          data: { status: 'COMPLETED', updatedAt: new Date() },
+        })
+
+        const { landlordNotificationHtml } = await import('@/lib/email-templates')
+        const { sendEmail } = await import('@/lib/resend')
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://letsorted.co.uk'
+        const reportUrl = `${appUrl}/screening/report/${report.inviteId}`
+
+        await sendEmail({
+          to: report.invite.landlord.email,
+          subject: `${report.invite.candidateName} completed their financial check`,
+          html: landlordNotificationHtml({
+            candidateName: report.invite.candidateName,
+            score: totalScore,
+            grade,
+            reportUrl,
+          }),
+        })
+      } catch (notifyErr) {
+        console.error(`[scoring/engine] Failed to notify landlord for invite ${report.inviteId}:`, notifyErr)
+        // Don't fail the report — notification is best-effort
+      }
+    }
   } catch (err) {
     console.error(`[scoring/engine] analyzeStatement failed for ${reportId}:`, err)
 
