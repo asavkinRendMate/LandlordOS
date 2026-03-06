@@ -362,7 +362,7 @@ export default function NewPropertyPage() {
   const heading = stepHeadings[step]
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-3.5rem)] lg:min-h-screen">
+    <div className="flex flex-col h-full">
 
       {/* TOP — pill indicator + heading */}
       <div className="px-4 pt-8 pb-6 border-b border-gray-100">

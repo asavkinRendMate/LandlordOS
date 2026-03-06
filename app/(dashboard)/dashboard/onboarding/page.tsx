@@ -418,7 +418,7 @@ export default function OnboardingPage() {
   const content = step < 4 ? stepContent[step as keyof typeof stepContent] : null
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-3.5rem)] lg:min-h-screen">
+    <div className="flex flex-col h-full">
 
       {/* TOP — step indicator */}
       <div className="pt-8 pb-5 px-4 border-b border-gray-100">

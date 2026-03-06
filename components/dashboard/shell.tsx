@@ -182,15 +182,15 @@ export function DashboardShell({
   }, [])
 
   return (
-    <div className="min-h-screen bg-[#F7F8F6]">
+    <div className="h-screen overflow-hidden bg-[#F7F8F6]">
       <CrispChat
         user={{ email: user.email ?? '', name: user.user_metadata?.name ?? null, id: user.id }}
         role="landlord"
       />
 
       {/* ── Desktop layout (lg+) ────────────────────────────────────────────── */}
-      <div className="hidden lg:flex min-h-screen">
-        <aside className="w-56 shrink-0 flex flex-col bg-white border-r border-black/[0.06]">
+      <div className="hidden lg:flex h-screen overflow-hidden">
+        <aside className="w-56 shrink-0 flex flex-col h-screen overflow-y-auto bg-white border-r border-black/[0.06]">
           <div className="px-5 py-5 border-b border-gray-100">
             <Image src="/logo.svg" alt="LetSorted" width={120} height={40} />
           </div>
@@ -198,14 +198,14 @@ export function DashboardShell({
           {hasTenantProfile && <ContextSwitcher />}
           <UserFooter email={user.email ?? ''} onSignOut={handleSignOut} onOpenChat={handleOpenChat} />
         </aside>
-        <main className="flex-1 min-w-0 overflow-auto flex flex-col bg-[#F7F8F6]">
+        <main className="flex-1 min-w-0 overflow-y-auto flex flex-col bg-[#F7F8F6]">
           <div className="flex-1">{children}</div>
           <Footer variant="app" />
         </main>
       </div>
 
       {/* ── Mobile layout (<lg) ─────────────────────────────────────────────── */}
-      <div className="lg:hidden flex flex-col min-h-screen">
+      <div className="lg:hidden flex flex-col h-screen overflow-hidden">
 
         {/* Sticky top bar */}
         <header className="sticky top-0 z-30 h-14 bg-white/95 backdrop-blur-sm border-b border-black/[0.06] flex items-center justify-between px-4 shrink-0">
@@ -269,7 +269,7 @@ export function DashboardShell({
         </div>
 
         {/* Page content */}
-        <main className="flex-1 min-w-0 overflow-auto flex flex-col bg-[#F7F8F6]">
+        <main className="flex-1 min-w-0 overflow-y-auto flex flex-col bg-[#F7F8F6]">
           <div className="flex-1">{children}</div>
           <Footer variant="app" />
         </main>

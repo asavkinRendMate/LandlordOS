@@ -523,7 +523,7 @@ export default function MaintenanceDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-3.5rem)]">
+      <div className="flex items-center justify-center h-full">
         <div className="w-7 h-7 border-2 border-[#16a34a] border-t-transparent rounded-full animate-spin" />
       </div>
     )
