@@ -83,18 +83,6 @@ export async function DELETE(
           where: { propertyId: { in: propertyIds } },
         })
 
-        // 6. FinancialReports (for properties and tenants)
-        await tx.financialReport.deleteMany({
-          where: {
-            OR: [
-              { propertyId: { in: propertyIds } },
-              ...(tenantProfileIds.length > 0
-                ? [{ tenantId: { in: tenantProfileIds } }]
-                : []),
-            ],
-          },
-        })
-
         // 7. RentPayments via tenancies
         const tenancies = await tx.tenancy.findMany({
           where: { propertyId: { in: propertyIds } },
@@ -143,12 +131,54 @@ export async function DELETE(
         where: { userId: userId },
       })
 
-      // 12. Properties
+      // 12. FinancialReports — must delete before User cascade reaches
+      //     ScreeningInvite and ScreeningPackage (reports hold FKs to both)
+      const screeningInvites = await tx.screeningInvite.findMany({
+        where: { landlordId: userId },
+        select: { id: true },
+      })
+      const inviteIds = screeningInvites.map((i) => i.id)
+
+      const screeningPackages = await tx.screeningPackage.findMany({
+        where: { userId: userId },
+        select: { id: true },
+      })
+      const packageIds = screeningPackages.map((p) => p.id)
+
+      let usageIds: string[] = []
+      if (packageIds.length > 0) {
+        const usages = await tx.screeningPackageUsage.findMany({
+          where: { packageId: { in: packageIds } },
+          select: { id: true },
+        })
+        usageIds = usages.map((u) => u.id)
+      }
+
+      const reportOrConditions = [
+        ...(propertyIds.length > 0 ? [{ propertyId: { in: propertyIds } }] : []),
+        ...(tenantProfileIds.length > 0 ? [{ tenantId: { in: tenantProfileIds } }] : []),
+        ...(inviteIds.length > 0 ? [{ inviteId: { in: inviteIds } }] : []),
+        ...(usageIds.length > 0 ? [{ screeningUsageId: { in: usageIds } }] : []),
+      ]
+      if (reportOrConditions.length > 0) {
+        await tx.financialReport.deleteMany({
+          where: { OR: reportOrConditions },
+        })
+      }
+
+      // 13. ScreeningPackageUsages (before packages cascade-delete)
+      if (usageIds.length > 0) {
+        await tx.screeningPackageUsage.deleteMany({
+          where: { id: { in: usageIds } },
+        })
+      }
+
+      // 14. Properties
       await tx.property.deleteMany({
         where: { userId: userId },
       })
 
-      // 13. User record
+      // 15. User record (cascades: ScreeningPackage, ScreeningInvite)
       await tx.user.delete({
         where: { id: userId },
       })
