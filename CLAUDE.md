@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-**LetSorted** (letsorted.co.uk) — UK property management SaaS for self-managing landlords (1–5 properties). Simple, practical tools: document management, tenant pipeline, rent tracking, compliance alerts. Renters' Rights Act 2025 compliance built in but not the primary pitch. Read `SPEC.md` for full product specification and `TASKS.md` for current sprint tasks.
+**LetSorted** (letsorted.co.uk) — UK property management SaaS for self-managing landlords (1–5 properties). Simple, practical tools: document management, tenant pipeline, rent tracking, compliance alerts, AI-powered financial screening. Renters' Rights Act 2025 compliance built in. Read `SPEC.md` for full product specification and `TASKS.md` for current sprint tasks.
 
 ---
 
@@ -10,17 +10,20 @@
 
 | Layer | Technology |
 |---|---|
-| Framework | Next.js 14 (App Router) |
+| Framework | Next.js 14.2.35 (App Router) |
 | Language | TypeScript (strict mode) |
 | Database | PostgreSQL via Supabase |
-| ORM | Prisma |
+| ORM | Prisma 5.22 |
 | Auth | Supabase Auth (magic link only — no passwords) |
-| Storage | Supabase Storage |
-| Email | Resend |
-| Payments | Stripe |
-| AI | Anthropic Claude API (claude-sonnet-4-20250514) |
+| Storage | Supabase Storage (4 private buckets) |
+| Email | Resend (`lib/resend.ts`, console fallback in dev) |
+| Payments | Stripe (not yet integrated — mock-paid flow in use) |
+| AI | Anthropic Claude API (`claude-sonnet-4-20250514`) |
+| Live Chat | Crisp (via `NEXT_PUBLIC_CRISP_WEBSITE_ID`) |
 | Hosting | Vercel |
-| Styling | Tailwind CSS + shadcn/ui |
+| Styling | Tailwind CSS + shadcn/ui (New York style) |
+| Validation | Zod **v4** — use `error:` not `errorMap:` for custom messages |
+| PDF | pdf-lib (compression, splitting) |
 
 ---
 
@@ -28,111 +31,157 @@
 
 ```
 /
-├── app/                          # Next.js App Router
-│   ├── (auth)/                   # Auth routes (magic link flow)
-│   │   └── login/
-│   ├── (dashboard)/              # Protected landlord dashboard
-│   │   ├── layout.tsx            # Dashboard shell with sidebar (DashboardShell)
+├── app/
+│   ├── (auth)/login/                   # Magic link login page
+│   │
+│   ├── (dashboard)/                    # Protected landlord dashboard
+│   │   ├── layout.tsx                  # DashboardShell + NameModalGate wrapper
 │   │   └── dashboard/
-│   │       ├── page.tsx          # Overview: property cards, active maintenance preview, compliance alerts
-│   │       ├── onboarding/       # First-run wizard (4 steps: property → occupancy → tenant → done)
+│   │       ├── page.tsx                # Overview: property cards, maintenance preview, compliance alerts
+│   │       ├── onboarding/page.tsx     # First-run wizard (4 steps: property → occupancy → tenant → done)
+│   │       ├── settings/page.tsx       # Profile settings: display name, email (read-only)
 │   │       ├── maintenance/
-│   │       │   ├── page.tsx      # Maintenance list: all requests with status tabs + priority sort
-│   │       │   └── [id]/page.tsx # Maintenance detail: status mgmt, photos, timeline (client component)
+│   │       │   ├── page.tsx            # Maintenance list: status tabs + priority sort
+│   │       │   └── [id]/page.tsx       # Maintenance detail: status mgmt, photos, timeline
 │   │       └── properties/
-│   │           ├── page.tsx      # Properties list: all property cards + compliance alert bar
-│   │           ├── [id]/
-│   │           │   ├── page.tsx  # Property detail: compliance & docs, tenant card, applications, scoring
-│   │           │   └── tenant/
-│   │           │       └── [tenantId]/
-│   │           │           ├── page.tsx    # Tenant detail: server component, auth check, serialize dates
-│   │           │           └── client.tsx  # Tenant detail: R2R status box, docs sections, inline edit
-│   │           └── new/
-│   │               └── page.tsx  # Add property wizard (3 steps, same form as onboarding)
-│   ├── (marketing)/              # Public marketing site
+│   │           ├── page.tsx            # Properties list + compliance alert bar
+│   │           ├── new/page.tsx        # Add property wizard (3 steps)
+│   │           └── [id]/
+│   │               ├── page.tsx        # Property detail: docs, tenants, applications, scoring
+│   │               └── tenant/[tenantId]/
+│   │                   ├── page.tsx    # Tenant detail (server component)
+│   │                   └── client.tsx  # Tenant detail (client: R2R, docs, inline edit)
+│   │
+│   ├── (marketing)/                    # Public marketing site
+│   │   ├── layout.tsx                  # Marketing layout + CrispChat widget
+│   │   ├── page.tsx                    # Landing page + waitlist + closed beta modal
+│   │   ├── features/                   # Features marketing pages
+│   │   ├── renters-rights-act/         # Renters' Rights Act information
+│   │   ├── privacy/                    # Privacy policy
+│   │   ├── terms/                      # Terms of service
+│   │   ├── verify/[token]/             # Public financial report verification (token-based)
+│   │   └── screening/                  # Financial screening product
+│   │       ├── page.tsx                # Invite form: send financial check to candidate
+│   │       ├── sent/page.tsx           # Confirmation: "Invite sent to {email}"
+│   │       ├── apply/[token]/page.tsx  # Candidate flow: upload PDFs, get score (public, no auth)
+│   │       ├── report/[inviteId]/page.tsx  # Landlord report view (locked/unlocked)
+│   │       ├── invites/page.tsx        # Invite history list (auth required)
+│   │       ├── packages/page.tsx       # Credit pack pricing cards
+│   │       └── use/page.tsx            # Redirects to /screening
+│   │
+│   ├── (tenant)/                       # Tenant-facing pages
 │   │   ├── layout.tsx
-│   │   ├── page.tsx              # Landing page + waitlist form + closed beta modal
-│   │   ├── privacy/              # Privacy policy page
-│   │   ├── terms/                # Terms of service page
-│   │   └── verify/[token]/       # Financial report verification (public, token-based)
-│   ├── (tenant)/                 # Tenant-facing pages
-│   │   ├── layout.tsx
-│   │   ├── apply/[propertyId]/   # Application form (public, no auth)
-│   │   ├── passport/             # Financial Passport landing page (email capture, pre-launch)
+│   │   ├── apply/[propertyId]/page.tsx # Application form (public, no auth)
+│   │   ├── passport/page.tsx           # Financial Passport landing (pre-launch email capture)
 │   │   └── tenant/
-│   │       ├── join/[token]/     # Tenant onboarding / confirm details
-│   │       └── dashboard/        # Tenant portal (auth-protected)
-│   │           ├── page.tsx      # Server: fetch tenant + property, gate auth
-│   │           └── client.tsx    # Client: property card, landlord docs, my docs, rent payments, maintenance
-│   ├── auth/callback/            # Supabase magic-link callback
-│   └── api/                      # API routes (all return { data, error })
-│       ├── address/              # OS Places postcode lookup
+│   │       ├── join/[token]/page.tsx   # Tenant onboarding / confirm details
+│   │       └── dashboard/
+│   │           ├── page.tsx            # Tenant portal (server: auth gate)
+│   │           └── client.tsx          # Tenant portal (client: property, docs, rent, maintenance)
+│   │
+│   ├── auth/callback/                  # Supabase magic-link callback (supports ?next= redirect)
+│   │
+│   └── api/                            # All return { data, error } shape
+│       ├── address/                    # GET: OS Places postcode lookup
+│       ├── admin/
+│       │   ├── auth/                   # POST: admin login (username/password → cookie)
+│       │   ├── properties/             # GET: list all properties (admin)
+│       │   ├── properties/[id]/        # GET/PATCH/DELETE: admin property management
+│       │   ├── users/                  # GET: list all users (admin)
+│       │   └── users/[id]/             # GET/PATCH/DELETE: admin user management
 │       ├── documents/
-│       │   ├── route.ts          # GET: list PropertyDocuments for a property
-│       │   ├── upload/           # POST: multipart upload → Supabase Storage + DB record
+│       │   ├── route.ts                # GET: list PropertyDocuments for a property
+│       │   ├── upload/                 # POST: multipart upload → storage + DB
 │       │   └── [id]/
-│       │       ├── route.ts      # GET: signed URL; DELETE: remove from storage + DB
-│       │       └── acknowledge/  # POST: tenant marks document as reviewed
+│       │       ├── route.ts            # GET: signed URL; DELETE: remove
+│       │       └── acknowledge/        # POST: tenant marks document as reviewed
 │       ├── maintenance/
-│       │   ├── route.ts          # GET: list requests (landlord or tenant); POST: create request
+│       │   ├── route.ts                # GET: list requests; POST: create request
 │       │   └── [id]/
-│       │       ├── route.ts      # GET: request detail; PATCH: update status/priority
+│       │       ├── route.ts            # GET: detail; PATCH: update status/priority
 │       │       └── photos/
-│       │           ├── route.ts      # GET: list photos (signed URLs); POST: upload photo
-│       │           └── [photoId]/route.ts  # DELETE: remove photo (uploader or landlord)
+│       │           ├── route.ts        # GET: list; POST: upload photo
+│       │           └── [photoId]/      # DELETE: remove photo
 │       ├── payments/
-│       │   ├── route.ts          # GET: list RentPayments for property (landlord + tenant auth)
-│       │   └── [id]/route.ts     # PATCH: mark payment received (date, amount, note)
+│       │   ├── route.ts                # GET: list RentPayments for property
+│       │   └── [id]/route.ts           # PATCH: mark received (date, amount, note)
 │       ├── properties/
-│       │   ├── route.ts          # GET: list; POST: create + seed ComplianceDocs
-│       │   └── [id]/route.ts     # GET: property with relations; PATCH: update settings
+│       │   ├── route.ts                # GET: list; POST: create + seed ComplianceDocs
+│       │   └── [id]/route.ts           # GET: with relations; PATCH: update settings
 │       ├── scoring/
-│       │   ├── upload/route.ts   # POST: upload bank statement PDF, trigger AI analysis
-│       │   └── [reportId]/route.ts  # GET: report status/results; POST: re-trigger analysis
-│       ├── tenancies/route.ts    # POST: create tenancy + Tenant record in $transaction
+│       │   ├── upload/route.ts         # POST: upload PDFs, create report, trigger analysis
+│       │   └── [reportId]/
+│       │       ├── route.ts            # GET: report status/results; POST: re-trigger analysis
+│       │       └── declarations/       # POST: update applicant declarations on report
+│       ├── screening/
+│       │   ├── invite/route.ts         # POST: create invite + send candidate email
+│       │   ├── invites/route.ts        # GET: list landlord's invites
+│       │   ├── invite/[token]/route.ts # GET: load invite by token (public)
+│       │   ├── invite/[token]/started/ # POST: mark invite PENDING→STARTED
+│       │   ├── invite/[token]/submit/  # POST: candidate uploads PDFs + triggers analysis
+│       │   ├── report/[inviteId]/unlock/ # POST: set isLocked=false (MOCK_PAID in beta)
+│       │   ├── credits/route.ts        # GET: landlord's available screening credits
+│       │   ├── history/route.ts        # GET: landlord's screening history
+│       │   ├── purchase/route.ts       # POST: buy screening credit pack (MOCK_PAID)
+│       │   └── upload/route.ts         # POST: credit-pack flow upload (legacy)
+│       ├── tenancies/route.ts          # POST: create tenancy + Tenant in $transaction
 │       ├── tenant/
-│       │   ├── apply/
-│       │   │   ├── route.ts      # POST: submit application (creates Candidate Tenant)
-│       │   │   └── property/[propertyId]/route.ts  # GET: public property info for apply form
-│       │   ├── application-link-email/  # POST: email application link to address
-│       │   ├── join/[token]/     # GET: load invite; POST: confirm tenant details + send magic link
-│       │   └── send-invite/      # POST: (re)send invite email to tenant
+│       │   ├── apply/route.ts          # POST: submit application (creates CANDIDATE Tenant)
+│       │   ├── apply/property/[propertyId]/ # GET: public property info for apply form
+│       │   ├── application-link-email/ # POST: email application link to address
+│       │   ├── join/[token]/           # GET: load invite; POST: confirm + send magic link
+│       │   └── send-invite/            # POST: (re)send invite email to tenant
 │       ├── tenant-documents/
-│       │   ├── route.ts          # GET: list TenantDocuments by tenantId (owner or self)
-│       │   ├── upload/           # POST: multipart upload → tenant-documents bucket + DB record
-│       │   └── [id]/route.ts     # GET: signed URL (owner or self); DELETE: owner only
-│       ├── tenants/
-│       │   └── [id]/route.ts     # PATCH: update tenant name/email/phone (property owner only)
-│       └── waitlist/route.ts     # POST: add email to waitlist
+│       │   ├── route.ts                # GET: list TenantDocuments
+│       │   ├── upload/                 # POST: multipart upload
+│       │   └── [id]/route.ts           # GET: signed URL; DELETE: owner only
+│       ├── tenants/[id]/route.ts       # PATCH: update tenant details (property owner only)
+│       ├── user/profile/route.ts       # GET: user profile; PATCH: update display name
+│       └── waitlist/route.ts           # POST: add email to waitlist
+│
 ├── components/
 │   ├── dashboard/
-│   │   └── shell.tsx             # DashboardShell: sidebar, mobile drawer, context switcher
+│   │   ├── shell.tsx                   # DashboardShell: sidebar, mobile drawer, context switcher
+│   │   ├── NameModal.tsx               # Undismissable name capture modal for new landlords
+│   │   └── NameModalGate.tsx           # Client wrapper: shows NameModal if needsName=true
 │   └── shared/
-│       ├── DocumentUploadModal.tsx  # Reusable drag-and-drop upload modal (property + tenant docs)
-│       └── Footer.tsx            # Shared footer (marketing + dashboard variants)
+│       ├── CrispChat.tsx               # Crisp live chat widget (client component)
+│       ├── DocumentUploadModal.tsx      # Reusable drag-and-drop upload modal
+│       ├── Footer.tsx                  # Shared footer (marketing + dashboard variants)
+│       ├── ScoringProgressScreen.tsx    # Animated scoring progress with polling
+│       ├── ScreeningReportDisplay.tsx   # Reusable report renderer (locked/unlocked states)
+│       └── TenantDetailsForm.tsx        # Shared tenant details form (admin + landlord)
+│
 ├── lib/
-│   ├── env.ts                    # Zod-validated env vars (server-only)
-│   ├── maintenance-storage.ts    # Supabase Storage helpers for maintenance-photos bucket
-│   ├── payments.ts               # generateUpcomingPayments, updatePaymentStatuses helpers
-│   ├── prisma.ts                 # Prisma client singleton
-│   ├── resend.ts                 # Resend email client (console fallback if key not set)
+│   ├── admin-auth.ts                   # verifyAdminSession() — cookie-based admin auth check
+│   ├── env.ts                          # Zod-validated env vars (server-only)
+│   ├── email-templates/
+│   │   ├── base.ts                     # Unified email base: baseEmailTemplate, ctaButton, infoBox, etc.
+│   │   └── index.ts                    # All 6 email template functions + re-exports base helpers
+│   ├── maintenance-storage.ts          # Supabase Storage helpers for maintenance-photos bucket
+│   ├── os-places.ts                    # OS Places API (postcode → address lookup)
+│   ├── payments.ts                     # generateUpcomingPayments, updatePaymentStatuses
+│   ├── prisma.ts                       # Prisma client singleton
+│   ├── resend.ts                       # Resend email client (console fallback if no API key)
+│   ├── screening-pricing.ts            # STANDALONE_PACKAGES + SUBSCRIBER_PRICING constants
 │   ├── scoring/
-│   │   ├── engine.ts             # AI scoring engine: Claude API bank statement analysis
-│   │   └── index.ts              # Barrel export: analyzeStatement
-│   ├── storage.ts                # Supabase Storage helpers (uploadFile, getSignedUrl, deleteFile)
-│   │                             # Supports multiple buckets via optional bucket param
-│   ├── os-places.ts              # OS Places API (postcode → address lookup)
-│   ├── utils.ts                  # Shared utilities (cn, etc.)
+│   │   ├── engine.ts                   # AI scoring engine: multi-file analysis, name verification
+│   │   └── index.ts                    # Barrel export: analyzeStatement
+│   ├── storage.ts                      # Supabase Storage: uploadFile, getSignedUrl, deleteFile
+│   ├── utils.ts                        # Shared utilities (cn)
 │   └── supabase/
-│       ├── auth.ts               # Cookie-based auth client (anon key, SSR)
-│       ├── client.ts             # Browser client factory (anon key)
-│       └── server.ts             # Server client factory (service role, bypasses RLS)
+│       ├── auth.ts                     # Cookie-based auth client (anon key, SSR)
+│       ├── client.ts                   # Browser client factory (anon key)
+│       └── server.ts                   # Server client factory (service role, bypasses RLS)
+│
 ├── prisma/
-│   ├── schema.prisma             # Single source of truth for DB schema
-│   └── seed-scoring.ts           # Seed script: 30 scoring rules + ScoringConfig v1
+│   ├── schema.prisma                   # Single source of truth for DB schema (21 models)
+│   └── seed-scoring.ts                 # Seed: 32 scoring rules + ScoringConfig v1
+│
 ├── supabase/
-│   └── migrations/               # SQL migration files (applied via supabase db push)
-└── middleware.ts                  # Protects /dashboard/* and /tenant/dashboard
+│   └── migrations/                     # 21 SQL migration files (20260302–20260322)
+│
+└── middleware.ts                        # Protects /dashboard/*, /tenant/dashboard, /admin/*
 ```
 
 ---
@@ -146,8 +195,10 @@ model User {
   email          String     @unique
   name           String?
   createdAt      DateTime   @default(now()) @map("created_at")
-  properties     Property[]
-  tenantProfiles Tenant[]
+  properties        Property[]
+  tenantProfiles    Tenant[]
+  screeningPackages ScreeningPackage[]
+  screeningInvites  ScreeningInvite[]
   @@map("users")
 }
 
@@ -171,7 +222,7 @@ model Property {
   createdAt        DateTime       @default(now()) @map("created_at")
   updatedAt        DateTime       @updatedAt @map("updated_at")
   tenancies           Tenancy[]
-  complianceDocs      ComplianceDoc[]    // legacy — dashboard overview only
+  complianceDocs      ComplianceDoc[]    // legacy — dashboard compliance dots
   tenants             Tenant[]
   documents           PropertyDocument[]
   maintenanceRequests MaintenanceRequest[]
@@ -179,262 +230,274 @@ model Property {
   @@map("properties")
 }
 
-// ── ComplianceDoc (legacy — used for dashboard compliance dots and alert bar) ─
+// ── ComplianceDoc (legacy — dashboard compliance dots and alert bar) ──────────
 enum ComplianceDocType   { GAS_SAFETY EPC EICR HOW_TO_RENT }
 enum ComplianceDocStatus { MISSING VALID EXPIRING EXPIRED }
 
 model ComplianceDoc {
-  id          String              @id @default(cuid())
-  propertyId  String              @map("property_id")
-  property    Property            @relation(...)
-  type        ComplianceDocType
-  status      ComplianceDocStatus @default(MISSING)
-  fileUrl     String?             @map("file_url")
-  issuedDate  DateTime?           @map("issued_date")
-  expiryDate  DateTime?           @map("expiry_date")
-  issued      Boolean             @default(false)  // for HOW_TO_RENT
-  version     String?
-  aiExtracted Boolean             @default(false) @map("ai_extracted")
-  createdAt   DateTime            @default(now()) @map("created_at")
-  updatedAt   DateTime            @updatedAt @map("updated_at")
+  id, propertyId, type, status, fileUrl, issuedDate, expiryDate, issued, version, aiExtracted
   @@unique([propertyId, type])
   @@map("compliance_docs")
 }
 
 // ── Tenancy ───────────────────────────────────────────────────────────────────
-// Note: tenantName/tenantEmail/tenantPhone removed — use tenant relation instead.
+// tenantName/tenantEmail/tenantPhone were REMOVED — use Tenant relation.
 enum TenancyStatus { PENDING ACTIVE NOTICE_GIVEN ENDED }
 
 model Tenancy {
-  id                 String        @id @default(cuid())
-  propertyId         String        @map("property_id")
-  property           Property      @relation(...)
-  tenantId           String?       @map("tenant_id")   // FK → Tenant
-  tenant             Tenant?       @relation(...)
-  startDate          DateTime?     @map("start_date")
-  endDate            DateTime?     @map("end_date")
-  monthlyRent        Int?          @map("monthly_rent")  // pence
-  paymentDay         Int?          @map("payment_day")   // 1–31
-  status             TenancyStatus @default(PENDING)
-  depositAmount      Int?          @map("deposit_amount")        // pence
-  depositScheme      String?       @map("deposit_scheme")
-  depositRef         String?       @map("deposit_ref")
-  depositProtected   Boolean       @default(false) @map("deposit_protected")
-  depositProtectedAt DateTime?     @map("deposit_protected_at")
-  portalToken        String?       @unique @map("portal_token")
-  contractUrl        String?       @map("contract_url")
-  createdAt          DateTime      @default(now()) @map("created_at")
-  updatedAt          DateTime      @updatedAt @map("updated_at")
-  payments           RentPayment[]
+  id, propertyId, tenantId?, startDate?, endDate?
+  monthlyRent  Int?   @map("monthly_rent")  // pence
+  paymentDay   Int?   @map("payment_day")   // 1–31
+  status       TenancyStatus @default(PENDING)
+  depositAmount, depositScheme, depositRef, depositProtected, depositProtectedAt
+  portalToken  String? @unique  // tenant dashboard access token
+  contractUrl  String?
+  payments     RentPayment[]
   @@map("tenancies")
 }
 
 // ── RentPayment ───────────────────────────────────────────────────────────────
 enum PaymentStatus { PENDING EXPECTED RECEIVED LATE PARTIAL }
-// PENDING  = upcoming, not yet due
-// EXPECTED = due date reached, not yet confirmed received
-// RECEIVED = landlord manually confirmed (sets receivedDate + receivedAmount)
-// LATE     = past due date, not received
-// PARTIAL  = partial amount received
 
 model RentPayment {
-  id             String        @id @default(uuid())
-  tenancyId      String        @map("tenancy_id")
-  tenancy        Tenancy       @relation(...)
-  amount         Int           // expected pence
-  dueDate        DateTime      @map("due_date")
-  receivedDate   DateTime?     @map("received_date")
-  receivedAmount Int?          @map("received_amount")  // pence (for partial payments)
-  status         PaymentStatus @default(PENDING)
-  note           String?
-  createdAt      DateTime      @default(now()) @map("created_at")
-  updatedAt      DateTime      @updatedAt @map("updated_at")
+  id, tenancyId, amount (pence), dueDate, receivedDate?, receivedAmount? (pence), status, note?
   @@map("rent_payments")
 }
 
 // ── Tenant ────────────────────────────────────────────────────────────────────
-// Separate from Tenancy — represents the person, not the rental agreement.
-// One user can be both a landlord (User) and a tenant (Tenant record).
 enum TenantStatus { CANDIDATE INVITED TENANT FORMER_TENANT }
 
 model Tenant {
-  id          String       @id @default(uuid())
-  userId      String?      @map("user_id")     // linked once they sign in via magic link
-  user        User?        @relation(...)
-  propertyId  String       @map("property_id")
-  property    Property     @relation(...)
-  name        String
-  email       String
-  phone       String?
-  status      TenantStatus @default(INVITED)
-  inviteToken String       @unique @map("invite_token") @default(uuid())  // public URL token
-  confirmedAt DateTime?    @map("confirmed_at")
-  createdAt   DateTime     @default(now()) @map("created_at")
-  updatedAt   DateTime     @updatedAt @map("updated_at")
-  tenancies           Tenancy[]
-  documents           TenantDocument[]
-  acknowledgments     DocumentAcknowledgment[]
-  maintenanceRequests MaintenanceRequest[]
-  financialReports    FinancialReport[]
+  id, userId?, propertyId, name, email, phone?, status, inviteToken (unique UUID), confirmedAt?
+  tenancies, documents, acknowledgments, maintenanceRequests, financialReports
   @@map("tenants")
 }
 
-// ── TenantDocument ────────────────────────────────────────────────────────────
-// Documents uploaded by or for a specific tenant (e.g. passport, R2R check).
-// Stored in the 'tenant-documents' Supabase Storage bucket.
+// ── Documents ─────────────────────────────────────────────────────────────────
 enum TenantDocumentType {
   PASSPORT RIGHT_TO_RENT PROOF_OF_INCOME BANK_STATEMENTS
   EMPLOYER_REFERENCE PREVIOUS_LANDLORD_REFERENCE
   GUARANTOR_AGREEMENT PET_AGREEMENT OTHER
 }
-
-model TenantDocument {
-  id           String             @id @default(uuid())
-  tenantId     String             @map("tenant_id")
-  tenant       Tenant             @relation(...)
-  documentType TenantDocumentType @map("document_type")
-  fileName     String             @map("file_name")
-  fileUrl      String             @map("file_url")   // Supabase Storage path
-  fileSize     Int                @map("file_size")  // bytes
-  mimeType     String             @map("mime_type")
-  uploadedBy   String             @map("uploaded_by")  // Supabase user.id
-  uploadedAt   DateTime           @default(now()) @map("uploaded_at")
-  expiryDate   DateTime?          @map("expiry_date")  // R2R and Passport only
-  note         String?
-  @@map("tenant_documents")
-}
-
-// ── PropertyDocument ──────────────────────────────────────────────────────────
-// Full document management system (14 types, Supabase Storage, signed URLs).
 enum DocumentType {
   GAS_SAFETY EPC EICR HOW_TO_RENT TENANCY_AGREEMENT INVENTORY_REPORT
   DEPOSIT_CERTIFICATE RIGHT_TO_RENT BUILDING_INSURANCE LANDLORD_INSURANCE
   SECTION_13_NOTICE SECTION_8_NOTICE CHECKOUT_INVENTORY OTHER
 }
 
-model PropertyDocument {
-  id           String       @id @default(uuid())
-  propertyId   String       @map("property_id")
-  property     Property     @relation(...)
-  documentType DocumentType @map("document_type")
-  fileName     String       @map("file_name")
-  fileUrl      String       @map("file_url")   // Supabase Storage path
-  fileSize     Int          @map("file_size")  // bytes
-  mimeType     String       @map("mime_type")
-  uploadedAt   DateTime     @default(now()) @map("uploaded_at")
-  expiryDate   DateTime?    @map("expiry_date")
-  acknowledgments DocumentAcknowledgment[]
-  @@map("property_documents")
-}
+model TenantDocument    { id, tenantId, documentType, fileName, fileUrl, fileSize, mimeType, uploadedBy, uploadedAt, expiryDate?, note? }
+model PropertyDocument  { id, propertyId, documentType, fileName, fileUrl, fileSize, mimeType, uploadedAt, expiryDate?, acknowledgments[] }
+model DocumentAcknowledgment { documentId, tenantId, acknowledgedAt @@unique([documentId, tenantId]) }
 
-model DocumentAcknowledgment {
-  id             String           @id @default(uuid())
-  documentId     String           @map("document_id")
-  document       PropertyDocument @relation(...)
-  tenantId       String           @map("tenant_id")
-  tenant         Tenant           @relation(...)
-  acknowledgedAt DateTime         @default(now()) @map("acknowledged_at")
-  @@unique([documentId, tenantId])
-  @@map("document_acknowledgments")
-}
-
-// ── MaintenanceRequest ─────────────────────────────────────────────────────────
+// ── Maintenance ───────────────────────────────────────────────────────────────
 enum MaintenanceStatus   { OPEN IN_PROGRESS RESOLVED }
 enum MaintenancePriority { LOW MEDIUM HIGH URGENT }
 
-model MaintenanceRequest {
-  id             String              @id @default(uuid())
-  propertyId     String              @map("property_id")
-  property       Property            @relation(...)
-  tenantId       String              @map("tenant_id")
-  tenant         Tenant              @relation(...)
-  title          String
-  description    String
-  priority       MaintenancePriority @default(MEDIUM)
-  status         MaintenanceStatus   @default(OPEN)
-  inProgressAt   DateTime?           @map("in_progress_at")
-  resolvedAt     DateTime?           @map("resolved_at")
-  resolvedBy     String?             @map("resolved_by")
-  createdAt      DateTime            @default(now()) @map("created_at")
-  updatedAt      DateTime            @updatedAt @map("updated_at")
-  statusHistory  MaintenanceStatusHistory[]
-  photos         MaintenancePhoto[]
-  @@map("maintenance_requests")
-}
-
-model MaintenanceStatusHistory {
-  id         String              @id @default(uuid())
-  requestId  String              @map("request_id")
-  request    MaintenanceRequest  @relation(...)
-  fromStatus MaintenanceStatus?  @map("from_status")
-  toStatus   MaintenanceStatus   @map("to_status")
-  changedBy  String              @map("changed_by")
-  changedAt  DateTime            @default(now()) @map("changed_at")
-  note       String?
-  @@map("maintenance_status_history")
-}
-
-model MaintenancePhoto {
-  id         String             @id @default(uuid())
-  requestId  String             @map("request_id")
-  request    MaintenanceRequest @relation(...)
-  uploadedBy String             @map("uploaded_by")
-  role       String             // "TENANT" | "LANDLORD"
-  fileUrl    String             @map("file_url")
-  fileName   String             @map("file_name")
-  fileSize   Int                @map("file_size")
-  uploadedAt DateTime           @default(now()) @map("uploaded_at")
-  caption    String?
-  @@map("maintenance_photos")
-}
+model MaintenanceRequest { id, propertyId, tenantId, title, description, priority, status, inProgressAt?, resolvedAt?, resolvedBy?, statusHistory[], photos[] }
+model MaintenanceStatusHistory { requestId, fromStatus?, toStatus, changedBy, changedAt, note? }
+model MaintenancePhoto { requestId, uploadedBy, role ("TENANT"|"LANDLORD"), fileUrl, fileName, fileSize, caption? }
 
 // ── Financial Scoring ──────────────────────────────────────────────────────────
 enum ScoringCategory { AFFORDABILITY STABILITY DEBT GAMBLING LIQUIDITY POSITIVE }
 enum ReportType      { LANDLORD_REQUESTED SELF_REQUESTED }
 enum ReportStatus    { PENDING PROCESSING COMPLETED FAILED }
 
-model ScoringRule {
-  id          String          @id @default(uuid())
-  category    ScoringCategory
-  key         String          @unique
-  description String
-  points      Int
-  isActive    Boolean         @default(true) @map("is_active")
-  createdAt   DateTime        @default(now()) @map("created_at")
-  updatedAt   DateTime        @updatedAt @map("updated_at")
-  @@map("scoring_rules")
-}
-
-model ScoringConfig {
-  id        String   @id @default(uuid())
-  version   Int      @unique
-  isActive  Boolean  @default(false) @map("is_active")
-  createdAt DateTime @default(now()) @map("created_at")
-  @@map("scoring_configs")
-}
+model ScoringRule  { id, category, key (unique), description, points, isActive }
+model ScoringConfig { id, version (unique), isActive }
 
 model FinancialReport {
   id                   String       @id @default(uuid())
-  tenantId             String?      @map("tenant_id")
-  tenant               Tenant?      @relation(...)
-  propertyId           String?      @map("property_id")
-  property             Property?    @relation(...)
-  reportType           ReportType   @map("report_type")
+  tenantId             String?      // FK → Tenant (optional)
+  propertyId           String?      // FK → Property (optional)
+  reportType           ReportType
   status               ReportStatus @default(PENDING)
-  scoringConfigVersion Int          @map("scoring_config_version")
-  totalScore           Int?         @map("total_score")
+  scoringConfigVersion Int
+  totalScore           Int?         // 0–100
   grade                String?      // Excellent / Good / Fair / Poor / High Risk
-  aiSummary            String?      @map("ai_summary")
-  breakdown            Json?        // score by category
-  appliedRules         Json?        @map("applied_rules")
-  verificationToken    String       @unique @default(uuid()) @map("verification_token")
-  pdfUrl               String?      @map("pdf_url")
-  statementFileUrl     String?      @map("statement_file_url")
-  createdAt            DateTime     @default(now()) @map("created_at")
-  updatedAt            DateTime     @updatedAt @map("updated_at")
+  aiSummary            String?      // Cleaned AI narrative (no chain-of-thought)
+  breakdown            Json?        // { category: points } map
+  appliedRules         Json?        // [{ key, description, points, category }]
+  verificationToken    String       @unique @default(uuid())  // public verification URL
+  pdfUrl               String?
+  statementFiles       Json?        // Array of StatementFile objects (multi-file support)
+  applicantName        String?      // Name for verification
+  jointApplicants      Json?        // Joint application data
+  hasUnverifiedFiles   Boolean      @default(false)
+  verificationWarning  String?      // Name mismatch warning text
+  declaredIncomePence  Int?         // Applicant's declared income for comparison
+  validationResults    Json?        // Per-person period coverage validation
+  failureReason        String?      // Human-readable failure message
+  screeningUsageId     String?      @unique  // FK → ScreeningPackageUsage (credit-pack flow)
+  inviteId             String?      // FK → ScreeningInvite (invite flow)
+  isLocked             Boolean      @default(true)   // true = report details hidden until paid
+  monthlyRentPence     Int?         // Rent for this specific check
   @@map("financial_reports")
 }
+
+// ── Screening Invites ─────────────────────────────────────────────────────────
+enum ScreeningInviteStatus { PENDING STARTED COMPLETED PAID EXPIRED }
+
+model ScreeningInvite {
+  id               String                @id @default(uuid())
+  landlordId       String                // FK → User
+  candidateName    String
+  candidateEmail   String
+  propertyAddress  String
+  monthlyRentPence Int
+  status           ScreeningInviteStatus @default(PENDING)
+  token            String                @unique @default(uuid())  // public URL token
+  reports          FinancialReport[]
+  @@map("screening_invites")
+}
+
+// ── Screening Packages (credit-pack flow) ────────────────────────────────────
+enum ScreeningPackageType   { SINGLE TRIPLE SIXER TEN }
+enum ScreeningPaymentStatus { PENDING MOCK_PAID PAID REFUNDED }
+
+model ScreeningPackage {
+  id, userId, packageType, totalCredits, usedCredits, pricePence, paymentStatus, stripeSessionId?
+  usages ScreeningPackageUsage[]
+  @@map("screening_packages")
+}
+
+model ScreeningPackageUsage {
+  id, packageId, candidateName, monthlyRentPence
+  report FinancialReport?
+  @@map("screening_package_usages")
+}
 ```
+
+---
+
+## Feature Status
+
+| Feature | Status | Notes |
+|---|---|---|
+| Property management | LIVE | CRUD, compliance docs, document management |
+| Tenant pipeline | LIVE | Apply → Candidate → Invited → Tenant lifecycle |
+| Tenant portal | LIVE | Auth-protected, docs, rent, maintenance |
+| Document management | LIVE | 14 types, drag-drop upload, signed URLs |
+| Rent tracking | LIVE | Auto-generate payments, manual mark received |
+| Maintenance requests | LIVE | Priority, status, photos, audit trail |
+| Compliance alerts | LIVE | Dashboard dots, alert bar, expiry tracking |
+| Financial screening (invite flow) | BETA | Landlord invites → candidate uploads → AI analysis |
+| Financial screening (credit packs) | BETA | Buy packs, upload directly (legacy flow) |
+| Screening report unlock | MOCK | isLocked=false (MOCK_PAID, no real Stripe yet) |
+| Admin panel | LIVE | Cookie-based auth, user/property CRUD |
+| Onboarding wizard | LIVE | 4-step first-run for new landlords |
+| Name capture modal | LIVE | Undismissable modal for landlords with no name set |
+| Settings page | LIVE | Display name edit |
+| Financial Passport | PRE-LAUNCH | Email capture landing page only |
+| Live chat (Crisp) | LIVE | Marketing pages only |
+| Stripe payments | NOT STARTED | All purchases use MOCK_PAID |
+
+---
+
+## AI Financial Scoring Engine
+
+### Overview
+`lib/scoring/engine.ts` — AI-powered bank statement analysis via Claude API (direct `fetch` to `https://api.anthropic.com/v1/messages`). Model: `claude-sonnet-4-20250514`.
+
+### Flow
+1. Upload 1–5 PDF bank statements → create `FinancialReport` (PENDING)
+2. `analyzeStatement(reportId)` runs in background:
+   - Download PDFs from Supabase Storage
+   - Compress if >2MB (pdf-lib), split in half if still >2MB
+   - **Name verification**: per-file Claude call to match statement name vs applicant name
+   - **Period validation**: extract statement date ranges, check ≥60 days coverage, ≤6 months old
+   - **Financial analysis**: send all PDFs + scoring rules to Claude, get back fired rules + metrics
+   - **Synthesis**: if PDF was split, analyse halves separately then merge with synthesis call
+   - Apply gambling/income-discrepancy deduplication
+   - Calculate score (start at 100, apply rule points)
+   - Server-side sanity checks (income ratio caps, coverage caps, rent-to-income caps)
+   - Save results → COMPLETED
+3. If invite flow: update invite status → COMPLETED, email landlord notification
+
+### Scoring
+- 32 active scoring rules across 6 categories: AFFORDABILITY, STABILITY, DEBT, GAMBLING, LIQUIDITY, POSITIVE
+- Score starts at 100, rules add/subtract points. Clamped to 0–100.
+- Grades: Excellent (90+), Good (75+), Fair (60+), Poor (45+), High Risk (<45)
+- Gambling dedup: only the highest applicable gambling penalty (ABOVE_10_PCT > ABOVE_5_PCT > ANY)
+- Income discrepancy dedup: only the highest applicable penalty (MAJOR > SIGNIFICANT > SLIGHT)
+- `cleanSummary()` strips chain-of-thought from AI output before DB save
+- Seed script: `npx tsx prisma/seed-scoring.ts`
+
+### JSON extraction safety
+Claude sometimes returns prose before JSON. All 3 parse locations use:
+```typescript
+if (!jsonStr.startsWith('{')) {
+  const firstBrace = jsonStr.indexOf('{')
+  const lastBrace = jsonStr.lastIndexOf('}')
+  if (firstBrace !== -1 && lastBrace > firstBrace) {
+    jsonStr = jsonStr.slice(firstBrace, lastBrace + 1)
+  }
+}
+```
+
+### Candidate view
+Candidates see only a neutral "reliability score" (never grade labels or "/100"). Score-range messaging:
+- 75+: green, "strong financial profile"
+- 60–74: amber, "good financial profile"
+- 45–59: amber, "submitted for review"
+- <45: grey, neutral message
+
+---
+
+## Screening Pricing
+
+### Invite Flow (primary)
+Landlord sends invite → candidate uploads → report generated → landlord pays to unlock.
+- Report is `isLocked: true` by default
+- Unlock sets `isLocked: false`, invite status → PAID
+- Currently MOCK_PAID (no real Stripe integration yet)
+
+### Credit Pack Flow (legacy, still functional)
+Defined in `lib/screening-pricing.ts`:
+
+| Pack | Credits | Price | Per Check |
+|---|---|---|---|
+| Single | 1 | £11.99 | £11.99 |
+| Triple | 3 | £19.99 | £6.66 |
+| Sixer | 6 | £29.99 | £5.00 |
+| Ten Pack | 10 | £39.99 | £4.00 |
+
+Subscriber (Pro plan): First check £9.99, additional £1.49 each.
+
+---
+
+## Email System
+
+### Architecture
+- `lib/resend.ts` — Resend client, FROM: `LetSorted <no-reply@letsorted.co.uk>`, console fallback if no API key
+- `lib/email-templates/base.ts` — Unified base template wrapper (all emails use this)
+- `lib/email-templates/index.ts` — 6 email template functions
+
+### Base Template (`baseEmailTemplate`)
+- Background: `#F7F8F6`
+- Card: 600px max-width, white, 8px border-radius, 40px/48px padding
+- Header: house emoji + "LetSorted" in `#2D6A4F` (brand green), subtitle below
+- Divider: `#F0F0F0` 1px border
+- Footer: copyright + letsorted.co.uk
+- Mobile: `@media (max-width: 620px)` reduces padding to 32px/24px
+- Outlook: table-based CTA buttons for compatibility
+- Preview text: zero-width joiners for inbox preview
+
+### Template Functions
+| Function | Used By | Purpose |
+|---|---|---|
+| `tenantInviteHtml` | api/tenant/invite, send-invite | Invite tenant to portal |
+| `applicationReceivedHtml` | api/tenant/apply | Confirm application to applicant |
+| `newApplicationHtml` | api/tenant/apply | Notify landlord of new application |
+| `applicationLinkHtml` | api/tenant/application-link-email | Send apply URL to prospect |
+| `candidateInviteHtml` | api/screening/invite | Invite candidate for financial check |
+| `landlordNotificationHtml` | lib/scoring/engine.ts | Notify landlord: screening complete |
+
+### Helpers (from base.ts)
+- `ctaButton(text, href)` — table-based green CTA button
+- `infoBox(text)` — green highlight box (addresses, etc.)
+- `greyBox(innerHtml)` — grey callout box (stats, quotes)
+- `p(text)` — paragraph with consistent styling
+- `muted(text)` — small grey disclaimer text
 
 ---
 
@@ -452,10 +515,13 @@ npx prisma studio                      # Open Prisma Studio (DB GUI)
 # Migration workflow: write SQL in supabase/migrations/YYYYMMDD_name.sql,
 # then run supabase db push (prompts for confirmation), then prisma generate.
 
+# Scoring rules
+npx tsx prisma/seed-scoring.ts         # Seed 32 scoring rules + ScoringConfig v1
+
 # Build & Deploy
 npm run build            # Production build
 npm run lint             # ESLint check
-npx tsc --noEmit         # TypeScript check (there is no npm run type-check script)
+npx tsc --noEmit         # TypeScript check (no npm run type-check script)
 ```
 
 ---
@@ -472,6 +538,7 @@ npx tsc --noEmit         # TypeScript check (there is no npm run type-check scri
 - All API routes in `app/api/` return `{ data, error }` shape
 - Auth check at the top of every protected route using `createAuthClient()` from `lib/supabase/auth.ts`
 - Input validation with `zod` before any DB operation
+- Admin routes use `verifyAdminSession()` from `lib/admin-auth.ts` (cookie-based, separate from Supabase)
 
 ### Components
 - Server Components by default, `"use client"` only when necessary
@@ -480,25 +547,24 @@ npx tsc --noEmit         # TypeScript check (there is no npm run type-check scri
 - Zod version is **v4** — use `error:` not `errorMap:` for custom messages
 
 ### Shared Components
-- `components/shared/DocumentUploadModal.tsx` — reusable drag-and-drop upload modal
+- `DocumentUploadModal.tsx` — reusable drag-and-drop upload modal
   - Props: `isOpen`, `onClose`, `onUploaded`, `uploadEndpoint`, `extraFields`, `documentTypes`, `expiryDateTypes?`, `preselectedType?`, `title?`
-  - Used for both property documents (`/api/documents/upload`) and tenant documents (`/api/tenant-documents/upload`)
-  - `extraFields` passes `{ propertyId }` or `{ tenantId }` to the endpoint
-
-### AI Calls
-- Claude API calls go through `lib/scoring/engine.ts` (direct `fetch` to `https://api.anthropic.com/v1/messages`)
-- Model: `claude-sonnet-4-20250514`
-- Currently used for: bank statement financial analysis (scoring engine)
-- Never expose raw AI output to users — always parse and validate
+  - Used for property docs (`/api/documents/upload`) and tenant docs (`/api/tenant-documents/upload`)
+- `ScreeningReportDisplay.tsx` — reusable report renderer
+  - Props: `scoring`, `applicantName?`, `isLocked?`, `onUnlock?`, `unlocking?`, `showVerificationLink?`, `candidateView?`
+  - Handles locked (blurred) and unlocked (full) states
+- `ScoringProgressScreen.tsx` — animated progress screen with polling
+  - Shows SVG logo, step-by-step progress, polling for report status
+- `TenantDetailsForm.tsx` — shared form for tenant name/email/phone editing
 
 ### Supabase Storage
 - `lib/storage.ts` — general helpers (uploadFile, getSignedUrl, deleteFile), optional `bucket` param (defaults to `'documents'`)
-- `lib/maintenance-storage.ts` — dedicated helpers for maintenance photos (uploadMaintenancePhoto, getMaintenancePhotoUrl, deleteMaintenancePhoto)
+- `lib/maintenance-storage.ts` — dedicated helpers for maintenance photos
 - Four private buckets (auto-created on first upload):
-  - `documents` — property-level documents (PropertyDocument model)
-  - `tenant-documents` — tenant-level documents (TenantDocument model)
-  - `maintenance-photos` — maintenance request photos (MaintenancePhoto model)
-  - `bank-statements` — uploaded bank statement PDFs (FinancialReport model)
+  - `documents` — property-level documents
+  - `tenant-documents` — tenant-level documents
+  - `maintenance-photos` — maintenance request photos
+  - `bank-statements` — uploaded bank statement PDFs
 - Storage path patterns:
   - Property docs: `/{userId}/{propertyId}/{documentId}/{filename}`
   - Tenant docs: `/{propertyId}/{tenantId}/{documentId}/{filename}`
@@ -508,26 +574,14 @@ npx tsc --noEmit         # TypeScript check (there is no npm run type-check scri
 
 ### Rent Payments
 - `lib/payments.ts` has two helpers called on every payments page load:
-  - `generateUpcomingPayments(tenancyId)` — creates RentPayment records for next 3 months (idempotent, skips existing)
-  - `updatePaymentStatuses()` — transitions PENDING→EXPECTED (due today) and PENDING/EXPECTED→LATE (overdue)
+  - `generateUpcomingPayments(tenancyId)` — creates RentPayment records for next 3 months (idempotent)
+  - `updatePaymentStatuses()` — PENDING→EXPECTED (due today), PENDING/EXPECTED→LATE (overdue)
 - Landlord manually marks payments received with date, amount (supports partial), and optional note
-- Statuses: PENDING (future) → EXPECTED (due today) → RECEIVED or LATE; PARTIAL for partial amounts
 
 ### Maintenance
 - `MaintenanceRequest` has priority (URGENT/HIGH/MEDIUM/LOW) and status (OPEN/IN_PROGRESS/RESOLVED)
-- `MaintenanceStatusHistory` is an immutable audit trail — all status changes logged with `changedBy` and optional note
-- `MaintenancePhoto` supports upload by tenant or landlord, stored in `maintenance-photos` bucket
-- Dashboard overview shows top 3 active requests (OPEN + IN_PROGRESS), sorted by priority then date
-- `/dashboard/maintenance` lists all requests with status filter tabs
-
-### Financial Scoring
-- `lib/scoring/engine.ts` — AI-powered bank statement analysis via Claude API
-- Flow: upload PDF → create FinancialReport (PENDING) → background `analyzeStatement()` → Claude returns fired rules → score calculated → COMPLETED
-- Score starts at 100, rules add/subtract points. Grades: Excellent (85+), Good (70+), Fair (55+), Poor (40+), High Risk (<40)
-- 30 scoring rules across 6 categories (AFFORDABILITY, STABILITY, DEBT, GAMBLING, LIQUIDITY, POSITIVE)
-- Gambling rule deduplication: only the highest applicable gambling penalty is applied
-- `prisma/seed-scoring.ts` — seed script for rules + ScoringConfig v1 (`npx tsx prisma/seed-scoring.ts`)
-- `/verify/[token]` — public verification page for financial reports (token-based, no auth)
+- `MaintenanceStatusHistory` — immutable audit trail, all status changes logged
+- Dashboard overview shows top 3 active requests, sorted by priority then date
 
 ### Error Handling
 - Use `try/catch` in all async server functions
@@ -538,77 +592,86 @@ npx tsc --noEmit         # TypeScript check (there is no npm run type-check scri
 
 ## Environment Variables
 
+Validated in `lib/env.ts` (server-only, zod):
+
 ```env
 # Database
 DATABASE_URL=              # Supabase connection string (pooled, pgbouncer=true)
-DIRECT_URL=                # Supabase direct connection (for migrations, port 5432)
+DIRECT_URL=                # Supabase direct connection (for migrations)
 
 # Supabase
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 
-# Email (Resend)
-RESEND_API_KEY=            # Used by the app to send transactional email
-                           # Also used as the Supabase SMTP password (see below)
-                           # Optional in dev — falls back to console.log
+# Email
+RESEND_API_KEY=            # Optional in dev — falls back to console.log
+                           # Also used as Supabase SMTP password (see below)
 
 # Address lookup
 OS_API_KEY=                # OS Places API key (postcode → address lookup)
 
-# Payments (not yet implemented)
+# AI
+ANTHROPIC_API_KEY=         # Used by scoring engine — optional
+
+# App
+NEXT_PUBLIC_APP_URL=       # e.g. https://letsorted.co.uk (used in invite/apply links)
+
+# Admin panel
+ADMIN_USERNAME=            # Optional — for /admin login
+ADMIN_PASSWORD=            # Optional — for /admin login
+
+# Live Chat
+NEXT_PUBLIC_CRISP_WEBSITE_ID=  # Optional — chat widget hidden if not set
+
+# Payments (not yet integrated)
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
-
-# AI
-ANTHROPIC_API_KEY=            # Used by scoring engine (lib/scoring/engine.ts) — optional
-
-# App
-NEXT_PUBLIC_APP_URL=       # e.g. https://letsorted.co.uk (required — used in invite/apply links)
-CRON_SECRET=               # Secret for cron job endpoints (not yet implemented)
 ```
 
 ---
 
 ## Supabase SMTP → Resend Setup
 
-Supabase Auth sends magic-link emails. Configure it to relay through Resend so
-emails arrive from our domain and don't land in spam.
+Supabase Auth sends magic-link emails. Configure it to relay through Resend:
 
 **Dashboard path:** Supabase → Authentication → Providers → Email → SMTP Settings
 
 | Field | Value |
 |---|---|
-| Enable Custom SMTP | ✅ on |
+| Enable Custom SMTP | on |
 | Sender name | `LetSorted` |
-| Sender email | `auth@letsorted.co.uk` *(must be a verified domain in Resend)* |
+| Sender email | `auth@letsorted.co.uk` |
 | Host | `smtp.resend.com` |
 | Port | `465` |
 | Username | `resend` |
-| Password | `[RESEND_API_KEY]` — the `re_...` key from the Resend dashboard |
+| Password | `[RESEND_API_KEY]` |
 
-**Resend side:**
-1. Add and verify your sending domain in Resend → Domains (adds SPF/DKIM DNS records).
-2. The same API key used for `RESEND_API_KEY` in `.env.local` doubles as the SMTP password — no separate credential needed.
+---
 
-**Testing:**
-- Use Supabase → Authentication → Email Templates → "Send test email" after saving SMTP settings.
-- Check Resend → Logs to confirm delivery.
+## Middleware
+
+`middleware.ts` handles three auth guards:
+1. **Dashboard**: `/dashboard/*` — redirects to `/login` if no Supabase user
+2. **Tenant portal**: `/tenant/dashboard` — same redirect
+3. **Admin panel**: `/admin/*` (except `/admin/login`) — checks `admin_session` cookie
+4. **Login redirect**: `/login` → `/dashboard` if already authenticated
 
 ---
 
 ## Important Business Rules
 
-- **Free tier:** 1 property only. 2+ properties require paid subscription (£10/mo per property)
-- **Paid one-time events:** Screening Pack £15, Contract £10, Inventory Report £5, Dispute Pack £29
+- **Free tier:** 1 property only. 2+ require paid subscription (£10/mo per property)
 - **All contracts generated are APT** (Assured Periodic Tenancy) — not AST (abolished May 2026)
-- **Rent increases:** only once per year via Section 13 Notice — enforce this in UI
+- **Rent increases:** only once per year via Section 13 Notice — enforce in UI
 - **Awaab's Law:** DAMP_MOULD tickets automatically set `respondBy = createdAt + 24 hours`
 - **Deposit deadline:** 30 days from tenancy start date — alert landlord if unprotected
 - **Tenant notice period:** minimum 2 months — validate before allowing submission
 - **Magic link only:** no password auth, no social login
-- **Tenancy ↔ Tenant:** Tenancy is the rental agreement; Tenant is the person. They are linked via `tenantId` FK. Do not add contact fields to Tenancy — read from the Tenant relation.
+- **Tenancy ↔ Tenant:** Tenancy = rental agreement; Tenant = person. Linked via `tenantId` FK. Never add contact fields to Tenancy.
+- **Screening invite expiry:** 7 days from createdAt, lazily updated to EXPIRED on access
+- **Backward compat:** Reports with `screeningUsageId` (credit-pack flow) are treated as unlocked even though `isLocked` defaults true
 
 ## What NOT to Do
 
@@ -618,4 +681,6 @@ emails arrive from our domain and don't land in spam.
 - Never store monetary amounts as floats — always pence integers
 - Never skip input validation on API routes
 - Never use `prisma.$executeRaw` without parameterized queries
-- Never add tenantName/tenantEmail/tenantPhone to Tenancy — those fields were removed; use the Tenant relation
+- Never add tenantName/tenantEmail/tenantPhone to Tenancy — use the Tenant relation
+- Never show grade labels or "/100" score to candidates — only show neutral reliability messaging
+- Never expose raw AI output to users — always parse, validate, and clean with `cleanSummary()`

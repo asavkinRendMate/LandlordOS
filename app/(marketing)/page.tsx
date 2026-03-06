@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback, Fragment } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 
@@ -29,31 +29,36 @@ const painPoints = [
   },
 ]
 
-const howItWorks = [
+const journeySteps = [
   {
     icon: '🔍',
     title: 'Find the right tenant',
     body: 'Share one link in your Rightmove or OpenRent listing. Applicants upload their documents. You get an AI summary — income verified, affordability checked, red flags flagged.',
+    slug: 'tenant-screening',
   },
   {
     icon: '📋',
     title: 'Move them in properly',
     body: "Generate a legally compliant tenancy agreement in minutes. Both parties sign online. Capture a timestamped photo inventory — your protection if there's ever a deposit dispute.",
+    slug: 'move-in',
   },
   {
     icon: '🏠',
     title: 'Manage without the chaos',
     body: 'Rent reminders go out automatically. Tenants submit maintenance requests through their own portal, with photos and a paper trail. You get alerts before certificates expire.',
+    slug: 'property-management',
   },
   {
     icon: '🛡️',
     title: 'Handle issues properly',
     body: "Need to raise the rent? We generate the correct notice. Things go wrong? Export a complete evidence pack — every message, photo and payment — in one click.",
+    slug: 'issue-management',
   },
   {
     icon: '🔄',
     title: 'Start again, stress-free',
     body: 'Once the tenancy ends, your property is back to vacant in one click. Run the check-out inspection, handle the deposit, and open applications again.',
+    slug: 'tenancy-renewal',
   },
 ]
 
@@ -117,7 +122,7 @@ const proFeatures = [
 ]
 
 const oneOffItems = [
-  { name: 'Screening Pack', price: '£15', desc: 'Full AI applicant report' },
+  { name: 'Screening Check', price: '£9.99', desc: 'First check/month (£1.49 each additional)' },
   { name: 'APT Contract', price: '£10', desc: 'Legally-reviewed template' },
   { name: 'Inventory Report', price: '£5', desc: 'AI-assisted condition report' },
   { name: 'Dispute Pack', price: '£29', desc: 'Evidence bundle for disputes' },
@@ -177,6 +182,22 @@ function IconChevronDown() {
   )
 }
 
+function IconChevronLeft() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="15 18 9 12 15 6" />
+    </svg>
+  )
+}
+
+function IconChevronRight() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="9 6 15 12 9 18" />
+    </svg>
+  )
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function LandingPage() {
@@ -193,6 +214,12 @@ export default function LandingPage() {
   const [betaCode, setBetaCode] = useState('')
   const [betaError, setBetaError] = useState(false)
   const betaInputRef = useRef<HTMLInputElement>(null)
+
+  // Journey slider state
+  const [currentSlide, setCurrentSlide] = useState(0)
+  const [viewportWidth, setViewportWidth] = useState(0)
+  const touchStartRef = useRef(0)
+  const touchDeltaRef = useRef(0)
 
   useEffect(() => {
     if (betaOpen) betaInputRef.current?.focus()
@@ -229,6 +256,14 @@ export default function LandingPage() {
     return () => observer.disconnect()
   }, [])
 
+  // Viewport width for carousel sizing
+  useEffect(() => {
+    const update = () => setViewportWidth(window.innerWidth)
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [])
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!email || !properties) {
@@ -261,6 +296,26 @@ export default function LandingPage() {
     }
   }
 
+  // Carousel computed values
+  const SLIDER_GAP = 24
+  const containerInner = viewportWidth > 0
+    ? Math.min(1280, viewportWidth) - 48 // 48 = px-6 * 2
+    : 1000
+  const isDesktop = viewportWidth >= 1280
+  const isTablet = viewportWidth >= 768 && !isDesktop
+  // Arrow room: md:mx-14 (56px) on tablet, xl:mx-16 (64px) on desktop, 0 on mobile
+  const arrowRoom = isDesktop ? 64 : isTablet ? 56 : 0
+  const trackWidth = containerInner - arrowRoom * 2
+  const cardWidth = isDesktop
+    ? Math.floor((trackWidth - 2 * SLIDER_GAP) / 3)
+    : isTablet
+      ? Math.floor((trackWidth - 2 * SLIDER_GAP) / 2.3)
+      : trackWidth
+  const totalTrack = journeySteps.length * cardWidth + (journeySteps.length - 1) * SLIDER_GAP
+  const maxSlide = Math.max(0, Math.ceil((totalTrack - trackWidth) / (cardWidth + SLIDER_GAP) - 0.01))
+  const activeSlide = Math.min(currentSlide, maxSlide)
+  const sliderTranslateX = -(activeSlide * (cardWidth + SLIDER_GAP))
+
   return (
     <>
       <style>{`
@@ -287,7 +342,7 @@ export default function LandingPage() {
 
       {/* ── Nav ───────────────────────────────────────────────────────────── */}
       <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-100">
-        <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+        <div className="max-w-[1280px] mx-auto px-6 h-16 flex items-center justify-between">
           <Image src="/logo.svg" alt="LetSorted" width={150} height={50} priority />
           <div className="flex items-center gap-2.5">
             <button
@@ -297,14 +352,31 @@ export default function LandingPage() {
               Closed Beta
             </button>
             <a
-              href="#waitlist"
-              className="bg-green-600 hover:bg-green-700 text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors duration-150"
+              href="/screening"
+              className="inline-flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors duration-150"
             >
-              Join the waitlist
+              Tenant Screening
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17L17 7M17 7H7M17 7v10" /></svg>
             </a>
           </div>
         </div>
       </nav>
+
+      {/* ── RRA banner ─────────────────────────────────────────────────────── */}
+      <div className="bg-[#FEF9EC] border-b border-[#F5E5A0]" style={{ padding: '10px 24px' }}>
+        <div className="max-w-[1280px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-1 sm:gap-4 text-center sm:text-left">
+          <p className="text-sm text-amber-900">
+            <span className="mr-1.5">📋</span>
+            Renters&apos; Rights Act 2026 — the biggest change to rental law in 30 years.
+          </p>
+          <a
+            href="/renters-rights-act"
+            className="text-sm font-semibold text-green-700 hover:text-green-800 transition-colors whitespace-nowrap"
+          >
+            Are you prepared? &rarr;
+          </a>
+        </div>
+      </div>
 
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <section className="py-24 sm:py-32 px-6 bg-gradient-to-b from-green-50 via-green-50/40 to-white">
@@ -328,15 +400,15 @@ export default function LandingPage() {
               <IconArrowRight />
             </a>
             <p className="mt-4 text-sm text-gray-400">
-              New Renters&apos; Rights Act kicks in May 2026 — we&apos;ll have you ready.
+              Built for UK self-managing landlords with 1–5 properties.
             </p>
           </div>
         </div>
       </section>
 
       {/* ── Pain section ──────────────────────────────────────────────────── */}
-      <section className="py-20 px-6 bg-white">
-        <div className="max-w-5xl mx-auto">
+      <section className="pt-0 pb-20 px-6 bg-white">
+        <div className="max-w-[1280px] mx-auto">
           <div className="reveal text-center mb-14">
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">
               Sound familiar?
@@ -362,10 +434,11 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── How It Works section ──────────────────────────────────────────── */}
-      <section className="py-20 px-6 bg-gray-50">
-        <div className="max-w-5xl mx-auto">
-          <div className="reveal text-center mb-14">
+      {/* ── Journey section (slider) ─────────────────────────────────────── */}
+      <section className="py-20 bg-gray-50">
+        {/* Header */}
+        <div className="max-w-[1280px] mx-auto px-6 mb-14">
+          <div className="reveal text-center">
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">
               From empty property to happy tenant — and everything in between
             </h2>
@@ -373,43 +446,111 @@ export default function LandingPage() {
               LetSorted guides you through every stage of renting.
             </p>
           </div>
+        </div>
 
-          {/* Desktop: horizontal flow with arrows */}
-          <div className="hidden lg:flex items-stretch">
-            {howItWorks.map((stage, i) => (
-              <Fragment key={stage.title}>
-                <div
-                  className="reveal flex-1 bg-white rounded-2xl p-5 border border-gray-100 hover:border-green-200 hover:shadow-sm transition-all duration-200"
-                  style={{ transitionDelay: `${i * 0.07}s` }}
-                >
-                  <div className="text-2xl mb-3">{stage.icon}</div>
-                  <h3 className="font-bold text-gray-900 text-sm mb-2">{stage.title}</h3>
-                  <p className="text-gray-400 text-xs leading-relaxed">{stage.body}</p>
-                </div>
-                {i < howItWorks.length - 1 && (
-                  <div className="shrink-0 flex items-center px-2 text-green-300">
-                    <IconArrowRight size={16} />
+        {/* Slider */}
+        <div
+          className="max-w-[1280px] mx-auto px-6 focus:outline-none"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowLeft' && activeSlide > 0) setCurrentSlide(activeSlide - 1)
+            if (e.key === 'ArrowRight' && activeSlide < maxSlide)
+              setCurrentSlide(activeSlide + 1)
+          }}
+        >
+          {/* Arrow-relative wrapper */}
+          <div className="relative">
+            {/* Track — md:mx-14 and xl:mx-16 create room for arrows */}
+            <div className="overflow-hidden md:mx-14 xl:mx-16">
+              <div
+                className="flex"
+                style={{
+                  gap: `${SLIDER_GAP}px`,
+                  transform: `translateX(${sliderTranslateX}px)`,
+                  transition: viewportWidth > 0 ? 'transform 300ms ease' : 'none',
+                }}
+                onTouchStart={(e) => {
+                  touchStartRef.current = e.touches[0].clientX
+                  touchDeltaRef.current = 0
+                }}
+                onTouchMove={(e) => {
+                  touchDeltaRef.current = e.touches[0].clientX - touchStartRef.current
+                }}
+                onTouchEnd={() => {
+                  if (Math.abs(touchDeltaRef.current) > 50) {
+                    if (touchDeltaRef.current < 0 && activeSlide < maxSlide)
+                      setCurrentSlide(activeSlide + 1)
+                    else if (touchDeltaRef.current > 0 && activeSlide > 0)
+                      setCurrentSlide(activeSlide - 1)
+                  }
+                }}
+              >
+                {journeySteps.map((step, i) => (
+                  <div
+                    key={step.slug}
+                    className="shrink-0 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col"
+                    style={{ width: `${cardWidth}px` }}
+                  >
+                    {/* Screenshot 16:9 */}
+                    <div
+                      className="relative w-full"
+                      style={{
+                        paddingTop: '56.25%',
+                        background: 'linear-gradient(135deg, #E8F0EB 0%, #D4E6D9 100%)',
+                        boxShadow: 'inset 0 0 0 1px rgba(45,106,79,0.1)',
+                      }}
+                    >
+                      <span className="absolute inset-0 flex items-center justify-center text-sm text-[#16a34a]/40 font-medium">
+                        [ Screenshot coming soon ]
+                      </span>
+                    </div>
+
+                    {/* Card body */}
+                    <div className="p-4 flex-1 flex flex-col">
+                      <div className="text-2xl mb-2">{step.icon}</div>
+                      <p className="text-xs text-gray-400 mb-1">Step {i + 1} of 5</p>
+                      <h3 className="font-semibold text-base text-gray-900 mb-2">{step.title}</h3>
+                      <p className="text-gray-500 text-sm leading-relaxed mb-3 flex-1">{step.body}</p>
+                      <a
+                        href={`/features/${step.slug}`}
+                        className="text-green-600 font-semibold text-sm hover:text-green-700 transition-colors"
+                      >
+                        See how it works &rarr;
+                      </a>
+                    </div>
                   </div>
-                )}
-              </Fragment>
-            ))}
+                ))}
+              </div>
+            </div>
+
+            {/* Arrow buttons — hidden on mobile, visible on tablet + desktop */}
+            <button
+              onClick={() => activeSlide > 0 && setCurrentSlide(activeSlide - 1)}
+              className={`hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 w-11 h-11 items-center justify-center rounded-full bg-white shadow-md text-green-600 hover:text-green-700 transition-colors ${activeSlide === 0 ? 'opacity-50 cursor-default' : ''}`}
+              aria-label="Previous slide"
+              disabled={activeSlide === 0}
+            >
+              <IconChevronLeft />
+            </button>
+            <button
+              onClick={() => activeSlide < maxSlide && setCurrentSlide(activeSlide + 1)}
+              className={`hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 w-11 h-11 items-center justify-center rounded-full bg-white shadow-md text-green-600 hover:text-green-700 transition-colors ${activeSlide === maxSlide ? 'opacity-50 cursor-default' : ''}`}
+              aria-label="Next slide"
+              disabled={activeSlide === maxSlide}
+            >
+              <IconChevronRight />
+            </button>
           </div>
 
-          {/* Mobile: vertical timeline */}
-          <div className="lg:hidden">
-            {howItWorks.map((stage, i) => (
-              <div key={stage.title} className="reveal relative flex gap-4 pb-8 last:pb-0">
-                {i < howItWorks.length - 1 && (
-                  <div className="absolute left-4 top-10 bottom-0 w-px bg-green-200" />
-                )}
-                <div className="w-9 h-9 rounded-full bg-white border-2 border-green-200 flex items-center justify-center text-base shrink-0 relative z-10">
-                  {stage.icon}
-                </div>
-                <div className="flex-1 pb-2">
-                  <h3 className="font-bold text-gray-900 mb-1.5">{stage.title}</h3>
-                  <p className="text-gray-500 text-sm leading-relaxed">{stage.body}</p>
-                </div>
-              </div>
+          {/* Dot indicators — tablet + mobile only */}
+          <div className="xl:hidden flex justify-center gap-1.5 mt-6">
+            {journeySteps.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setCurrentSlide(i)}
+                className={`w-2 h-2 rounded-full transition-colors ${i === activeSlide ? 'bg-green-600' : 'bg-gray-300'}`}
+                aria-label={`Go to slide ${i + 1}`}
+              />
             ))}
           </div>
         </div>
@@ -417,7 +558,7 @@ export default function LandingPage() {
 
       {/* ── Features section ──────────────────────────────────────────────── */}
       <section className="py-20 px-6 bg-white">
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-[1280px] mx-auto">
           <div className="reveal text-center mb-14">
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">
               Everything you need. Nothing you don&apos;t.

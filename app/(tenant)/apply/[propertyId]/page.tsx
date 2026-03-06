@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
+import Image from 'next/image'
 import ScoringProgressScreen from '@/components/shared/ScoringProgressScreen'
 
 // ── Styles ────────────────────────────────────────────────────────────────────
@@ -277,6 +278,7 @@ export default function ApplyPage() {
     if (newTenantId) fd.append('tenantId', newTenantId)
     fd.append('reportType', 'LANDLORD_REQUESTED')
     fd.append('applicantName', values.name)
+    if (values.monthlyIncome) fd.append('declaredIncome', values.monthlyIncome)
 
     const uploadRes = await fetch('/api/scoring/upload', { method: 'POST', body: fd })
     if (!uploadRes.ok) { setSubmitState('done'); return } // don't block submission on scoring failure
@@ -359,7 +361,7 @@ export default function ApplyPage() {
 
   if (loadState === 'loading') {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex-1 flex items-center justify-center">
         <div className="w-7 h-7 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
       </div>
     )
@@ -367,7 +369,7 @@ export default function ApplyPage() {
 
   if (loadState === 'error' || !property) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="flex-1 flex items-center justify-center p-4">
         <div className="max-w-sm text-center">
           <h1 className="text-gray-900 font-bold text-xl mb-2">Property not found</h1>
           <p className="text-gray-500 text-sm">This application link is invalid. Please check the link and try again.</p>
@@ -396,10 +398,10 @@ export default function ApplyPage() {
     const failureReason = scoring?.failureReason ?? 'Something went wrong during analysis.'
 
     return (
-      <div className="min-h-screen bg-[#f0f7f4] flex items-center justify-center p-4">
+      <div className="flex-1 flex items-center justify-center p-4">
         <div className="max-w-sm w-full">
           <div className="text-center mb-8">
-            <span className="text-[#0f1a0f] font-bold text-xl tracking-tight">LetSorted</span>
+            <Image src="/logo.svg" alt="LetSorted" width={150} height={50} className="mx-auto" />
           </div>
 
           <div className="bg-white rounded-2xl border border-red-100 shadow-sm p-6">
@@ -460,10 +462,10 @@ export default function ApplyPage() {
     })
 
     return (
-      <div className="min-h-screen bg-[#f0f7f4] py-10 px-4">
+      <div className="flex-1 py-10 px-4">
         <div className="max-w-lg mx-auto">
           <div className="text-center mb-8">
-            <span className="text-[#0f1a0f] font-bold text-xl tracking-tight">LetSorted</span>
+            <Image src="/logo.svg" alt="LetSorted" width={150} height={50} className="mx-auto" />
           </div>
 
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
@@ -560,7 +562,7 @@ export default function ApplyPage() {
 
   if (submitState === 'done') {
     return (
-      <div className="min-h-screen bg-[#f0f7f4] flex items-center justify-center p-4">
+      <div className="flex-1 flex items-center justify-center p-4">
         <div className="max-w-sm w-full text-center">
           <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
             <svg className="w-7 h-7 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -619,12 +621,12 @@ export default function ApplyPage() {
   const totalSteps = property.requireFinancialVerification ? 2 : 1
 
   return (
-    <div className="min-h-screen bg-[#f0f7f4] py-10 px-4">
+    <div className="flex-1 py-10 px-4">
       <div className="max-w-lg mx-auto">
 
         {/* Logo */}
         <div className="text-center mb-8">
-          <span className="text-[#0f1a0f] font-bold text-xl tracking-tight">LetSorted</span>
+          <Image src="/logo.svg" alt="LetSorted" width={150} height={50} className="mx-auto" />
         </div>
 
         {/* Property banner */}

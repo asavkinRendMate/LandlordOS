@@ -9,9 +9,13 @@ export default function Footer({ variant }: FooterProps) {
   if (variant === 'app') {
     return (
       <footer className="border-t border-black/[0.06] px-6 py-4 bg-[#F7F8F6]">
-        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1 text-xs text-[#9CA3AF]">
+        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs text-[#9CA3AF]">
           <span>© 2026 Rendmate Ltd. All rights reserved.</span>
-          <span>LetSorted is not a law firm and does not provide legal advice.</span>
+          <div className="flex items-center gap-3">
+            <Link href="/privacy" className="hover:text-gray-600 transition-colors">Privacy</Link>
+            <Link href="/cookies" className="hover:text-gray-600 transition-colors">Cookies</Link>
+            <Link href="/terms" className="hover:text-gray-600 transition-colors">Terms</Link>
+          </div>
         </div>
       </footer>
     )
@@ -43,6 +47,9 @@ export default function Footer({ variant }: FooterProps) {
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Legal</p>
             <Link href="/privacy" className="block text-gray-500 hover:text-gray-800 transition-colors text-xs">
               Privacy Policy
+            </Link>
+            <Link href="/cookies" className="block text-gray-500 hover:text-gray-800 transition-colors text-xs">
+              Cookie Policy
             </Link>
             <Link href="/terms" className="block text-gray-500 hover:text-gray-800 transition-colors text-xs">
               Terms of Service

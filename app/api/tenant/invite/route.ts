@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { createAuthClient } from '@/lib/supabase/auth'
 import { prisma } from '@/lib/prisma'
 import { sendEmail } from '@/lib/resend'
+import { tenantInviteHtml } from '@/lib/email-templates'
 
 const schema = z.object({
   propertyId: z.string().min(1),
@@ -45,14 +46,11 @@ export async function POST(req: Request) {
     await sendEmail({
       to: email,
       subject: "You've been added to LetSorted — confirm your details",
-      html: `
-        <p>Hi ${name.split(' ')[0]},</p>
-        <p>Your landlord uses <strong>LetSorted</strong> to manage their property at <strong>${propertyAddress}</strong>.</p>
-        <p>Please confirm your details and access your tenant portal by clicking the link below:</p>
-        <p><a href="${joinLink}" style="color:#22c55e">Confirm my details →</a></p>
-        <p>If you weren't expecting this email, you can safely ignore it.</p>
-        <p>— The LetSorted team</p>
-      `,
+      html: tenantInviteHtml({
+        firstName: name.split(' ')[0],
+        propertyAddress,
+        joinLink,
+      }),
     })
 
     return NextResponse.json(

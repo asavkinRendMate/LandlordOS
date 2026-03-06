@@ -63,8 +63,8 @@ export default function FinancialPassportPage() {
 
           <div className="mt-5 pt-5 border-t border-gray-100 flex items-center justify-between">
             <div>
-              <span className="text-3xl font-bold text-[#0f1a0f]">£24.99</span>
-              <span className="text-gray-400 text-sm ml-1">one-time</span>
+              <span className="text-3xl font-bold text-[#0f1a0f]">From £4.00</span>
+              <span className="text-gray-400 text-sm ml-1">per check</span>
             </div>
             <span className="text-xs text-gray-400">Instant report</span>
           </div>

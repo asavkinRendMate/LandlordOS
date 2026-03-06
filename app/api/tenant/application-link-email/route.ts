@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { createAuthClient } from '@/lib/supabase/auth'
 import { prisma } from '@/lib/prisma'
 import { sendEmail } from '@/lib/resend'
+import { applicationLinkHtml } from '@/lib/email-templates'
 
 const schema = z.object({
   propertyId: z.string().min(1),
@@ -33,13 +34,10 @@ export async function POST(req: Request) {
     await sendEmail({
       to: email,
       subject: `Apply for ${propertyAddress}`,
-      html: `
-        <p>Hi,</p>
-        <p>You've been sent an application link for the property at <strong>${propertyAddress}</strong>.</p>
-        <p>Click the link below to submit your application:</p>
-        <p><a href="${applyLink}" style="color:#22c55e">Apply now →</a></p>
-        <p>— The LetSorted team</p>
-      `,
+      html: applicationLinkHtml({
+        propertyAddress,
+        applyLink,
+      }),
     })
 
     return NextResponse.json({ success: true })

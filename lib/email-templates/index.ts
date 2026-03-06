@@ -1,0 +1,144 @@
+// All LetSorted email templates — import from '@/lib/email-templates'
+
+export { baseEmailTemplate, ctaButton, infoBox, greyBox, p, muted } from './base'
+
+import { baseEmailTemplate, ctaButton, infoBox, greyBox, p, muted } from './base'
+
+// ─── 1. Tenant invite (join portal) ──────────────────────────────────────────
+// Used by: api/tenant/invite, api/tenant/send-invite
+
+export function tenantInviteHtml(params: {
+  firstName: string
+  propertyAddress: string
+  joinLink: string
+}): string {
+  return baseEmailTemplate({
+    previewText: `Confirm your details for ${params.propertyAddress}`,
+    subtitle: 'Tenant Portal',
+    content: `
+      ${p(`Hi ${params.firstName},`)}
+      ${p(`Your landlord uses <strong style="color:#1a1a1a;">LetSorted</strong> to manage their property at:`)}
+      ${infoBox(params.propertyAddress)}
+      ${p('Please confirm your details and access your tenant portal:')}
+      ${ctaButton('Confirm my details', params.joinLink)}
+      ${muted("If you weren't expecting this email, you can safely ignore it.")}
+    `,
+  })
+}
+
+// ─── 2. Application received (confirmation to applicant) ─────────────────────
+// Used by: api/tenant/apply (first email)
+
+export function applicationReceivedHtml(params: {
+  firstName: string
+  propertyAddress: string
+  landlordFirstName: string
+}): string {
+  return baseEmailTemplate({
+    previewText: `Application received for ${params.propertyAddress}`,
+    subtitle: 'Applications',
+    content: `
+      ${p(`Hi ${params.firstName},`)}
+      ${p(`Thanks for applying for:`)}
+      ${infoBox(params.propertyAddress)}
+      ${p(`${params.landlordFirstName} will be in touch if your application is successful.`)}
+    `,
+  })
+}
+
+// ─── 3. New application notification (to landlord) ───────────────────────────
+// Used by: api/tenant/apply (second email)
+
+export function newApplicationHtml(params: {
+  landlordFirstName: string
+  propertyAddress: string
+  applicantName: string
+  applicantEmail: string
+  message?: string
+}): string {
+  return baseEmailTemplate({
+    previewText: `New application from ${params.applicantName}`,
+    subtitle: 'Applications',
+    content: `
+      ${p(`Hi ${params.landlordFirstName},`)}
+      ${p(`You have a new application for <strong style="color:#1a1a1a;">${params.propertyAddress}</strong> from <strong style="color:#1a1a1a;">${params.applicantName}</strong> (${params.applicantEmail}).`)}
+      ${params.message ? greyBox(`<p style="color:#374151;font-size:14px;font-style:italic;margin:0;">&ldquo;${params.message}&rdquo;</p>`) : ''}
+      ${p('Log in to LetSorted to view and manage this application.')}
+    `,
+  })
+}
+
+// ─── 4. Application link (send apply URL to prospective tenant) ──────────────
+// Used by: api/tenant/application-link-email
+
+export function applicationLinkHtml(params: {
+  propertyAddress: string
+  applyLink: string
+}): string {
+  return baseEmailTemplate({
+    previewText: `Apply for ${params.propertyAddress}`,
+    subtitle: 'Applications',
+    content: `
+      ${p('Hi,')}
+      ${p("You've been sent an application link for:")}
+      ${infoBox(params.propertyAddress)}
+      ${p('Click below to submit your application:')}
+      ${ctaButton('Apply now', params.applyLink)}
+    `,
+  })
+}
+
+// ─── 5. Screening invite (financial check request to candidate) ──────────────
+// Used by: api/screening/invite
+
+export function candidateInviteHtml(params: {
+  candidateName: string
+  landlordName: string
+  propertyAddress: string
+  applyUrl: string
+}): string {
+  return baseEmailTemplate({
+    previewText: `Complete your financial check for ${params.propertyAddress}`,
+    subtitle: 'Financial Screening',
+    content: `
+      ${p(`Hi ${params.candidateName},`)}
+      ${p(`${params.landlordName} has invited you to complete a financial check for:`)}
+      ${infoBox(params.propertyAddress)}
+      ${p("Upload your bank statements (PDF) and you'll get a financial score in under 2 minutes. Your data is processed securely and never shared without your permission.")}
+      ${ctaButton('Start check', params.applyUrl)}
+      ${muted('This link expires in 7 days. If you have questions, reply to this email or contact your landlord directly.')}
+    `,
+  })
+}
+
+// ─── 6. Landlord notification (screening complete) ───────────────────────────
+// Used by: lib/scoring/engine.ts
+
+export function landlordNotificationHtml(params: {
+  candidateName: string
+  score: number
+  grade: string
+  reportUrl: string
+}): string {
+  const gradeColor =
+    params.grade === 'Excellent' || params.grade === 'Good'
+      ? '#16a34a'
+      : params.grade === 'Fair'
+        ? '#d97706'
+        : '#dc2626'
+
+  return baseEmailTemplate({
+    previewText: `${params.candidateName} scored ${params.score}/100 — ${params.grade}`,
+    subtitle: 'Financial Screening',
+    content: `
+      ${p(`${params.candidateName} has completed their financial check.`)}
+      ${greyBox(`
+        <p style="color:#6b7280;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;margin:0 0 4px;text-align:center;">Financial Score</p>
+        <p style="color:#1a1a1a;font-size:28px;font-weight:800;margin:0;text-align:center;">${params.score}/100</p>
+        <p style="color:${gradeColor};font-size:14px;font-weight:600;margin:4px 0 0;text-align:center;">${params.grade}</p>
+      `)}
+      ${ctaButton('View full report', params.reportUrl)}
+      ${muted('Unlock the full report to see the AI summary, detailed breakdown, and applied rules.')}
+    `,
+  })
+}
