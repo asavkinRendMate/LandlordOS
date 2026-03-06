@@ -11,19 +11,19 @@ import TenantDetailsForm, { type TenantFormData } from '@/components/shared/Tena
 // ── Shared field styles ───────────────────────────────────────────────────────
 
 const inputClass =
-  'w-full bg-[#5f655f] border border-white/15 rounded-lg px-3.5 py-2.5 text-white placeholder-white/30 text-sm focus:outline-none focus:border-green-500/60 focus:ring-1 focus:ring-green-500/30 transition-colors'
+  'w-full bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-[#1A1A1A] placeholder-gray-400 text-sm focus:outline-none focus:border-[#16a34a] focus:ring-1 focus:ring-[#16a34a]/20 transition-colors'
 
 const selectClass =
-  'w-full bg-[#5f655f] border border-white/15 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:border-green-500/60 focus:ring-1 focus:ring-green-500/30 transition-colors appearance-none'
+  'w-full bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-[#1A1A1A] text-sm focus:outline-none focus:border-[#16a34a] focus:ring-1 focus:ring-[#16a34a]/20 transition-colors appearance-none'
 
 function FieldError({ message }: { message?: string }) {
   if (!message) return null
-  return <p className="mt-1 text-xs text-red-400">{message}</p>
+  return <p className="mt-1 text-xs text-red-600">{message}</p>
 }
 
 function Label({ children, htmlFor }: { children: React.ReactNode; htmlFor?: string }) {
   return (
-    <label htmlFor={htmlFor} className="block text-sm text-white/70 mb-1.5">
+    <label htmlFor={htmlFor} className="block text-sm text-[#374151] mb-1.5">
       {children}
     </label>
   )
@@ -46,10 +46,10 @@ function StepIndicator({ current }: { current: number }) {
           <div
             className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all ${
               current === step.id
-                ? 'bg-green-500/20 text-green-400 ring-1 ring-green-500/40'
+                ? 'bg-[#16a34a]/10 text-[#16a34a] ring-1 ring-[#16a34a]/30'
                 : current > step.id
-                ? 'text-white/35'
-                : 'text-white/20'
+                ? 'text-[#9CA3AF]'
+                : 'text-[#D1D5DB]'
             }`}
           >
             {current > step.id && (
@@ -60,7 +60,7 @@ function StepIndicator({ current }: { current: number }) {
             {step.label}
           </div>
           {i < STEPS.length - 1 && (
-            <span className={`mx-1 text-sm ${current > step.id ? 'text-green-500/40' : 'text-white/12'}`}>
+            <span className={`mx-1 text-sm ${current > step.id ? 'text-[#16a34a]/40' : 'text-[#E5E7EB]'}`}>
               →
             </span>
           )}
@@ -130,21 +130,21 @@ function PropertyForm({ onNext, onSkip }: { onNext: (v: PropertyValues) => void;
         <div className="flex gap-2">
           <input id="postcode" {...register('postcode')} placeholder="e.g. SW1A 2AA" className={`${inputClass} flex-1`} />
           <button type="button" onClick={lookupAddress} disabled={lookupLoading}
-            className="shrink-0 bg-white/10 hover:bg-white/15 disabled:opacity-50 text-white text-sm px-4 py-2.5 rounded-lg transition-colors">
+            className="shrink-0 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 text-[#1A1A1A] text-sm px-4 py-2.5 rounded-lg transition-colors">
             {lookupLoading ? '…' : 'Find'}
           </button>
         </div>
         <FieldError message={errors.postcode?.message} />
         {showSuggestions && suggestions.length > 0 && (
-          <div className="mt-2 bg-[#1a2d1a] border border-white/15 rounded-lg overflow-hidden max-h-44 overflow-y-auto">
+          <div className="mt-2 bg-white border border-gray-200 rounded-lg overflow-hidden max-h-44 overflow-y-auto shadow-lg">
             {suggestions.map((addr) => (
               <button key={addr.uprn} type="button" onClick={() => selectAddress(addr)}
-                className="w-full text-left px-3.5 py-2.5 text-sm text-white/80 hover:bg-white/8 transition-colors border-b border-white/5 last:border-0">
+                className="w-full text-left px-3.5 py-2.5 text-sm text-[#374151] hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-0">
                 {addr.singleLine}
               </button>
             ))}
             <button type="button" onClick={() => setShowSuggestions(false)}
-              className="w-full text-center px-3.5 py-2 text-xs text-white/40 hover:text-white/60 transition-colors">
+              className="w-full text-center px-3.5 py-2 text-xs text-[#9CA3AF] hover:text-[#6B7280] transition-colors">
               Enter manually instead
             </button>
           </div>
@@ -158,7 +158,7 @@ function PropertyForm({ onNext, onSkip }: { onNext: (v: PropertyValues) => void;
       </div>
 
       <div>
-        <Label htmlFor="line2">Address line 2 <span className="text-white/30">(optional)</span></Label>
+        <Label htmlFor="line2">Address line 2 <span className="text-[#9CA3AF]">(optional)</span></Label>
         <input id="line2" {...register('line2')} placeholder="Flat, suite, unit, etc." className={inputClass} />
       </div>
 
@@ -180,16 +180,16 @@ function PropertyForm({ onNext, onSkip }: { onNext: (v: PropertyValues) => void;
       </div>
 
       <div>
-        <Label htmlFor="name">Property nickname <span className="text-white/30">(optional)</span></Label>
+        <Label htmlFor="name">Property nickname <span className="text-[#9CA3AF]">(optional)</span></Label>
         <input id="name" {...register('name')} placeholder="e.g. The Manchester Flat" className={inputClass} />
-        <p className="mt-1 text-xs text-white/30">A friendly label shown on your dashboard</p>
+        <p className="mt-1 text-xs text-[#9CA3AF]">A friendly label shown on your dashboard</p>
       </div>
 
       <div className="pt-2 flex flex-col gap-3">
-        <button type="submit" className="w-full bg-green-500 hover:bg-green-400 text-white font-semibold rounded-xl py-3 text-sm transition-colors">
+        <button type="submit" className="w-full bg-[#16a34a] hover:bg-[#15803d] text-white font-semibold rounded-xl py-3 text-sm transition-colors">
           Continue
         </button>
-        <button type="button" onClick={onSkip} className="text-sm text-white/30 hover:text-white/60 transition-colors text-center">
+        <button type="button" onClick={onSkip} className="text-sm text-[#9CA3AF] hover:text-[#6B7280] transition-colors text-center">
           Skip for now
         </button>
       </div>
@@ -203,33 +203,33 @@ function OccupancyStep({ onHasTenant, onVacant }: { onHasTenant: () => void; onV
   return (
     <div className="space-y-4">
       <button onClick={onHasTenant}
-        className="w-full flex items-start gap-4 bg-white/5 hover:bg-white/8 border border-white/12 hover:border-white/22 rounded-xl p-5 text-left transition-all">
-        <div className="w-10 h-10 rounded-xl bg-green-500/15 flex items-center justify-center shrink-0">
-          <svg className="w-5 h-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        className="w-full flex items-start gap-4 bg-white border border-gray-200 hover:border-[#16a34a]/30 hover:bg-gray-50 rounded-xl p-5 text-left transition-all">
+        <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center shrink-0">
+          <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
           </svg>
         </div>
         <div>
-          <p className="text-white font-semibold text-base">Yes, I have a tenant</p>
-          <p className="text-white/45 text-sm mt-1">We&apos;ll set up rent tracking and a tenant portal straight away</p>
+          <p className="text-[#1A1A1A] font-semibold text-base">Yes, I have a tenant</p>
+          <p className="text-[#6B7280] text-sm mt-1">We&apos;ll set up rent tracking and a tenant portal straight away</p>
         </div>
-        <svg className="w-5 h-5 text-white/25 ml-auto mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className="w-5 h-5 text-[#D1D5DB] ml-auto mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
         </svg>
       </button>
 
       <button onClick={onVacant}
-        className="w-full flex items-start gap-4 bg-white/5 hover:bg-white/8 border border-white/12 hover:border-white/22 rounded-xl p-5 text-left transition-all">
-        <div className="w-10 h-10 rounded-xl bg-white/8 flex items-center justify-center shrink-0">
-          <svg className="w-5 h-5 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        className="w-full flex items-start gap-4 bg-white border border-gray-200 hover:border-[#16a34a]/30 hover:bg-gray-50 rounded-xl p-5 text-left transition-all">
+        <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
+          <svg className="w-5 h-5 text-[#9CA3AF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
           </svg>
         </div>
         <div>
-          <p className="text-white font-semibold text-base">No, it&apos;s vacant</p>
-          <p className="text-white/45 text-sm mt-1">You can add tenants later when you find them</p>
+          <p className="text-[#1A1A1A] font-semibold text-base">No, it&apos;s vacant</p>
+          <p className="text-[#6B7280] text-sm mt-1">You can add tenants later when you find them</p>
         </div>
-        <svg className="w-5 h-5 text-white/25 ml-auto mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className="w-5 h-5 text-[#D1D5DB] ml-auto mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
         </svg>
       </button>
@@ -253,37 +253,37 @@ function AllDone({ propertyId, portalToken }: { propertyId: string; portalToken?
   const suggestions = [
     {
       icon: (
-        <svg className="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className="w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
       ),
       title: 'Upload compliance documents',
       desc: 'Gas safety, EPC, EICR and How to Rent guide',
-      action: <Link href={`/dashboard/properties/${propertyId}`} className="text-xs text-blue-400 hover:text-blue-300 transition-colors font-medium">Go →</Link>,
+      action: <Link href={`/dashboard/properties/${propertyId}`} className="text-xs text-blue-500 hover:text-blue-600 transition-colors font-medium">Go →</Link>,
     },
     ...(portalToken ? [{
       icon: (
-        <svg className="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className="w-5 h-5 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
         </svg>
       ),
       title: 'Share the tenant portal link',
       desc: 'Your tenant can submit maintenance requests and view their tenancy',
       action: (
-        <button onClick={copyPortalLink} className="text-xs text-purple-400 hover:text-purple-300 transition-colors font-medium">
+        <button onClick={copyPortalLink} className="text-xs text-purple-500 hover:text-purple-600 transition-colors font-medium">
           {copied ? 'Copied!' : 'Copy link'}
         </button>
       ),
     }] : []),
     {
       icon: (
-        <svg className="w-5 h-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className="w-5 h-5 text-[#16a34a]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
         </svg>
       ),
       title: 'Explore your dashboard',
       desc: 'See your property overview and what comes next',
-      action: <button onClick={() => router.push('/dashboard')} className="text-xs text-green-400 hover:text-green-300 transition-colors font-medium">Go →</button>,
+      action: <button onClick={() => router.push('/dashboard')} className="text-xs text-[#16a34a] hover:text-[#15803d] transition-colors font-medium">Go →</button>,
     },
   ]
 
@@ -291,25 +291,25 @@ function AllDone({ propertyId, portalToken }: { propertyId: string; portalToken?
     <div>
       {/* Checkmark */}
       <div className="flex justify-center mb-8">
-        <div className="w-20 h-20 rounded-full bg-green-500/20 border border-green-500/30 flex items-center justify-center animate-pop-in">
-          <svg className="w-9 h-9" fill="none" viewBox="0 0 24 24" stroke="#4ade80" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+        <div className="w-20 h-20 rounded-full bg-green-50 border border-green-200 flex items-center justify-center animate-pop-in">
+          <svg className="w-9 h-9" fill="none" viewBox="0 0 24 24" stroke="#16a34a" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
             <path className="animate-draw-check" d="M5 13l4 4L19 7" />
           </svg>
         </div>
       </div>
 
-      <h2 className="text-white text-3xl font-bold text-center mb-2">You&apos;re all set!</h2>
-      <p className="text-white/50 text-center mb-8">Your property is ready. Here&apos;s what you can do next:</p>
+      <h2 className="text-[#1A1A1A] text-3xl font-bold text-center mb-2">You&apos;re all set!</h2>
+      <p className="text-[#6B7280] text-center mb-8">Your property is ready. Here&apos;s what you can do next:</p>
 
       <div className="space-y-3 mb-8">
         {suggestions.map((s, i) => (
-          <div key={i} className="flex items-start gap-3 bg-white/4 border border-white/8 rounded-xl p-4">
-            <div className="w-9 h-9 rounded-lg bg-white/6 flex items-center justify-center shrink-0">
+          <div key={i} className="flex items-start gap-3 bg-white border border-gray-200 rounded-xl p-4">
+            <div className="w-9 h-9 rounded-lg bg-gray-50 flex items-center justify-center shrink-0">
               {s.icon}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-white text-sm font-medium">{s.title}</p>
-              <p className="text-white/40 text-xs mt-0.5">{s.desc}</p>
+              <p className="text-[#1A1A1A] text-sm font-medium">{s.title}</p>
+              <p className="text-[#9CA3AF] text-xs mt-0.5">{s.desc}</p>
             </div>
             <div className="shrink-0 mt-0.5">{s.action}</div>
           </div>
@@ -318,7 +318,7 @@ function AllDone({ propertyId, portalToken }: { propertyId: string; portalToken?
 
       <button
         onClick={() => router.push('/dashboard')}
-        className="w-full bg-green-500 hover:bg-green-400 text-white font-semibold rounded-xl py-3 text-sm transition-colors"
+        className="w-full bg-[#16a34a] hover:bg-[#15803d] text-white font-semibold rounded-xl py-3 text-sm transition-colors"
       >
         Go to my dashboard →
       </button>
@@ -415,17 +415,13 @@ export default function OnboardingPage() {
     setStep(4)
   }
 
-  // For step 1 and 3: submit button lives inside the form (form id="wizard-form")
-  // For step 2: buttons are inline
-  // For step 4: done screen has its own CTA
-
   const content = step < 4 ? stepContent[step as keyof typeof stepContent] : null
 
   return (
     <div className="flex flex-col min-h-[calc(100vh-3.5rem)] lg:min-h-screen">
 
       {/* TOP — step indicator */}
-      <div className="pt-8 pb-5 px-4 border-b border-white/6">
+      <div className="pt-8 pb-5 px-4 border-b border-gray-100">
         <StepIndicator current={step} />
       </div>
 
@@ -436,22 +432,22 @@ export default function OnboardingPage() {
           {/* Heading + subtitle (steps 1–3) */}
           {content && (
             <div className="mb-8">
-              <h1 className="text-white text-2xl lg:text-3xl font-bold mb-3 leading-tight">
+              <h1 className="text-[#1A1A1A] text-2xl lg:text-3xl font-bold mb-3 leading-tight">
                 {content.heading}
               </h1>
-              <p className="text-white/50 text-base leading-relaxed">{content.subtitle}</p>
+              <p className="text-[#6B7280] text-base leading-relaxed">{content.subtitle}</p>
             </div>
           )}
 
           {error && (
-            <div className="mb-5 bg-red-500/10 border border-red-500/25 rounded-lg px-4 py-3 text-red-400 text-sm">
+            <div className="mb-5 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-red-700 text-sm">
               {error}
             </div>
           )}
 
           {submitting ? (
             <div className="flex items-center justify-center py-16">
-              <div className="w-7 h-7 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+              <div className="w-7 h-7 border-2 border-[#16a34a] border-t-transparent rounded-full animate-spin" />
             </div>
           ) : step === 1 ? (
             <PropertyForm onNext={handleStep1} onSkip={() => router.push('/dashboard')} />
@@ -463,9 +459,9 @@ export default function OnboardingPage() {
                 onSubmit={handleStep3}
                 isLoading={submitting}
                 submitLabel="Add property"
-                variant="dark"
+                variant="light"
               />
-              <button type="button" onClick={() => setStep(2)} className="w-full mt-3 text-sm text-white/30 hover:text-white/60 transition-colors text-center">
+              <button type="button" onClick={() => setStep(2)} className="w-full mt-3 text-sm text-[#9CA3AF] hover:text-[#6B7280] transition-colors text-center">
                 ← Back
               </button>
             </div>
