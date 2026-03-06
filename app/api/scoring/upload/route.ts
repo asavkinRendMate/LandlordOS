@@ -1,27 +1,57 @@
 import { NextResponse } from 'next/server'
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { uploadFile } from '@/lib/storage'
 import { analyzeStatement } from '@/lib/scoring'
 
 const BUCKET = 'bank-statements'
-const MAX_SIZE_BYTES = 20 * 1024 * 1024 // 20 MB
+const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10 MB per file
+const MAX_TOTAL_SIZE = 10 * 1024 * 1024 // 10 MB total
+const MAX_FILES = 5
+
+interface StatementFile {
+  index: number
+  fileName: string
+  storagePath: string
+  fileSize: number
+  verificationStatus: 'PENDING' | 'VERIFIED' | 'UNVERIFIED' | 'UNCERTAIN'
+  detectedName?: string | null
+  confidence?: 'HIGH' | 'MEDIUM' | 'LOW'
+  reason?: string
+  relationship?: string | null
+  removedByApplicant?: boolean
+}
 
 export async function POST(req: Request) {
   try {
     const formData = await req.formData()
 
-    const file = formData.get('file') as File | null
+    const files = formData.getAll('file') as File[]
     const propertyId = formData.get('propertyId') as string | null
     const tenantId = formData.get('tenantId') as string | null
     const reportType = formData.get('reportType') as string | null
+    const applicantName = formData.get('applicantName') as string | null
 
-    // Validate file
-    if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 })
-    if (file.type !== 'application/pdf') {
-      return NextResponse.json({ error: 'Only PDF files are accepted' }, { status: 400 })
+    // Validate files
+    if (files.length === 0) {
+      return NextResponse.json({ error: 'No files provided' }, { status: 400 })
     }
-    if (file.size > MAX_SIZE_BYTES) {
-      return NextResponse.json({ error: 'File exceeds 20 MB limit' }, { status: 400 })
+    if (files.length > MAX_FILES) {
+      return NextResponse.json({ error: `Maximum ${MAX_FILES} files allowed` }, { status: 400 })
+    }
+
+    let totalSize = 0
+    for (const file of files) {
+      if (file.type !== 'application/pdf') {
+        return NextResponse.json({ error: `Only PDF files are accepted: ${file.name}` }, { status: 400 })
+      }
+      if (file.size > MAX_FILE_SIZE) {
+        return NextResponse.json({ error: `File exceeds 10 MB limit: ${file.name}` }, { status: 400 })
+      }
+      totalSize += file.size
+    }
+    if (totalSize > MAX_TOTAL_SIZE) {
+      return NextResponse.json({ error: 'Total file size exceeds 10 MB limit' }, { status: 400 })
     }
 
     if (!reportType || !['LANDLORD_REQUESTED', 'SELF_REQUESTED'].includes(reportType)) {
@@ -34,7 +64,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Scoring service is not configured' }, { status: 503 })
     }
 
-    // Create FinancialReport record first to get the ID for the storage path
+    // Create FinancialReport record first to get the ID for storage paths
     const report = await prisma.financialReport.create({
       data: {
         tenantId: tenantId ?? null,
@@ -42,17 +72,31 @@ export async function POST(req: Request) {
         reportType: reportType as 'LANDLORD_REQUESTED' | 'SELF_REQUESTED',
         status: 'PENDING',
         scoringConfigVersion: config.version,
+        applicantName: applicantName ?? null,
       },
     })
 
-    // Upload to Supabase Storage: /{reportId}/{fileName}
-    const storagePath = `${report.id}/${file.name}`
-    await uploadFile(storagePath, file, BUCKET)
+    // Upload each file and build statementFiles array
+    const statementFiles: StatementFile[] = []
 
-    // Save file URL on report
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
+      const storagePath = `${report.id}/${i}-${file.name}`
+      await uploadFile(storagePath, file, BUCKET)
+
+      statementFiles.push({
+        index: i,
+        fileName: file.name,
+        storagePath,
+        fileSize: file.size,
+        verificationStatus: 'PENDING',
+      })
+    }
+
+    // Save statementFiles on report
     await prisma.financialReport.update({
       where: { id: report.id },
-      data: { statementFileUrl: storagePath },
+      data: { statementFiles: statementFiles as unknown as Prisma.InputJsonValue },
     })
 
     // Trigger scoring in the background — do NOT await
@@ -60,7 +104,10 @@ export async function POST(req: Request) {
       console.error(`[scoring/upload] background analysis failed for ${report.id}:`, err),
     )
 
-    return NextResponse.json({ data: { reportId: report.id, status: 'PROCESSING' } }, { status: 201 })
+    return NextResponse.json(
+      { data: { reportId: report.id, status: 'PROCESSING', fileCount: files.length } },
+      { status: 201 },
+    )
   } catch (err) {
     console.error('[scoring/upload POST]', err)
     return NextResponse.json({ error: 'Something went wrong' }, { status: 500 })

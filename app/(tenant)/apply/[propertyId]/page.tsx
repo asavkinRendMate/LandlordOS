@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
+import ScoringProgressScreen from '@/components/shared/ScoringProgressScreen'
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
@@ -39,11 +40,39 @@ interface PropertyData {
   requireFinancialVerification: boolean
 }
 
+interface StatementFile {
+  index: number
+  fileName: string
+  storagePath: string
+  fileSize: number
+  verificationStatus: 'PENDING' | 'VERIFIED' | 'UNVERIFIED' | 'UNCERTAIN'
+  detectedName?: string | null
+  confidence?: 'HIGH' | 'MEDIUM' | 'LOW'
+  reason?: string
+  relationship?: string | null
+  removedByApplicant?: boolean
+}
+
+interface PersonValidation {
+  name: string
+  isApplicant: boolean
+  fileIndices: number[]
+  periodStart: string | null
+  periodEnd: string | null
+  coverageDays: number | null
+  coverageStatus: 'PASS' | 'WARN_SHORT' | 'WARN_OLD' | 'WARN_BOTH' | 'UNKNOWN'
+}
+
 interface ScoringResult {
   status: string
   totalScore: number | null
   grade: string | null
   aiSummary: string | null
+  hasUnverifiedFiles?: boolean
+  statementFiles?: StatementFile[]
+  applicantName?: string | null
+  validationResults?: PersonValidation[] | null
+  failureReason?: string | null
 }
 
 // ── Schema ────────────────────────────────────────────────────────────────────
@@ -81,6 +110,28 @@ function fmtBytes(b: number) {
   return `${(b / 1024 / 1024).toFixed(1)} MB`
 }
 
+// ── Coverage status helpers ─────────────────────────────────────────────────
+
+function coverageLabel(status: PersonValidation['coverageStatus']) {
+  switch (status) {
+    case 'PASS': return 'Sufficient coverage'
+    case 'WARN_SHORT': return 'Less than 2 months of data'
+    case 'WARN_OLD': return 'Statements older than 6 months'
+    case 'WARN_BOTH': return 'Too short and too old'
+    case 'UNKNOWN': return 'Coverage unknown'
+  }
+}
+
+function coverageColour(status: PersonValidation['coverageStatus']) {
+  if (status === 'PASS') return 'bg-green-50 text-green-700 border-green-200'
+  if (status === 'UNKNOWN') return 'bg-gray-50 text-gray-500 border-gray-200'
+  return 'bg-amber-50 text-amber-700 border-amber-200'
+}
+
+const MAX_FILES = 5
+const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10 MB per file
+const MAX_TOTAL_SIZE = 10 * 1024 * 1024 // 10 MB total
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function ApplyPage() {
@@ -91,14 +142,25 @@ export default function ApplyPage() {
   // Steps: 1 = personal details, 2 = financial verification (if required)
   const [step, setStep] = useState<1 | 2>(1)
 
-  // Financial verification state
-  const [statementFile, setStatementFile] = useState<File | null>(null)
+  // Financial verification state — multi-file
+  const [statementFiles, setStatementFiles] = useState<File[]>([])
+  const [fileError, setFileError] = useState<string | null>(null)
+  const [aiConsent, setAiConsent] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Submission state
-  const [submitState, setSubmitState] = useState<'idle' | 'submitting' | 'uploading' | 'analysing' | 'done' | 'error'>('idle')
+  const [submitState, setSubmitState] = useState<
+    'idle' | 'submitting' | 'uploading' | 'analysing' | 'declarations' | 'done' | 'failed' | 'error'
+  >('idle')
   const [scoring, setScoring] = useState<ScoringResult | null>(null)
+  const [reportId, setReportId] = useState<string | null>(null)
+
+  // Declarations state
+  const [declarations, setDeclarations] = useState<Record<number, { relationship: string; custom: string }>>({})
+
+  // Guard against double submission
+  const submittingRef = useRef(false)
 
   // Polling ref for cleanup
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -129,27 +191,56 @@ export default function ApplyPage() {
       return
     }
     // No financial verification required — submit directly
-    await submitApplication(values, null)
+    await submitApplication(values, [])
   }
 
-  // ── File handling ────────────────────────────────────────────────────────────
+  // ── File handling (multi-file) ────────────────────────────────────────────────
 
-  function handleFileSelect(file: File) {
-    if (file.type !== 'application/pdf') return
-    if (file.size > 20 * 1024 * 1024) return
-    setStatementFile(file)
+  function handleFilesSelect(newFiles: File[]) {
+    setFileError(null)
+
+    for (const f of newFiles) {
+      if (f.type !== 'application/pdf') continue
+      if (f.size > MAX_FILE_SIZE) {
+        setFileError('File too large. Maximum 10 MB per file.')
+        return
+      }
+    }
+
+    const validFiles = newFiles.filter((f) => f.type === 'application/pdf' && f.size <= MAX_FILE_SIZE)
+    const combined = [...statementFiles, ...validFiles]
+
+    if (combined.length > MAX_FILES) {
+      setFileError(`Maximum ${MAX_FILES} files allowed. You selected ${combined.length}.`)
+      return
+    }
+
+    const combinedTotal = combined.reduce((sum, f) => sum + f.size, 0)
+    if (combinedTotal > MAX_TOTAL_SIZE) {
+      setFileError('Total upload size cannot exceed 10 MB. Please reduce the number of files or upload a combined statement instead.')
+      return
+    }
+
+    setStatementFiles(combined)
+  }
+
+  function removeFile(index: number) {
+    setStatementFiles((prev) => prev.filter((_, i) => i !== index))
+    setFileError(null)
   }
 
   function onFileDrop(e: React.DragEvent) {
     e.preventDefault()
     setIsDragging(false)
-    const file = e.dataTransfer.files[0]
-    if (file) handleFileSelect(file)
+    const files = Array.from(e.dataTransfer.files)
+    if (files.length > 0) handleFilesSelect(files)
   }
 
   // ── Final submission ─────────────────────────────────────────────────────────
 
-  async function submitApplication(values: FormValues, file: File | null) {
+  async function submitApplication(values: FormValues, files: File[]) {
+    if (submittingRef.current) return
+    submittingRef.current = true
     setSubmitState('submitting')
 
     // 1. Create Candidate record
@@ -168,27 +259,31 @@ export default function ApplyPage() {
       }),
     })
 
-    if (!res.ok) { setSubmitState('error'); return }
+    if (!res.ok) { submittingRef.current = false; setSubmitState('error'); return }
 
     const json = await res.json()
     const newTenantId: string | undefined = json.data?.tenantId
 
-    // 2. If no file required, we're done
-    if (!file) { setSubmitState('done'); return }
+    // 2. If no files required, we're done
+    if (files.length === 0) { setSubmitState('done'); return }
 
-    // 3. Upload statement and trigger scoring
+    // 3. Upload statements and trigger scoring
     setSubmitState('uploading')
     const fd = new FormData()
-    fd.append('file', file)
+    for (const file of files) {
+      fd.append('file', file)
+    }
     fd.append('propertyId', propertyId)
     if (newTenantId) fd.append('tenantId', newTenantId)
     fd.append('reportType', 'LANDLORD_REQUESTED')
+    fd.append('applicantName', values.name)
 
     const uploadRes = await fetch('/api/scoring/upload', { method: 'POST', body: fd })
     if (!uploadRes.ok) { setSubmitState('done'); return } // don't block submission on scoring failure
 
     const uploadJson = await uploadRes.json()
     const newReportId: string = uploadJson.data?.reportId
+    setReportId(newReportId)
     setSubmitState('analysing')
 
     // 4. Poll for scoring results
@@ -200,14 +295,64 @@ export default function ApplyPage() {
       if (data.status === 'COMPLETED' || data.status === 'FAILED') {
         if (pollRef.current) clearInterval(pollRef.current)
         setScoring(data)
-        setSubmitState('done')
+        if (data.status === 'FAILED') {
+          setSubmitState('failed')
+        } else if (data.hasUnverifiedFiles) {
+          setSubmitState('declarations')
+        } else {
+          setSubmitState('done')
+        }
       }
     }, 5000)
   }
 
   async function onStep2Submit() {
     const values = getValues()
-    await submitApplication(values, statementFile)
+    await submitApplication(values, statementFiles)
+  }
+
+  // ── Declarations submit ────────────────────────────────────────────────────
+
+  async function onDeclarationsSubmit() {
+    if (!reportId || !scoring?.statementFiles) return
+
+    const unverifiedFiles = scoring.statementFiles.filter(
+      (f) => !f.removedByApplicant && f.verificationStatus === 'UNVERIFIED',
+    )
+
+    const declPayload = unverifiedFiles.map((f) => {
+      const decl = declarations[f.index]
+      if (!decl || !decl.relationship) {
+        return { index: f.index, relationship: 'REMOVE' }
+      }
+      return {
+        index: f.index,
+        relationship: decl.relationship,
+        customRelationship: decl.relationship === 'OTHER' ? decl.custom : undefined,
+      }
+    })
+
+    const res = await fetch(`/api/scoring/${reportId}/declarations`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ declarations: declPayload }),
+    })
+
+    if (res.ok) {
+      setSubmitState('done')
+    }
+  }
+
+  // ── Try again from failed state ────────────────────────────────────────────
+
+  function handleTryAgain() {
+    submittingRef.current = false
+    setSubmitState('idle')
+    setScoring(null)
+    setReportId(null)
+    setStatementFiles([])
+    setAiConsent(false)
+    setStep(2)
   }
 
   // ── Loading / error ──────────────────────────────────────────────────────────
@@ -234,24 +379,177 @@ export default function ApplyPage() {
   const address = [property.name ?? property.line1, property.city, property.postcode].filter(Boolean).join(', ')
   const fullAddress = [property.line1, property.city, property.postcode].filter(Boolean).join(', ')
 
-  // ── Analysing state ──────────────────────────────────────────────────────────
+  // ── Analysing state (animated progress screen) ─────────────────────────────
 
-  if (submitState === 'analysing' && !scoring) {
+  if (submitState === 'analysing') {
+    return (
+      <ScoringProgressScreen
+        fileCount={statementFiles.length}
+        isComplete={false}
+      />
+    )
+  }
+
+  // ── Failed state ───────────────────────────────────────────────────────────
+
+  if (submitState === 'failed') {
+    const failureReason = scoring?.failureReason ?? 'Something went wrong during analysis.'
+
     return (
       <div className="min-h-screen bg-[#f0f7f4] flex items-center justify-center p-4">
-        <div className="max-w-sm text-center">
-          <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-            <svg className="w-7 h-7 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-            </svg>
+        <div className="max-w-sm w-full">
+          <div className="text-center mb-8">
+            <span className="text-[#0f1a0f] font-bold text-xl tracking-tight">LetSorted</span>
           </div>
-          <h1 className="text-gray-900 font-bold text-xl mb-2">Application submitted</h1>
-          <p className="text-gray-600 text-sm mb-4">
-            We&apos;re analysing your bank statement — this usually takes 1–2 minutes.
-          </p>
-          <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
-            <div className="w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
-            Analysing finances…
+
+          <div className="bg-white rounded-2xl border border-red-100 shadow-sm p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
+              <div>
+                <h1 className="text-gray-900 font-bold text-lg">Analysis could not be completed</h1>
+              </div>
+            </div>
+
+            <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 mb-5">
+              <p className="text-sm text-red-700">{failureReason}</p>
+            </div>
+
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={handleTryAgain}
+                className="w-full bg-[#22c55e] hover:bg-[#16a34a] text-white font-semibold rounded-xl py-3 text-sm transition-colors"
+              >
+                Try again with different files
+              </button>
+              <a
+                href="mailto:hello@letsorted.co.uk"
+                className="block w-full text-center border border-gray-200 text-gray-600 font-semibold rounded-xl py-3 text-sm hover:bg-gray-50 transition-colors"
+              >
+                Contact support
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Declarations state ─────────────────────────────────────────────────────
+
+  if (submitState === 'declarations' && scoring?.statementFiles) {
+    const unverifiedFiles = scoring.statementFiles.filter(
+      (f) => !f.removedByApplicant && f.verificationStatus === 'UNVERIFIED',
+    )
+
+    const RELATIONSHIP_OPTIONS = [
+      { value: 'PARTNER', label: 'My partner' },
+      { value: 'SPOUSE', label: 'My spouse' },
+      { value: 'GUARANTOR', label: 'My guarantor' },
+      { value: 'PARENT', label: 'My parent' },
+      { value: 'OTHER', label: 'Other' },
+    ]
+
+    const allDeclared = unverifiedFiles.every((f) => {
+      const decl = declarations[f.index]
+      return decl && decl.relationship && (decl.relationship !== 'OTHER' || decl.custom)
+    })
+
+    return (
+      <div className="min-h-screen bg-[#f0f7f4] py-10 px-4">
+        <div className="max-w-lg mx-auto">
+          <div className="text-center mb-8">
+            <span className="text-[#0f1a0f] font-bold text-xl tracking-tight">LetSorted</span>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <div>
+                <h1 className="text-gray-900 font-bold text-lg">We couldn&apos;t verify ownership of some statements</h1>
+                <p className="text-gray-500 text-sm mt-0.5">Please tell us who these statements belong to.</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {unverifiedFiles.map((file) => (
+                <div key={file.index} className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <svg className="w-4 h-4 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span className="text-sm font-medium text-gray-800 truncate">{file.fileName}</span>
+                  </div>
+                  <p className="text-xs text-amber-700 mb-3">
+                    Name found: <strong>{file.detectedName ?? 'Unknown'}</strong> — couldn&apos;t confirm this belongs to {scoring.applicantName ?? 'you'}
+                  </p>
+
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-gray-700">This statement belongs to:</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {RELATIONSHIP_OPTIONS.map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => setDeclarations((prev) => ({
+                            ...prev,
+                            [file.index]: { ...prev[file.index], relationship: opt.value, custom: prev[file.index]?.custom ?? '' },
+                          }))}
+                          className={`text-xs font-medium rounded-lg px-3 py-2 border transition-colors text-left
+                            ${declarations[file.index]?.relationship === opt.value
+                              ? 'border-green-500 bg-green-50 text-green-700'
+                              : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'}`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                    {declarations[file.index]?.relationship === 'OTHER' && (
+                      <input
+                        type="text"
+                        placeholder="Describe the relationship…"
+                        value={declarations[file.index]?.custom ?? ''}
+                        onChange={(e) => setDeclarations((prev) => ({
+                          ...prev,
+                          [file.index]: { ...prev[file.index], custom: e.target.value },
+                        }))}
+                        className={inputClass}
+                      />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setDeclarations((prev) => ({
+                        ...prev,
+                        [file.index]: { relationship: 'REMOVE', custom: '' },
+                      }))}
+                      className={`text-xs rounded-lg px-3 py-2 border transition-colors w-full text-left
+                        ${declarations[file.index]?.relationship === 'REMOVE'
+                          ? 'border-red-300 bg-red-50 text-red-600 font-medium'
+                          : 'border-gray-200 bg-white text-gray-400 hover:text-red-500 hover:border-red-200'}`}
+                    >
+                      Not mine — remove this file
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              disabled={!allDeclared}
+              onClick={onDeclarationsSubmit}
+              className="w-full bg-[#22c55e] hover:bg-[#16a34a] disabled:opacity-50 text-white font-semibold rounded-xl py-3 text-sm transition-colors mt-5"
+            >
+              Continue
+            </button>
           </div>
         </div>
       </div>
@@ -281,6 +579,29 @@ export default function ApplyPage() {
                   <p className="text-sm mt-2 leading-relaxed">{scoring.aiSummary}</p>
                 )}
               </div>
+
+              {/* Coverage summary panel */}
+              {scoring.validationResults && scoring.validationResults.length > 0 && (
+                <div className="rounded-xl border border-gray-200 p-4 mb-3">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Statement coverage</p>
+                  <div className="space-y-2">
+                    {scoring.validationResults.map((person, i) => (
+                      <div key={i} className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-sm text-gray-700 truncate">{person.name}</span>
+                          {person.isApplicant && (
+                            <span className="text-xs bg-green-50 text-green-600 rounded-full px-1.5 py-0.5 shrink-0">You</span>
+                          )}
+                        </div>
+                        <span className={`text-xs font-medium rounded-full px-2 py-0.5 border shrink-0 ${coverageColour(person.coverageStatus)}`}>
+                          {coverageLabel(person.coverageStatus)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <p className="text-gray-500 text-xs text-center">Your landlord will review your application shortly.</p>
             </div>
           ) : (
@@ -414,12 +735,12 @@ export default function ApplyPage() {
             </>
           )}
 
-          {/* ── STEP 2: Financial Verification ───────────────────────────────── */}
+          {/* ── STEP 2: Financial Verification (Multi-file) ───────────────────── */}
 
           {step === 2 && (
             <>
               <h1 className="text-gray-900 font-bold text-xl mb-1">Verify your finances</h1>
-              <p className="text-gray-500 text-sm mb-5">This landlord requires financial verification. Upload your bank statement to continue.</p>
+              <p className="text-gray-500 text-sm mb-5">This landlord requires financial verification. Upload your bank statements to continue.</p>
 
               {/* Option A — Open Banking (coming soon) */}
               <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-4 mb-3 opacity-60 cursor-not-allowed select-none">
@@ -435,13 +756,12 @@ export default function ApplyPage() {
                 </div>
               </div>
 
-              {/* Option B — Upload statement */}
+              {/* Option B — Upload statements (multi-file) */}
               <div
-                className={`rounded-xl border-2 px-4 py-4 mb-5 cursor-pointer transition-colors
-                  ${statementFile
+                className={`rounded-xl border-2 px-4 py-4 mb-3 transition-colors
+                  ${statementFiles.length > 0
                     ? 'border-green-400 bg-green-50'
                     : 'border-gray-200 hover:border-green-300 bg-white'}`}
-                onClick={() => !statementFile && fileInputRef.current?.click()}
                 onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
                 onDragLeave={() => setIsDragging(false)}
                 onDrop={onFileDrop}
@@ -449,53 +769,110 @@ export default function ApplyPage() {
                 <div className="flex items-start gap-3">
                   <span className="text-2xl mt-0.5">📄</span>
                   <div className="flex-1">
-                    <div className="font-semibold text-sm text-gray-800 mb-0.5">Upload bank statement</div>
-                    <p className="text-xs text-gray-500">Works for any bank, including international banks</p>
+                    <div className="font-semibold text-sm text-gray-800 mb-0.5">Upload bank statements</div>
+                    <p className="text-xs text-gray-500">Upload up to {MAX_FILES} PDF files, 10 MB total. Most bank statements are well under this limit.</p>
                   </div>
+                  {statementFiles.length > 0 && (
+                    <span className="text-xs font-medium text-green-600 bg-green-100 rounded-full px-2.5 py-1 shrink-0">
+                      {statementFiles.length} of {MAX_FILES}
+                    </span>
+                  )}
                 </div>
 
-                {statementFile ? (
-                  <div className="mt-3 flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-green-200">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <svg className="w-4 h-4 text-green-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      <span className="text-xs text-gray-700 font-medium truncate">{statementFile.name}</span>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-xs text-gray-400">{fmtBytes(statementFile.size)}</span>
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); setStatementFile(null) }}
-                        className="text-gray-400 hover:text-red-500 transition-colors"
-                        aria-label="Remove file"
-                      >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className={`mt-3 rounded-lg border-2 border-dashed px-4 py-6 text-center transition-colors
-                    ${isDragging ? 'border-green-400 bg-green-50' : 'border-gray-200'}`}>
-                    <p className="text-xs text-gray-500">
-                      Drag and drop your PDF here, or{' '}
-                      <span className="text-green-600 font-medium">browse</span>
+                {/* File list */}
+                {statementFiles.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {statementFiles.map((file, i) => (
+                      <div key={i} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-green-200">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <svg className="w-4 h-4 text-green-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          <span className="text-xs text-gray-700 font-medium truncate">{file.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-xs text-gray-400">{fmtBytes(file.size)}</span>
+                          <button
+                            type="button"
+                            onClick={() => removeFile(i)}
+                            className="text-gray-400 hover:text-red-500 transition-colors"
+                            aria-label="Remove file"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    <p className="text-xs text-gray-400 text-right">
+                      Total: {fmtBytes(statementFiles.reduce((sum, f) => sum + f.size, 0))} of 10 MB max
                     </p>
-                    <p className="text-xs text-gray-400 mt-1">Upload your last 6 months of bank statements. Any bank, any country, any language.</p>
-                    <p className="text-xs text-gray-300 mt-1">PDF only · Max 20 MB</p>
                   </div>
                 )}
+
+                {/* Drop zone (shown when under limit) */}
+                {statementFiles.length < MAX_FILES && (
+                  <div
+                    className={`mt-3 rounded-lg border-2 border-dashed px-4 py-6 text-center transition-colors cursor-pointer
+                      ${isDragging ? 'border-green-400 bg-green-50' : 'border-gray-200 hover:border-green-300'}`}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <p className="text-xs text-gray-500">
+                      Drag and drop your PDFs here, or{' '}
+                      <span className="text-green-600 font-medium">browse</span>
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">Any bank, any country, any language</p>
+                    <p className="text-xs text-gray-300 mt-1">PDF only · 10 MB max per file · 10 MB total</p>
+                  </div>
+                )}
+              </div>
+
+              {/* File error */}
+              {fileError && (
+                <p className="text-xs text-red-500 mb-3">{fileError}</p>
+              )}
+
+              {/* Info box */}
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 mb-5">
+                <p className="text-xs text-amber-700">
+                  <strong>Tip:</strong> If your bank provides one PDF per month, upload them all (up to {MAX_FILES}). If you have a single PDF covering multiple months, that works too.
+                </p>
               </div>
 
               <input
                 ref={fileInputRef}
                 type="file"
                 accept="application/pdf"
+                multiple
                 className="hidden"
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileSelect(f) }}
+                onChange={(e) => {
+                  const files = e.target.files ? Array.from(e.target.files) : []
+                  if (files.length > 0) handleFilesSelect(files)
+                  e.target.value = ''
+                }}
               />
+
+              <label className="flex items-start gap-3 cursor-pointer mb-5">
+                <input
+                  type="checkbox"
+                  checked={aiConsent}
+                  onChange={(e) => setAiConsent(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 accent-green-600"
+                />
+                <span className="text-sm text-gray-600">
+                  I consent to my bank statements being processed by{' '}
+                  <a
+                    href="/privacy#ai-processing"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline text-green-700 hover:text-green-800"
+                  >
+                    AI
+                  </a>{' '}
+                  to generate a financial score for this rental application. Data is not retained after analysis is complete.
+                </span>
+              </label>
 
               {submitState === 'error' && (
                 <p className="text-sm text-red-500 mb-3">Something went wrong — please try again</p>
@@ -511,7 +888,7 @@ export default function ApplyPage() {
                 </button>
                 <button
                   type="button"
-                  disabled={!statementFile || submitState === 'submitting' || submitState === 'uploading'}
+                  disabled={statementFiles.length === 0 || !aiConsent || submitState === 'submitting' || submitState === 'uploading'}
                   onClick={onStep2Submit}
                   className="flex-2 flex-1 bg-[#22c55e] hover:bg-[#16a34a] disabled:opacity-50 text-white font-semibold rounded-xl py-3 text-sm transition-colors"
                 >

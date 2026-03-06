@@ -8,6 +8,37 @@ import TenantDetailsForm, { type TenantFormData } from '@/components/shared/Tena
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+interface StatementFile {
+  index: number
+  fileName: string
+  storagePath: string
+  fileSize: number
+  verificationStatus: 'PENDING' | 'VERIFIED' | 'UNVERIFIED' | 'UNCERTAIN'
+  detectedName?: string | null
+  confidence?: 'HIGH' | 'MEDIUM' | 'LOW'
+  reason?: string
+  relationship?: string | null
+  removedByApplicant?: boolean
+}
+
+interface JointApplicant {
+  name: string
+  verificationStatus: 'VERIFIED' | 'UNVERIFIED' | 'UNCERTAIN'
+  income?: number | null
+  fileIndices: number[]
+  relationship?: string
+}
+
+interface PersonValidation {
+  name: string
+  isApplicant: boolean
+  fileIndices: number[]
+  periodStart: string | null
+  periodEnd: string | null
+  coverageDays: number | null
+  coverageStatus: 'PASS' | 'WARN_SHORT' | 'WARN_OLD' | 'WARN_BOTH' | 'UNKNOWN'
+}
+
 interface FinancialReport {
   id: string
   status: string
@@ -17,6 +48,13 @@ interface FinancialReport {
   breakdown: Record<string, number> | null
   appliedRules: Array<{ key: string; description: string; points: number }> | null
   verificationToken: string
+  hasUnverifiedFiles?: boolean
+  statementFiles?: StatementFile[] | null
+  verificationWarning?: string | null
+  applicantName?: string | null
+  jointApplicants?: JointApplicant[] | null
+  validationResults?: PersonValidation[] | null
+  failureReason?: string | null
 }
 
 interface Property {
@@ -883,6 +921,8 @@ function gradeStyle(grade: string | null): { bg: string; text: string; border: s
 
 function FinancialScoreBadge({ report }: { report: FinancialReport }) {
   const [expanded, setExpanded] = useState(false)
+  const [showWarning, setShowWarning] = useState(!!report.hasUnverifiedFiles)
+  const [verifying, setVerifying] = useState(false)
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
 
   if (report.status === 'PROCESSING' || report.status === 'PENDING') {
@@ -896,14 +936,54 @@ function FinancialScoreBadge({ report }: { report: FinancialReport }) {
 
   if (report.status === 'FAILED' || report.totalScore === null) {
     return (
-      <div className="mt-3 text-xs text-red-600">Financial analysis failed</div>
+      <div className="mt-3">
+        <div className="text-xs text-red-600 font-medium">Financial analysis failed</div>
+        {report.failureReason && (
+          <p className="text-xs text-red-500 mt-1">{report.failureReason}</p>
+        )}
+      </div>
     )
+  }
+
+  async function handleVerifyInPerson() {
+    setVerifying(true)
+    const res = await fetch(`/api/scoring/${report.id}/declarations`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ verifiedInPerson: true }),
+    })
+    if (res.ok) {
+      setShowWarning(false)
+    }
+    setVerifying(false)
   }
 
   const { bg, text, border } = gradeStyle(report.grade)
 
   return (
     <div className={`mt-3 rounded-xl border ${border} p-3`}>
+      {/* Amber warning banner for unverified files */}
+      {showWarning && report.verificationWarning && (
+        <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5 mb-3">
+          <div className="flex items-start gap-2">
+            <svg className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+            <div className="flex-1">
+              <p className="text-xs text-amber-800 font-medium">Name verification warning</p>
+              <p className="text-xs text-amber-700 mt-0.5">{report.verificationWarning}</p>
+              <button
+                onClick={handleVerifyInPerson}
+                disabled={verifying}
+                className="mt-2 text-xs text-amber-700 hover:text-amber-900 font-medium border border-amber-300 rounded-lg px-2.5 py-1 hover:bg-amber-100 transition-colors disabled:opacity-50"
+              >
+                {verifying ? 'Verifying…' : 'Mark as verified in person'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className={`${bg} ${text} rounded-lg px-3 py-1.5 flex items-center gap-2`}>
@@ -923,6 +1003,74 @@ function FinancialScoreBadge({ report }: { report: FinancialReport }) {
           </a>
         </div>
       </div>
+
+      {/* Coverage validation warnings */}
+      {report.validationResults && report.validationResults.length > 0 && (
+        <div className="mt-2.5 space-y-1">
+          {report.validationResults.map((person, i) => {
+            if (person.coverageStatus === 'PASS' || person.coverageStatus === 'UNKNOWN') return null
+            const label = person.coverageStatus === 'WARN_SHORT'
+              ? 'Less than 2 months of data'
+              : person.coverageStatus === 'WARN_OLD'
+                ? 'Statements older than 6 months'
+                : 'Too short and too old'
+            return (
+              <div key={i} className="flex items-center gap-2 text-xs">
+                <svg className="w-3.5 h-3.5 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01" />
+                </svg>
+                <span className="text-amber-700">
+                  <strong>{person.name}</strong>: {label}
+                  {person.coverageDays != null && ` (${person.coverageDays} days)`}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Joint applicants / income breakdown */}
+      {report.jointApplicants && report.jointApplicants.length > 0 && (
+        <div className="mt-3 rounded-lg border border-gray-100 overflow-hidden">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="bg-gray-50">
+                <th className="text-left px-3 py-1.5 font-medium text-gray-500">Name</th>
+                <th className="text-left px-3 py-1.5 font-medium text-gray-500">Status</th>
+                <th className="text-right px-3 py-1.5 font-medium text-gray-500">Income</th>
+              </tr>
+            </thead>
+            <tbody>
+              {report.jointApplicants.map((ja, i) => (
+                <tr key={i} className="border-t border-gray-50">
+                  <td className="px-3 py-1.5 text-gray-700">{ja.name}</td>
+                  <td className="px-3 py-1.5">
+                    <span className={`inline-flex items-center gap-1 text-xs font-medium rounded-full px-2 py-0.5
+                      ${ja.verificationStatus === 'VERIFIED' ? 'bg-green-50 text-green-700' :
+                        ja.verificationStatus === 'UNVERIFIED' ? 'bg-amber-50 text-amber-700' :
+                        'bg-gray-50 text-gray-500'}`}
+                    >
+                      {ja.verificationStatus === 'VERIFIED' ? 'Verified' :
+                        ja.verificationStatus === 'UNVERIFIED' ? 'Unverified' : 'Uncertain'}
+                    </span>
+                  </td>
+                  <td className="px-3 py-1.5 text-right text-gray-700">
+                    {ja.income != null ? `£${ja.income.toLocaleString()}` : '—'}
+                  </td>
+                </tr>
+              ))}
+              {report.jointApplicants.length > 1 && (
+                <tr className="border-t border-gray-200 bg-gray-50">
+                  <td className="px-3 py-1.5 font-medium text-gray-700" colSpan={2}>Combined total</td>
+                  <td className="px-3 py-1.5 text-right font-medium text-gray-700">
+                    £{report.jointApplicants.reduce((sum, ja) => sum + (ja.income ?? 0), 0).toLocaleString()}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {report.aiSummary && (
         <div className="mt-2">

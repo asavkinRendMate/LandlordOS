@@ -20,11 +20,11 @@ const rules: { category: ScoringCategory; key: string; description: string; poin
   // LIQUIDITY
   { category: 'LIQUIDITY', key: 'AVG_BALANCE_ABOVE_1_MONTH_RENT',   description: 'Average balance exceeds one month\'s rent',                     points:  15 },
   { category: 'LIQUIDITY', key: 'AVG_BALANCE_HALF_TO_1_MONTH_RENT', description: 'Average balance 0.5-1x monthly rent',                           points:   5 },
-  { category: 'LIQUIDITY', key: 'AVG_BALANCE_BELOW_HALF_RENT',      description: 'Average balance below half monthly rent',                        points: -10 },
-  { category: 'LIQUIDITY', key: 'LOW_BALANCE_1_2_MONTHS',           description: 'Balance below £100 before payday in 1-2 months',                points: -10 },
-  { category: 'LIQUIDITY', key: 'LOW_BALANCE_3_PLUS_MONTHS',        description: 'Balance below £100 before payday in 3+ months',                 points: -20 },
+  { category: 'LIQUIDITY', key: 'AVG_BALANCE_BELOW_HALF_RENT',      description: 'Average balance below half monthly rent',                        points: -25 },
+  { category: 'LIQUIDITY', key: 'LOW_BALANCE_1_2_MONTHS',           description: 'Balance below £100 before payday in 1-2 months',                points: -20 },
+  { category: 'LIQUIDITY', key: 'LOW_BALANCE_3_PLUS_MONTHS',        description: 'Balance below £100 before payday in 3+ months',                 points: -35 },
   { category: 'LIQUIDITY', key: 'OVERDRAFT_1_2_TIMES',              description: 'Overdraft used 1-2 times in period',                            points:  -5 },
-  { category: 'LIQUIDITY', key: 'OVERDRAFT_3_PLUS_TIMES',           description: 'Overdraft used 3 or more times in period',                      points: -15 },
+  { category: 'LIQUIDITY', key: 'OVERDRAFT_3_PLUS_TIMES',           description: 'Overdraft used 3 or more times in period',                      points: -25 },
 
   // DEBT
   { category: 'DEBT', key: 'PAYDAY_LOANS_DETECTED',            description: 'Payday loan transactions detected (Wonga, QuickQuid, etc.)',          points: -30 },

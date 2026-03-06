@@ -11,11 +11,12 @@ const sections = [
   { id: 'introduction',       title: '1. Introduction' },
   { id: 'what-we-collect',    title: '2. What data we collect' },
   { id: 'how-we-use',         title: '3. How we use your data' },
-  { id: 'storage-security',   title: '4. Data storage and security' },
-  { id: 'your-rights',        title: '5. Your rights under UK GDPR' },
-  { id: 'cookies',            title: '6. Cookies' },
-  { id: 'contact',            title: '7. Contact' },
-  { id: 'changes',            title: '8. Changes to this policy' },
+  { id: 'ai-processing',      title: '4. AI-Powered Financial Analysis' },
+  { id: 'storage-security',   title: '5. Data storage and security' },
+  { id: 'your-rights',        title: '6. Your rights under UK GDPR' },
+  { id: 'cookies',            title: '7. Cookies' },
+  { id: 'contact',            title: '8. Contact' },
+  { id: 'changes',            title: '9. Changes to this policy' },
 ]
 
 export default function PrivacyPage() {
@@ -110,8 +111,37 @@ export default function PrivacyPage() {
                 <p className="mt-4 font-medium text-gray-700">We do not sell your data to third parties. We do not use your data for advertising.</p>
               </section>
 
+              <section id="ai-processing">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">4. AI-Powered Financial Analysis</h2>
+                <p>
+                  When you submit bank statements for financial screening, your documents are processed by an AI
+                  system to generate a financial score for your rental application.
+                </p>
+                <h3 className="font-semibold text-gray-800 mt-5 mb-2">How it works</h3>
+                <ul className="list-disc list-outside ml-5 space-y-1.5">
+                  <li>Your bank statement is sent securely to our AI processing provider for analysis</li>
+                  <li>The AI extracts financial indicators such as income patterns, balance history, and spending behaviour</li>
+                  <li>A score and summary are generated and shared with the landlord you are applying with</li>
+                  <li>Your bank statement is not used to train AI models</li>
+                  <li>Your document is not retained by our AI provider after analysis is complete</li>
+                  <li>The financial score is advisory only — all decisions are made by the landlord, not automatically by the system</li>
+                </ul>
+                <h3 className="font-semibold text-gray-800 mt-5 mb-2">Your rights</h3>
+                <p>
+                  You may withdraw consent at any time before submitting your application. Once analysis is complete,
+                  you may request deletion of your financial score by contacting us at{' '}
+                  <a href="mailto:privacy@letsorted.co.uk" className="text-green-700 hover:underline">
+                    privacy@letsorted.co.uk
+                  </a>
+                </p>
+                <p className="mt-3">
+                  Our AI provider operates under appropriate data protection agreements and internationally recognised
+                  data transfer safeguards, ensuring your data is handled in accordance with UK GDPR requirements.
+                </p>
+              </section>
+
               <section id="storage-security">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">4. Data storage and security</h2>
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">5. Data storage and security</h2>
                 <ul className="list-disc list-outside ml-5 space-y-1.5">
                   <li>Data is stored on Supabase infrastructure (EU region)</li>
                   <li>Documents are stored in encrypted cloud storage</li>
@@ -121,7 +151,7 @@ export default function PrivacyPage() {
               </section>
 
               <section id="your-rights">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">5. Your rights under UK GDPR</h2>
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">6. Your rights under UK GDPR</h2>
                 <p className="mb-3">You have the following rights regarding your personal data:</p>
                 <ul className="list-disc list-outside ml-5 space-y-1.5">
                   <li><strong>Right to access</strong> — request a copy of the data we hold about you</li>
@@ -138,7 +168,7 @@ export default function PrivacyPage() {
               </section>
 
               <section id="cookies">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">6. Cookies</h2>
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">7. Cookies</h2>
                 <ul className="list-disc list-outside ml-5 space-y-1.5">
                   <li>We use essential cookies only (authentication session management)</li>
                   <li>We do not use advertising or tracking cookies</li>
@@ -146,7 +176,7 @@ export default function PrivacyPage() {
               </section>
 
               <section id="contact">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">7. Contact</h2>
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">8. Contact</h2>
                 <p>If you have any questions about this Privacy Policy, please contact us:</p>
                 <address className="not-italic mt-3 space-y-1 text-gray-700">
                   <p className="font-medium">Rendmate Ltd</p>
@@ -158,7 +188,7 @@ export default function PrivacyPage() {
               </section>
 
               <section id="changes">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">8. Changes to this policy</h2>
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">9. Changes to this policy</h2>
                 <p>
                   Last updated: March 2026. We will notify registered users of any material changes
                   to this policy by email.
