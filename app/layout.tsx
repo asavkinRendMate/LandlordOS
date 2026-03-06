@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Plus_Jakarta_Sans } from 'next/font/google'
+import Analytics from '@/components/shared/Analytics'
 import CookieConsent from '@/components/shared/CookieConsent'
 import './globals.css'
 import 'vanilla-cookieconsent/dist/cookieconsent.css'
@@ -11,10 +12,7 @@ const font = Plus_Jakarta_Sans({
 })
 
 export const metadata: Metadata = {
-  title: {
-    default: 'LandlordOS',
-    template: '%s | LandlordOS',
-  },
+  title: 'LetSorted',
   description: "UK landlord management built for the Renters' Rights Act 2025.",
 }
 
@@ -26,6 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className={`${font.className} antialiased`}>
         {children}
+        <Analytics />
         <CookieConsent />
       </body>
     </html>

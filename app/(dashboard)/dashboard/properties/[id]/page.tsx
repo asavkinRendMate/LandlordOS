@@ -351,58 +351,210 @@ function SendInviteButton({ tenantId }: { tenantId: string }) {
   )
 }
 
-// ── Application link email form ────────────────────────────────────────────────
+// ── Multi-email input ─────────────────────────────────────────────────────────
 
-function AppLinkEmailForm({ propertyId }: { propertyId: string }) {
-  const [open, setOpen] = useState(false)
-  const [email, setEmail] = useState('')
-  const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const MAX_EMAILS = 10
 
-  async function send() {
-    if (!email) return
-    setState('sending')
-    const res = await fetch('/api/tenant/application-link-email', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ propertyId, email }),
+function MultiEmailInput({
+  emails,
+  setEmails,
+}: {
+  emails: string[]
+  setEmails: React.Dispatch<React.SetStateAction<string[]>>
+}) {
+  function handleChange(index: number, value: string) {
+    setEmails((prev) => {
+      const next = [...prev]
+      next[index] = value
+      // Auto-append empty field when last field becomes valid
+      if (index === next.length - 1 && EMAIL_RE.test(value) && next.length < MAX_EMAILS) {
+        next.push('')
+      }
+      return next
     })
-    setState(res.ok ? 'sent' : 'error')
-    if (res.ok) { setEmail(''); setTimeout(() => { setState('idle'); setOpen(false) }, 2000) }
   }
 
-  if (!open) {
-    return (
-      <button
-        onClick={() => setOpen(true)}
-        className="text-sm bg-gray-100 hover:bg-gray-200 text-[#6B7280] px-3 py-1.5 rounded-lg transition-colors"
-      >
-        Send by email
-      </button>
-    )
+  function removeEmail(index: number) {
+    setEmails((prev) => {
+      const next = prev.filter((_, i) => i !== index)
+      // If the new last field is empty and so was the removed field's neighbor — trim trailing empties
+      while (next.length > 1 && next[next.length - 1] === '' && next[next.length - 2] === '') {
+        next.pop()
+      }
+      if (next.length === 0) next.push('')
+      return next
+    })
   }
+
+  const atMax = emails.filter((e) => EMAIL_RE.test(e)).length >= MAX_EMAILS
 
   return (
-    <div className="flex gap-2 flex-wrap">
-      <input
-        type="email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        placeholder="applicant@email.com"
-        className="flex-1 min-w-0 bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-[#1A1A1A] text-sm placeholder-gray-400 focus:outline-none focus:border-[#16a34a] focus:ring-1 focus:ring-[#16a34a]/20 transition-colors"
-      />
-      <button
-        onClick={send}
-        disabled={state === 'sending' || !email}
-        className="shrink-0 text-sm bg-green-100 hover:bg-green-200 text-green-700 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
-      >
-        {state === 'sending' ? 'Sending…' : state === 'sent' ? '✓ Sent' : 'Send'}
-      </button>
-      <button
-        onClick={() => setOpen(false)}
-        className="shrink-0 text-sm text-[#9CA3AF] hover:text-[#6B7280] transition-colors"
-      >
-        Cancel
-      </button>
+    <div className="space-y-2">
+      {emails.map((email, i) => (
+        <div
+          key={i}
+          className="flex items-center gap-2 transition-opacity duration-150"
+          style={{ opacity: email === '' && i === emails.length - 1 && i > 0 ? 0.7 : 1 }}
+        >
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => handleChange(i, e.target.value)}
+            placeholder="applicant@email.com"
+            className="flex-1 min-w-0 bg-white border border-gray-200 rounded-lg px-3 py-2 text-[#1A1A1A] text-sm placeholder-gray-400 focus:outline-none focus:border-[#16a34a] focus:ring-1 focus:ring-[#16a34a]/20 transition-colors"
+          />
+          {i > 0 && (
+            <button
+              onClick={() => removeEmail(i)}
+              className="shrink-0 p-1.5 text-gray-300 hover:text-red-400 transition-colors"
+              title="Remove"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+      ))}
+      {atMax && (
+        <p className="text-xs text-amber-600">Maximum 10 invites at once</p>
+      )}
+    </div>
+  )
+}
+
+// ── Invite preview modal ──────────────────────────────────────────────────────
+
+function InvitePreviewModal({
+  emails,
+  requiresFinancialCheck,
+  propertyAddress,
+  onConfirm,
+  onClose,
+  sending,
+}: {
+  emails: string[]
+  requiresFinancialCheck: boolean
+  propertyAddress: string
+  onConfirm: () => void
+  onClose: () => void
+  sending: boolean
+}) {
+  const count = emails.length
+  const s = count === 1 ? '' : 's'
+
+  // Cost estimate
+  const costPence = count > 0 ? 999 + (count - 1) * 149 : 0
+  const costDisplay = `£${(costPence / 100).toFixed(2)}`
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white border border-gray-200 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg max-h-[90vh] flex flex-col overflow-hidden shadow-xl">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
+          <div>
+            <h2 className="text-[#1A1A1A] font-semibold">Review before sending</h2>
+            <p className="text-sm text-gray-500 mt-0.5">Sending to {count} applicant{s}</p>
+          </div>
+          <button onClick={onClose} className="text-[#9CA3AF] hover:text-[#6B7280] transition-colors">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="overflow-y-auto flex-1 p-5 space-y-5">
+          {/* Email preview */}
+          <div>
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Email preview</p>
+            <div className="relative pointer-events-none opacity-60 select-none bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+              <span className="absolute top-3 right-3 bg-gray-100 text-gray-400 text-xs px-2 py-0.5 rounded font-medium">Preview</span>
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 bg-[#2D6A4F] rounded-lg flex items-center justify-center">
+                  <span className="text-white text-xs font-bold">LS</span>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-[#2D6A4F]">LetSorted</p>
+                  <p className="text-[10px] text-gray-400">Applications</p>
+                </div>
+              </div>
+              <div className="border-t border-gray-100 pt-3 space-y-2.5">
+                <p className="text-sm text-gray-700">Hi,</p>
+                <p className="text-sm text-gray-700">You&apos;ve been sent an application link for:</p>
+                <div className="bg-[#f0fdf4] border border-[#bbf7d0] rounded-lg px-3 py-2">
+                  <p className="text-sm font-medium text-[#166534]">{propertyAddress}</p>
+                </div>
+                <p className="text-sm text-gray-700">Click below to submit your application:</p>
+                <div className="bg-[#16a34a] text-white text-center rounded-lg py-2.5 text-sm font-semibold">
+                  Apply now
+                </div>
+                {requiresFinancialCheck && (
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mt-2">
+                    <p className="text-xs text-gray-600">
+                      As part of this application, you&apos;ll be asked to upload bank statements for a financial check.
+                      Your data is processed securely and never shared without your permission.
+                    </p>
+                  </div>
+                )}
+                <p className="text-[11px] text-gray-400 mt-3">
+                  If you weren&apos;t expecting this email, you can safely ignore it.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Recipients */}
+          <div>
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Recipients</p>
+            <div className="space-y-1">
+              {emails.map((email, i) => (
+                <p key={i} className="text-sm text-gray-700 font-mono">
+                  {email}
+                </p>
+              ))}
+            </div>
+          </div>
+
+          {/* Billing notice */}
+          {requiresFinancialCheck && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+              <div className="flex items-start gap-2.5">
+                <span className="text-amber-500 shrink-0 mt-0.5">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </span>
+                <div className="text-sm text-amber-800">
+                  <p className="font-medium mb-1">You&apos;ll only be charged when you unlock a completed report — not for invites.</p>
+                  <p className="text-amber-700 text-xs">
+                    If all {count} applicant{s} complete their check, estimated total: {costDisplay}
+                    {count > 1 && <span> (£9.99 first report, £1.49 each additional)</span>}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer actions */}
+        <div className="px-5 py-4 border-t border-gray-100 shrink-0 space-y-2">
+          <button
+            onClick={onConfirm}
+            disabled={sending}
+            className="w-full bg-[#16a34a] hover:bg-[#15803d] disabled:opacity-50 text-white font-semibold rounded-xl py-3 text-sm transition-colors"
+          >
+            {sending ? 'Sending…' : `Send ${count} invite${s}`}
+          </button>
+          <button
+            onClick={onClose}
+            className="w-full text-sm text-[#9CA3AF] hover:text-[#6B7280] transition-colors text-center py-1"
+          >
+            ← Back to edit
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -1277,12 +1429,15 @@ function AddTenantModal({
 
 function FinancialVerificationToggle({
   propertyId,
-  initialValue,
+  enabled,
+  onToggle,
+  validEmailCount,
 }: {
   propertyId: string
-  initialValue: boolean
+  enabled: boolean
+  onToggle: (next: boolean) => void
+  validEmailCount: number
 }) {
-  const [enabled, setEnabled] = useState(initialValue)
   const [saving, setSaving] = useState(false)
 
   async function toggle() {
@@ -1293,29 +1448,425 @@ function FinancialVerificationToggle({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ requireFinancialVerification: next }),
     })
-    if (res.ok) setEnabled(next)
+    if (res.ok) onToggle(next)
     setSaving(false)
   }
 
+  // Cost estimate
+  const costPence = validEmailCount > 0 ? 999 + (validEmailCount - 1) * 149 : 0
+  const costDisplay = `£${(costPence / 100).toFixed(2)}`
+
+  function costText(): string | null {
+    if (!enabled || validEmailCount === 0) return null
+    if (validEmailCount === 1) return `Est. cost: £9.99 to unlock report`
+    if (validEmailCount === 2) return `Est. cost: £9.99 + £1.49 = ${costDisplay}`
+    return `Est. cost: £9.99 + ${validEmailCount - 1} × £1.49 = ${costDisplay}`
+  }
+
   return (
-    <div className="flex items-center justify-between py-3 border-t border-gray-100">
-      <div>
-        <p className="text-[#374151] text-sm font-medium">Require financial verification from applicants</p>
-        <p className="text-[#9CA3AF] text-xs mt-0.5">Applicants must upload bank statements to apply</p>
+    <div className="py-3 border-t border-gray-100">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-[#374151] text-sm font-medium">Require financial verification from applicants</p>
+          <p className="text-[#9CA3AF] text-xs mt-0.5">
+            {enabled
+              ? 'Applicants must upload bank statements to apply'
+              : 'Applicants will not be asked to upload bank statements'}
+          </p>
+        </div>
+        <button
+          onClick={toggle}
+          disabled={saving}
+          className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none disabled:opacity-50
+            ${enabled ? 'bg-green-500' : 'bg-gray-200'}`}
+          role="switch"
+          aria-checked={enabled}
+        >
+          <span
+            className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform
+              ${enabled ? 'translate-x-6' : 'translate-x-1'}`}
+          />
+        </button>
       </div>
-      <button
-        onClick={toggle}
-        disabled={saving}
-        className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none disabled:opacity-50
-          ${enabled ? 'bg-green-500' : 'bg-gray-200'}`}
-        role="switch"
-        aria-checked={enabled}
-      >
-        <span
-          className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform
-            ${enabled ? 'translate-x-6' : 'translate-x-1'}`}
+      {costText() && (
+        <div className="mt-2">
+          <p className="text-[13px] text-gray-400">{costText()}</p>
+          <p className="text-[12px] text-gray-400 italic mt-0.5">You only pay when you unlock a report</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Screening invite status config ───────────────────────────────────────────
+
+interface SentInvite {
+  id: string
+  candidateName: string
+  candidateEmail: string
+  status: string
+  createdAt: string
+  requiresFinancialCheck: boolean
+}
+
+const INVITE_STATUS_BADGE: Record<string, { label: string; cls: string }> = {
+  PENDING:   { label: 'Pending',   cls: 'bg-gray-100 text-gray-500' },
+  STARTED:   { label: 'Started',   cls: 'bg-blue-100 text-blue-700' },
+  COMPLETED: { label: 'Completed', cls: 'bg-green-100 text-green-700' },
+  PAID:      { label: 'Completed', cls: 'bg-green-100 text-green-700' },
+  EXPIRED:   { label: 'Expired',   cls: 'bg-red-100 text-red-600' },
+}
+
+// ── Select tenant confirmation modal ────────────────────────────────────────
+
+function SelectTenantModal({
+  selectedInvite,
+  otherInvites,
+  onConfirm,
+  onClose,
+  selecting,
+}: {
+  selectedInvite: { id: string; candidateName: string; candidateEmail: string }
+  otherInvites: SentInvite[]
+  onConfirm: () => void
+  onClose: () => void
+  selecting: boolean
+}) {
+  const rejectableInvites = otherInvites.filter((inv) =>
+    ['PENDING', 'STARTED', 'COMPLETED', 'PAID'].includes(inv.status)
+  )
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white border border-gray-200 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md max-h-[90vh] flex flex-col overflow-hidden shadow-xl">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
+          <h2 className="text-[#1A1A1A] font-semibold">Confirm tenant selection</h2>
+          <button onClick={onClose} className="text-[#9CA3AF] hover:text-[#6B7280] transition-colors">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="overflow-y-auto flex-1 p-5 space-y-4">
+          {/* Selected tenant (green) */}
+          <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <svg className="w-5 h-5 text-green-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p className="text-sm font-semibold text-green-800">Selected tenant</p>
+            </div>
+            <p className="text-sm text-green-700 font-medium">{selectedInvite.candidateName}</p>
+            <p className="text-xs text-green-600">{selectedInvite.candidateEmail}</p>
+            <p className="text-xs text-green-600 mt-2">
+              They&apos;ll receive an email with a link to the tenant portal.
+            </p>
+          </div>
+
+          {/* Rejected applicants (amber) */}
+          {rejectableInvites.length > 0 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <svg className="w-5 h-5 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <p className="text-sm font-semibold text-amber-800">
+                  {rejectableInvites.length} other applicant{rejectableInvites.length !== 1 ? 's' : ''} will be notified
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                {rejectableInvites.map((inv) => (
+                  <div key={inv.id} className="flex items-center gap-2">
+                    <span className="text-xs text-amber-700">{inv.candidateName || inv.candidateEmail}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-amber-600 mt-2">
+                They&apos;ll receive a polite rejection email — no scores or reasons shared.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 py-4 border-t border-gray-100 shrink-0 space-y-2">
+          <button
+            onClick={onConfirm}
+            disabled={selecting}
+            className="w-full bg-[#16a34a] hover:bg-[#15803d] disabled:opacity-50 text-white font-semibold rounded-xl py-3 text-sm transition-colors"
+          >
+            {selecting ? 'Processing…' : `Confirm — select ${selectedInvite.candidateName}`}
+          </button>
+          <button
+            onClick={onClose}
+            disabled={selecting}
+            className="w-full bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium rounded-xl py-3 text-sm transition-colors"
+          >
+            Go back
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Applications section ────────────────────────────────────────────────────
+
+function ApplicationsSection({
+  property,
+  candidates,
+  applyLink,
+  onRefresh,
+}: {
+  property: Property
+  candidates: Tenant[]
+  applyLink: string
+  onRefresh: () => void
+}) {
+  const [emails, setEmails] = useState<string[]>([''])
+  const [requireFinancial, setRequireFinancial] = useState(property.requireFinancialVerification)
+  const [showPreview, setShowPreview] = useState(false)
+  const [sending, setSending] = useState(false)
+  const [sentInvites, setSentInvites] = useState<SentInvite[]>([])
+  const [invitesLoading, setInvitesLoading] = useState(true)
+  const [resendingId, setResendingId] = useState<string | null>(null)
+  const [selectInvite, setSelectInvite] = useState<SentInvite | null>(null)
+  const [selecting, setSelecting] = useState(false)
+
+  const address = [property.line1, property.city, property.postcode].filter(Boolean).join(', ')
+  const validEmails = emails.filter((e) => EMAIL_RE.test(e))
+  const hasValidEmails = validEmails.length > 0
+
+  // Load screening invites for this property
+  const loadInvites = useCallback(async () => {
+    try {
+      const res = await fetch('/api/screening/invites')
+      const json = await res.json()
+      if (json.data) {
+        // Filter invites by property address match
+        const filtered = (json.data as Array<{
+          id: string
+          candidateName: string
+          candidateEmail: string
+          propertyAddress: string
+          status: string
+          createdAt: string
+        }>).filter((inv) => inv.propertyAddress === address)
+        setSentInvites(filtered.map((inv) => ({
+          ...inv,
+          requiresFinancialCheck: true,
+        })))
+      }
+    } catch { /* silent */ }
+    setInvitesLoading(false)
+  }, [address])
+
+  useEffect(() => { loadInvites() }, [loadInvites])
+
+  async function handleSendInvites() {
+    setSending(true)
+    let allOk = true
+    for (const email of validEmails) {
+      const res = await fetch('/api/tenant/application-link-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ propertyId: property.id, email }),
+      })
+      if (!res.ok) allOk = false
+    }
+    setSending(false)
+    setShowPreview(false)
+    if (allOk) {
+      // Optimistic update — append sent emails immediately
+      const now = new Date().toISOString()
+      setSentInvites((prev) => [
+        ...validEmails.map((email) => ({
+          id: `optimistic-${email}-${Date.now()}`,
+          candidateName: email.split('@')[0],
+          candidateEmail: email,
+          status: 'PENDING',
+          createdAt: now,
+          requiresFinancialCheck: requireFinancial,
+        })),
+        ...prev,
+      ])
+      setEmails([''])
+      onRefresh()
+    }
+  }
+
+  async function handleResend(inviteEmail: string, inviteId: string) {
+    setResendingId(inviteId)
+    await fetch('/api/tenant/application-link-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ propertyId: property.id, email: inviteEmail }),
+    })
+    setResendingId(null)
+  }
+
+  // Can select tenant: only if no active/invited tenant exists
+  const hasActiveTenant = property.tenants.some((t) => t.status === 'TENANT' || t.status === 'INVITED')
+  const canSelectTenant = !hasActiveTenant && (property.status === 'VACANT' || property.status === 'APPLICATION_OPEN')
+
+  async function handleSelectTenant() {
+    if (!selectInvite) return
+    setSelecting(true)
+    try {
+      const res = await fetch('/api/screening/select-tenant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inviteId: selectInvite.id, propertyId: property.id }),
+      })
+      if (res.ok) {
+        setSelectInvite(null)
+        onRefresh()
+      }
+    } catch { /* silent */ }
+    setSelecting(false)
+  }
+
+  return (
+    <div className="bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4 mb-5">
+      <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium mb-3">Applications</p>
+
+      {/* Application link */}
+      <div className="mb-4">
+        <p className="text-[#6B7280] text-sm mb-2">Share this link with prospective tenants:</p>
+        <div className="flex flex-wrap gap-2">
+          <code className="flex-1 min-w-0 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-xs text-[#6B7280] truncate font-mono">
+            {applyLink}
+          </code>
+          <CopyButton text={applyLink} label="Copy" />
+        </div>
+      </div>
+
+      {/* Multi-email invite */}
+      <div className="mb-4">
+        <p className="text-[#374151] text-sm font-medium mb-2">Invite applicants by email</p>
+        <MultiEmailInput emails={emails} setEmails={setEmails} />
+      </div>
+
+      {/* Financial verification toggle */}
+      <FinancialVerificationToggle
+        propertyId={property.id}
+        enabled={requireFinancial}
+        onToggle={setRequireFinancial}
+        validEmailCount={validEmails.length}
+      />
+
+      {/* Send button */}
+      <div className="mt-4">
+        <button
+          onClick={() => setShowPreview(true)}
+          disabled={!hasValidEmails}
+          className="bg-[#16a34a] hover:bg-[#15803d] disabled:bg-gray-100 disabled:text-gray-400 text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors"
+        >
+          Send invite{validEmails.length !== 1 ? 's' : ''}
+        </button>
+      </div>
+
+      {/* Sent invites list */}
+      {!invitesLoading && sentInvites.length > 0 && (
+        <div className="mt-5 border-t border-gray-100 pt-4">
+          <p className="text-xs text-[#9CA3AF] font-medium uppercase tracking-wide mb-2">
+            Sent invites ({sentInvites.length})
+          </p>
+          <div className="space-y-0">
+            {sentInvites.map((inv) => {
+              const badge = INVITE_STATUS_BADGE[inv.status] ?? INVITE_STATUS_BADGE.PENDING
+              return (
+                <div key={inv.id} className="flex items-center justify-between py-2.5 border-b border-gray-100 last:border-0">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm text-[#1A1A1A]">{inv.candidateEmail}</span>
+                      {inv.requiresFinancialCheck && (
+                        <span className="text-[10px] text-gray-400 bg-gray-50 border border-gray-100 rounded px-1.5 py-0.5">
+                          Financial check
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-[#9CA3AF] mt-0.5">
+                      Invited {formatDate(inv.createdAt)} · <span className={`font-medium ${badge.cls.includes('text-') ? '' : 'text-gray-500'}`}>{badge.label}</span>
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {canSelectTenant && (inv.status === 'COMPLETED' || inv.status === 'PAID') && (
+                      <button
+                        onClick={() => setSelectInvite(inv)}
+                        className="text-xs text-[#16a34a] hover:text-[#15803d] font-medium transition-colors"
+                      >
+                        Select as tenant
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleResend(inv.candidateEmail, inv.id)}
+                      disabled={resendingId === inv.id}
+                      className="shrink-0 text-xs text-gray-400 hover:text-[#16a34a] transition-colors disabled:opacity-50"
+                    >
+                      {resendingId === inv.id ? 'Sending…' : 'Resend'}
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Candidate list */}
+      {candidates.length > 0 ? (
+        <div className="space-y-3 mt-4 border-t border-gray-100 pt-4">
+          <p className="text-xs text-[#9CA3AF] font-medium mb-2">Received ({candidates.length})</p>
+          {candidates.map((c) => {
+            const report = c.financialReports[0] ?? null
+            return (
+              <div key={c.id} className="py-2.5 border-b border-gray-100 last:border-0">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[#1A1A1A] text-sm font-medium">{c.name}</p>
+                    <p className="text-[#9CA3AF] text-xs">{c.email}</p>
+                  </div>
+                  <StatusBadge status={c.status} config={tenantStatusConfig} />
+                </div>
+                {report ? (
+                  <FinancialScoreBadge report={report} />
+                ) : (
+                  <p className="mt-1.5 text-xs text-[#9CA3AF] italic">No financial verification submitted</p>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      ) : sentInvites.length === 0 ? (
+        <p className="text-[#9CA3AF] text-sm italic mt-3">No applications yet</p>
+      ) : null}
+
+      {/* Invite preview modal */}
+      {showPreview && (
+        <InvitePreviewModal
+          emails={validEmails}
+          requiresFinancialCheck={requireFinancial}
+          propertyAddress={address}
+          onConfirm={handleSendInvites}
+          onClose={() => setShowPreview(false)}
+          sending={sending}
         />
-      </button>
+      )}
+
+      {/* Select tenant confirmation modal */}
+      {selectInvite && (
+        <SelectTenantModal
+          selectedInvite={selectInvite}
+          otherInvites={sentInvites.filter((inv) => inv.id !== selectInvite.id)}
+          onConfirm={handleSelectTenant}
+          onClose={() => setSelectInvite(null)}
+          selecting={selecting}
+        />
+      )}
     </div>
   )
 }
@@ -1476,57 +2027,12 @@ export default function PropertyPage() {
       <PropertyMaintenanceSection propertyId={property.id} />
 
       {/* ── Applications section ─────────────────────────────────────────────── */}
-      {showApplications && <div className="bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4 mb-5">
-        <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium mb-3">Applications</p>
-
-        {/* Application link */}
-        <div className="mb-4">
-          <p className="text-[#6B7280] text-sm mb-2">Share this link with prospective tenants:</p>
-          <div className="flex flex-wrap gap-2">
-            <code className="flex-1 min-w-0 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-xs text-[#6B7280] truncate font-mono">
-              {applyLink}
-            </code>
-            <CopyButton text={applyLink} label="Copy" />
-          </div>
-          <div className="mt-2">
-            <AppLinkEmailForm propertyId={property.id} />
-          </div>
-        </div>
-
-        {/* Financial verification toggle */}
-        <FinancialVerificationToggle
-          propertyId={property.id}
-          initialValue={property.requireFinancialVerification}
-        />
-
-        {/* Candidate list */}
-        {candidates.length > 0 ? (
-          <div className="space-y-3 mt-4 border-t border-gray-100 pt-4">
-            <p className="text-xs text-[#9CA3AF] font-medium mb-2">Received ({candidates.length})</p>
-            {candidates.map((c) => {
-              const report = c.financialReports[0] ?? null
-              return (
-                <div key={c.id} className="py-2.5 border-b border-gray-100 last:border-0">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-[#1A1A1A] text-sm font-medium">{c.name}</p>
-                      <p className="text-[#9CA3AF] text-xs">{c.email}</p>
-                    </div>
-                    <StatusBadge status={c.status} config={tenantStatusConfig} />
-                  </div>
-                  {report ? (
-                    <FinancialScoreBadge report={report} />
-                  ) : (
-                    <p className="mt-1.5 text-xs text-[#9CA3AF] italic">No financial verification submitted</p>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        ) : (
-          <p className="text-[#9CA3AF] text-sm italic mt-3">No applications yet</p>
-        )}
-      </div>}
+      {showApplications && <ApplicationsSection
+        property={property}
+        candidates={candidates}
+        applyLink={applyLink}
+        onRefresh={fetchProperty}
+      />}
 
       {/* Add Tenant Modal */}
       {showAddTenant && (

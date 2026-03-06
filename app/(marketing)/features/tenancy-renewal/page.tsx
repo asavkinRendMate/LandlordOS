@@ -3,7 +3,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: 'Tenancy Renewal — Start Again Stress-Free | LetSorted',
+  title: 'Tenancy Renewal — Start Again Stress-Free',
   description:
     'End tenancies cleanly with check-out inspections, deposit handling, and one-click vacancy reset. Open applications for your next tenant and start the cycle again.',
 }

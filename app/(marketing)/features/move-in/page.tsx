@@ -3,7 +3,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: 'Tenant Move-In — Hassle-Free Onboarding | LetSorted',
+  title: 'Tenant Move-In — Hassle-Free Onboarding',
   description:
     'Generate legally compliant tenancy agreements, collect e-signatures, and create timestamped inventory reports. Everything you need for a smooth move-in, done in minutes.',
 }

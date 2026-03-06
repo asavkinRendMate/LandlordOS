@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
+import PaymentSetupModal from '@/components/shared/PaymentSetupModal'
 
 // ── Shared field styles ───────────────────────────────────────────────────────
 
@@ -302,8 +303,9 @@ export default function NewPropertyPage() {
   const [propertyData, setPropertyData] = useState<PropertyValues | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
 
-  async function createProperty(data: PropertyValues): Promise<string | null> {
+  async function createProperty(data: PropertyValues): Promise<{ id: string; requiresCard?: boolean } | null> {
     const res = await fetch('/api/properties', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -311,7 +313,15 @@ export default function NewPropertyPage() {
     })
     const json = await res.json()
     if (!res.ok) { setError(json.error ?? 'Failed to create property'); return null }
-    return json.data.id as string
+    return { id: json.data.id as string, requiresCard: json.requiresCard }
+  }
+
+  async function handleSubscriptionAfterCard() {
+    setShowPaymentModal(false)
+    try {
+      await fetch('/api/payment/subscription/update', { method: 'POST' })
+    } catch { /* subscription update is best-effort */ }
+    router.push('/dashboard')
   }
 
   function handleStep1(values: PropertyValues) {
@@ -322,24 +332,29 @@ export default function NewPropertyPage() {
   async function handleVacant() {
     if (!propertyData) return
     setSubmitting(true); setError(null)
-    const id = await createProperty(propertyData)
+    const result = await createProperty(propertyData)
     setSubmitting(false)
-    if (id) router.push('/dashboard')
+    if (!result) return
+    if (result.requiresCard) {
+      setShowPaymentModal(true)
+    } else {
+      router.push('/dashboard')
+    }
   }
 
   async function handleStep3(tenantValues: TenantValues) {
     if (!propertyData) return
     setSubmitting(true); setError(null)
 
-    const propertyId = await createProperty(propertyData)
-    if (!propertyId) { setSubmitting(false); return }
+    const result = await createProperty(propertyData)
+    if (!result) { setSubmitting(false); return }
 
     const monthlyRent = Math.round(parseFloat(tenantValues.monthlyRentStr) * 100)
     const tenancyRes = await fetch('/api/tenancies', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        propertyId,
+        propertyId: result.id,
         tenantName: tenantValues.tenantName,
         tenantEmail: tenantValues.tenantEmail,
         tenantPhone: tenantValues.tenantPhone || undefined,
@@ -355,7 +370,11 @@ export default function NewPropertyPage() {
       setError(json.error ?? 'Failed to save tenant details')
       return
     }
-    router.push('/dashboard')
+    if (result.requiresCard) {
+      setShowPaymentModal(true)
+    } else {
+      router.push('/dashboard')
+    }
   }
 
   const totalSteps = 3
@@ -405,6 +424,12 @@ export default function NewPropertyPage() {
         </div>
       </div>
 
+      <PaymentSetupModal
+        isOpen={showPaymentModal}
+        onClose={() => { setShowPaymentModal(false); router.push('/dashboard') }}
+        onSuccess={handleSubscriptionAfterCard}
+        context="A payment method is required to manage multiple properties (£10/mo per additional property)."
+      />
     </div>
   )
 }

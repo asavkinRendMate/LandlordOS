@@ -3,7 +3,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: 'Issue Management — Handle Problems Properly | LetSorted',
+  title: 'Issue Management — Handle Problems Properly',
   description:
     'Generate Section 13 rent increase notices, export evidence packs for disputes, and track every maintenance request with a full audit trail. Be prepared when things go wrong.',
 }

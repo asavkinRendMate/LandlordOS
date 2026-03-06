@@ -4,8 +4,10 @@ import type { Metadata } from 'next'
 import ManageCookiesButton from './manage-cookies-button'
 
 export const metadata: Metadata = {
-  title: 'Cookie Policy | LetSorted',
+  title: 'Cookie Policy',
   description: 'How LetSorted uses cookies and how you can manage your preferences.',
+  robots: { index: false, follow: true },
+  alternates: { canonical: '/cookies' },
 }
 
 function CookieTable({ rows }: { rows: Array<{ name: string; provider: string; purpose: string; duration: string }> }) {

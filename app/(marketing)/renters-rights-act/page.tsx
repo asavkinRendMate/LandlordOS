@@ -4,9 +4,10 @@ import Link from 'next/link'
 import { CrispChatLink } from './crisp-link'
 
 export const metadata: Metadata = {
-  title: "Renters' Rights Act 2025: What UK Landlords Need to Know | LetSorted",
+  title: "Renters' Rights Act 2025: What UK Landlords Need to Know",
   description:
-    "The Renters' Rights Act abolishes Section 21, introduces new eviction grounds, and changes how tenancies work. Here's what changes and how to protect yourself.",
+    "Section 21 is abolished. Understand what the Renters' Rights Act means for you and how to protect yourself with proper tenant screening.",
+  alternates: { canonical: '/renters-rights-act' },
 }
 
 // ─── Data ──────────────────────────────────────────────────────────────────────

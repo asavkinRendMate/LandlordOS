@@ -5,6 +5,8 @@ import { useParams, useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import ScreeningReportDisplay, { type ScoringResult } from '@/components/shared/ScreeningReportDisplay'
+import PaymentSetupModal from '@/components/shared/PaymentSetupModal'
+import { usePayment } from '@/hooks/usePayment'
 
 interface InviteListItem {
   id: string
@@ -33,6 +35,11 @@ export default function ReportPage() {
   const [isLocked, setIsLocked] = useState(true)
   const [unlocking, setUnlocking] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showPriceConfirm, setShowPriceConfirm] = useState(false)
+  const [unlockPrice, setUnlockPrice] = useState('£9.99')
+  const [unlockReason, setUnlockReason] = useState<'SCREENING_FIRST' | 'SCREENING_ADDITIONAL'>('SCREENING_FIRST')
+  const [cardInfo, setCardInfo] = useState<{ last4: string; brand: string } | null>(null)
+  const { showCardModal, requireCard, onCardSaveComplete, closeCardModal } = usePayment()
 
   // ── Fetch invite + report ───────────────────────────────────────────────────────
 
@@ -77,14 +84,47 @@ export default function ReportPage() {
   // ── Unlock ──────────────────────────────────────────────────────────────────────
 
   async function handleUnlock() {
+    requireCard(async () => {
+      // Determine price: first or additional screening
+      try {
+        const invitesRes = await fetch('/api/screening/invites')
+        const invitesJson = await invitesRes.json()
+        const paidCount = (invitesJson.data ?? []).filter(
+          (i: InviteListItem) => i.status === 'PAID',
+        ).length
+
+        const reason = paidCount === 0 ? 'SCREENING_FIRST' as const : 'SCREENING_ADDITIONAL' as const
+        const price = reason === 'SCREENING_FIRST' ? '£9.99' : '£1.49'
+        setUnlockReason(reason)
+        setUnlockPrice(price)
+
+        // Fetch card info for confirmation display
+        const subRes = await fetch('/api/payment/subscription')
+        const subJson = await subRes.json()
+        if (subJson.data?.card) setCardInfo(subJson.data.card)
+
+        setShowPriceConfirm(true)
+      } catch {
+        setError('Something went wrong')
+      }
+    })
+  }
+
+  async function confirmUnlock() {
+    setShowPriceConfirm(false)
     setUnlocking(true)
     try {
-      const res = await fetch(`/api/screening/report/${inviteId}/unlock`, { method: 'POST' })
-      const json = await res.json()
-      if (!res.ok) {
-        setError(json.error || 'Unlock failed')
+      const chargeRes = await fetch('/api/payment/charge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: unlockReason, inviteId }),
+      })
+      const chargeJson = await chargeRes.json()
+      if (!chargeRes.ok) {
+        setError(chargeJson.error || 'Payment failed')
         return
       }
+
       setIsLocked(false)
       // Refetch to get full report data
       const reportRes = await fetch(`/api/scoring/${invite?.report?.id}`)
@@ -188,15 +228,46 @@ export default function ReportPage() {
               onUnlock={handleUnlock}
               unlocking={unlocking}
               showVerificationLink={!isLocked}
+              unlockPriceDisplay={unlockPrice}
             />
-            {isLocked && (
-              <p className="text-xs text-gray-400 text-center mt-3">
-                During beta, unlock is free. You won&apos;t be charged.
-              </p>
+
+            {/* Price confirmation */}
+            {showPriceConfirm && (
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mt-4">
+                <p className="text-sm text-gray-700 font-medium mb-2">
+                  Confirm payment of {unlockPrice}
+                </p>
+                {cardInfo && (
+                  <p className="text-xs text-gray-500 mb-3">
+                    Charging {cardInfo.brand} ending in {cardInfo.last4}
+                  </p>
+                )}
+                <div className="flex gap-2">
+                  <button
+                    onClick={confirmUnlock}
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 rounded-lg text-sm transition-colors"
+                  >
+                    Confirm {unlockPrice}
+                  </button>
+                  <button
+                    onClick={() => setShowPriceConfirm(false)}
+                    className="flex-1 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium py-2.5 rounded-lg text-sm transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
             )}
           </>
         )}
       </div>
+
+      <PaymentSetupModal
+        isOpen={showCardModal}
+        onClose={closeCardModal}
+        onSuccess={onCardSaveComplete}
+        context="Add a payment method to unlock screening reports."
+      />
     </div>
   )
 }

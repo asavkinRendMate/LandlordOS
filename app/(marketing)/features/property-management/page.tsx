@@ -3,7 +3,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: 'Property Management — Stay on Top Effortlessly | LetSorted',
+  title: 'Property Management — Stay on Top Effortlessly',
   description:
     'Automatic rent tracking, maintenance ticket system with photos, compliance certificate alerts, and a tenant portal. Simple tools to manage your rental property without the chaos.',
 }

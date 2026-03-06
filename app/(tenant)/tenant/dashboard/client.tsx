@@ -11,7 +11,7 @@ import { openCrispChat } from '@/components/shared/CrispChat'
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface Props {
-  tenant: { id: string; name: string; email: string }
+  tenant: { id: string; name: string; email: string; status: string; onboardingState: Record<string, boolean> | null }
   property: { id: string; address: string; landlordName: string; landlordEmail: string }
 }
 
@@ -112,6 +112,77 @@ function FileIcon({ mimeType }: { mimeType: string }) {
       <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
       </svg>
+    </div>
+  )
+}
+
+// ── Onboarding checklist ──────────────────────────────────────────────────────
+
+const ONBOARDING_STEPS: Array<{ key: string; label: string; comingSoon?: boolean }> = [
+  { key: 'rightToRent', label: 'Upload Right to Rent documents' },
+  { key: 'deposit', label: 'Deposit protection' },
+  { key: 'rentSetup', label: 'Rent payment setup' },
+  { key: 'tenancyAgreement', label: 'Tenancy agreement', comingSoon: true },
+]
+
+function OnboardingChecklist({ state }: { state: Record<string, boolean> | null }) {
+  const steps = ONBOARDING_STEPS.map((step) => ({
+    ...step,
+    done: state?.[step.key] ?? false,
+  }))
+  const doneCount = steps.filter((s) => s.done).length
+  const total = steps.length
+  const pct = Math.round((doneCount / total) * 100)
+
+  // Hide checklist if all steps done
+  if (doneCount === total) return null
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 p-5">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center text-green-600">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+          </svg>
+        </div>
+        <div className="flex-1">
+          <h2 className="text-gray-900 font-semibold">Getting started</h2>
+          <p className="text-gray-400 text-xs">{doneCount} of {total} complete</p>
+        </div>
+      </div>
+
+      {/* Progress bar */}
+      <div className="w-full bg-gray-100 rounded-full h-1.5 mb-4">
+        <div
+          className="bg-green-500 h-1.5 rounded-full transition-all duration-500"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+
+      {/* Steps */}
+      <div className="space-y-2.5">
+        {steps.map((step) => (
+          <div key={step.key} className="flex items-center gap-3">
+            {step.done ? (
+              <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                <svg className="w-3 h-3 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+            ) : (
+              <div className="w-5 h-5 rounded-full border-2 border-gray-200 shrink-0" />
+            )}
+            <span className={`text-sm ${step.done ? 'text-gray-400 line-through' : 'text-gray-700'}`}>
+              {step.label}
+            </span>
+            {step.comingSoon && !step.done && (
+              <span className="text-[10px] bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded font-medium">
+                Coming soon
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
@@ -1208,6 +1279,11 @@ export default function TenantDashboardClient({ tenant, property }: Props) {
         </div>
 
         <div className="space-y-4">
+          {/* Onboarding checklist */}
+          {tenant.status === 'INVITED' && (
+            <OnboardingChecklist state={tenant.onboardingState} />
+          )}
+
           {/* Documents */}
           <div className="bg-white rounded-2xl border border-gray-100 p-5">
             <div className="flex items-center gap-3 mb-4">

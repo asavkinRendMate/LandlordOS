@@ -3,8 +3,10 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Terms of Service — LetSorted',
+  title: 'Terms of Service',
   description: 'Terms and conditions for using LetSorted, operated by Rendmate Ltd.',
+  robots: { index: false, follow: true },
+  alternates: { canonical: '/terms' },
 }
 
 const sections = [

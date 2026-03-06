@@ -3,8 +3,10 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy | LetSorted',
+  title: 'Privacy Policy',
   description: 'How LetSorted collects, uses, and protects your personal data.',
+  robots: { index: false, follow: true },
+  alternates: { canonical: '/privacy' },
 }
 
 const sections = [

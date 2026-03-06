@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { createAuthClient } from '@/lib/supabase/auth'
 import { prisma } from '@/lib/prisma'
 import { ComplianceDocType } from '@prisma/client'
+import { createOrUpdateSubscription } from '@/lib/payment-service'
 
 const schema = z.object({
   name: z.string().optional(),
@@ -71,6 +72,28 @@ export async function POST(req: Request) {
 
       return prop
     })
+
+    // Check if subscription action is needed (2+ properties)
+    const propertyCount = await prisma.property.count({
+      where: { userId: user.id },
+    })
+
+    if (propertyCount > 1) {
+      const dbUser = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { paymentMethodStatus: true },
+      })
+
+      if (dbUser?.paymentMethodStatus !== 'SAVED') {
+        return NextResponse.json(
+          { data: property, requiresCard: true, propertyCount },
+          { status: 201 },
+        )
+      }
+
+      // Has card — update subscription automatically
+      await createOrUpdateSubscription(user.id, propertyCount)
+    }
 
     return NextResponse.json({ data: property }, { status: 201 })
   } catch (err) {

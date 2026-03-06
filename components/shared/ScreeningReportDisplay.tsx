@@ -25,6 +25,7 @@ interface Props {
   unlocking?: boolean
   showVerificationLink?: boolean
   candidateView?: boolean
+  unlockPriceDisplay?: string
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────────
@@ -47,6 +48,7 @@ export default function ScreeningReportDisplay({
   unlocking = false,
   showVerificationLink = true,
   candidateView = false,
+  unlockPriceDisplay = '£9.99',
 }: Props) {
   const appUrl = typeof window !== 'undefined' ? window.location.origin : ''
   const verifyUrl = `${appUrl}/verify/${scoring.verificationToken}`
@@ -169,7 +171,7 @@ export default function ScreeningReportDisplay({
               disabled={unlocking}
               className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold py-3 rounded-lg text-sm transition-colors"
             >
-              {unlocking ? 'Unlocking...' : 'Unlock full report — £9.99'}
+              {unlocking ? 'Unlocking...' : `Unlock full report — ${unlockPriceDisplay}`}
             </button>
           )}
 

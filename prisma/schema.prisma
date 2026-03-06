@@ -8,6 +8,20 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+// ── Payment enums ─────────────────────────────────────────────────────────────
+
+enum SubscriptionStatus {
+  NONE
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+}
+
+enum PaymentMethodStatus {
+  NONE
+  SAVED
+}
+
 // ── User ──────────────────────────────────────────────────────────────────────
 // Mirrors Supabase auth.users — id is the Supabase user UUID
 model User {
@@ -15,6 +29,22 @@ model User {
   email          String     @unique
   name           String?
   createdAt      DateTime   @default(now()) @map("created_at")
+
+  // ── Payment / Stripe placeholders ──────────────────────────────────────────
+  stripeCustomerId       String?              @unique @map("stripe_customer_id")
+  stripeSubscriptionId   String?              @unique @map("stripe_subscription_id")
+  stripePaymentMethodId  String?              @map("stripe_payment_method_id")
+  paymentMethodStatus    PaymentMethodStatus  @default(NONE) @map("payment_method_status")
+  cardLast4              String?              @map("card_last4")
+  cardBrand              String?              @map("card_brand")
+  cardExpiry             String?              @map("card_expiry")
+
+  // ── Subscription ───────────────────────────────────────────────────────────
+  subscriptionStatus        SubscriptionStatus @default(NONE) @map("subscription_status")
+  subscriptionPropertyCount Int                @default(0) @map("subscription_property_count")
+  subscriptionMonthlyAmount Int                @default(0) @map("subscription_monthly_amount")
+  currentPeriodEnd          DateTime?          @map("current_period_end")
+
   properties        Property[]
   tenantProfiles    Tenant[]
   screeningPackages ScreeningPackage[]
@@ -182,9 +212,10 @@ model Tenant {
   phone       String?
   status      TenantStatus @default(INVITED)
   inviteToken String       @unique @map("invite_token") @default(uuid())
-  confirmedAt DateTime?    @map("confirmed_at")
-  createdAt   DateTime     @default(now()) @map("created_at")
-  updatedAt   DateTime     @updatedAt @map("updated_at")
+  confirmedAt     DateTime?    @map("confirmed_at")
+  onboardingState Json?        @map("onboarding_state")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
 
   tenancies           Tenancy[]
   documents           TenantDocument[]
@@ -440,6 +471,7 @@ model ScreeningInvite {
   monthlyRentPence Int                   @map("monthly_rent_pence")
   status           ScreeningInviteStatus @default(PENDING)
   token            String                @unique @default(uuid())
+  rejectionSentAt  DateTime?             @map("rejection_sent_at")
   createdAt        DateTime              @default(now()) @map("created_at")
   updatedAt        DateTime              @default(now()) @map("updated_at")
 

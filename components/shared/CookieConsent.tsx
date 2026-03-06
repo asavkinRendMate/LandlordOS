@@ -4,69 +4,6 @@ import { useEffect } from 'react'
 import * as CookieConsentLib from 'vanilla-cookieconsent'
 // CSS imported in app/layout.tsx (before overrides) to guarantee cascade order
 
-declare global {
-  interface Window {
-    dataLayer: unknown[]
-    gtag: (...args: unknown[]) => void
-  }
-}
-
-// ── GA loader ────────────────────────────────────────────────────────────────
-
-function loadGoogleAnalytics() {
-  if (document.getElementById('ga-script')) return
-  const GA_ID = process.env.NEXT_PUBLIC_GA_ID
-  if (!GA_ID) return
-
-  const script = document.createElement('script')
-  script.id = 'ga-script'
-  script.src = `https://www.googletagmanager.com/gtag/js?id=${GA_ID}`
-  script.async = true
-  document.head.appendChild(script)
-
-  window.dataLayer = window.dataLayer || []
-  function gtag(...args: unknown[]) {
-    window.dataLayer.push(args)
-  }
-  window.gtag = gtag
-  gtag('js', new Date())
-  gtag('config', GA_ID)
-}
-
-function unloadGoogleAnalytics() {
-  // Cookies are cleared by autoClear config above.
-  // Script removal handled on next page load.
-}
-
-// ── FB Pixel loader ──────────────────────────────────────────────────────────
-
-function loadFacebookPixel() {
-  const FB_ID = process.env.NEXT_PUBLIC_FB_PIXEL_ID
-  if (!FB_ID || document.getElementById('fb-pixel')) return
-
-  const script = document.createElement('script')
-  script.id = 'fb-pixel'
-  script.innerHTML = `
-    !function(f,b,e,v,n,t,s)
-    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-    n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-    n.queue=[];t=b.createElement(e);t.async=!0;
-    t.src=v;s=b.getElementsByTagName(e)[0];
-    s.parentNode.insertBefore(t,s)}(window, document,'script',
-    'https://connect.facebook.net/en_US/fbevents.js');
-    fbq('init', '${FB_ID}');
-    fbq('track', 'PageView');
-  `
-  document.head.appendChild(script)
-}
-
-function unloadFacebookPixel() {
-  // Cookies cleared by autoClear config above.
-}
-
-// ── Component ────────────────────────────────────────────────────────────────
-
 export default function CookieConsent() {
   useEffect(() => {
     CookieConsentLib.run({
@@ -94,6 +31,8 @@ export default function CookieConsent() {
               { name: /^_ga/ },
               { name: '_gid' },
               { name: '_gat' },
+              { name: /^_clck/ },
+              { name: /^_clsk/ },
             ],
           },
         },
@@ -108,31 +47,7 @@ export default function CookieConsent() {
         },
       },
 
-      onConsent: () => {
-        if (CookieConsentLib.acceptedCategory('analytics')) {
-          loadGoogleAnalytics()
-        }
-        if (CookieConsentLib.acceptedCategory('marketing')) {
-          loadFacebookPixel()
-        }
-      },
-
-      onChange: ({ changedCategories }) => {
-        if (changedCategories.includes('analytics')) {
-          if (CookieConsentLib.acceptedCategory('analytics')) {
-            loadGoogleAnalytics()
-          } else {
-            unloadGoogleAnalytics()
-          }
-        }
-        if (changedCategories.includes('marketing')) {
-          if (CookieConsentLib.acceptedCategory('marketing')) {
-            loadFacebookPixel()
-          } else {
-            unloadFacebookPixel()
-          }
-        }
-      },
+      // Script loading handled by Analytics.tsx via cc:onConsent / cc:onChange events
 
       language: {
         default: 'en',
@@ -168,8 +83,8 @@ export default function CookieConsent() {
                 {
                   title: 'Analytics cookies',
                   description:
-                    'Google Analytics helps us understand how people ' +
-                    'use LetSorted so we can improve it. ' +
+                    'Google Analytics and Microsoft Clarity help us ' +
+                    'understand how people use LetSorted so we can improve it. ' +
                     'No personal data is sold.',
                   linkedCategory: 'analytics',
                 },

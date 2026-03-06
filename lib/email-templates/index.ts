@@ -111,7 +111,60 @@ export function candidateInviteHtml(params: {
   })
 }
 
-// ─── 6. Landlord notification (screening complete) ───────────────────────────
+// ─── 6. Tenant selected (winner notification) ───────────────────────────────
+// Used by: api/screening/select-tenant
+
+export function tenantSelectedHtml(params: {
+  candidateName: string
+  propertyAddress: string
+  landlordName: string
+  portalLink: string
+}): string {
+  return baseEmailTemplate({
+    previewText: `Great news — you've been selected for ${params.propertyAddress}`,
+    subtitle: 'Applications',
+    content: `
+      ${p(`Hi ${params.candidateName},`)}
+      ${p(`Great news! <strong style="color:#1a1a1a;">${params.landlordName}</strong> has selected you as their tenant for:`)}
+      ${infoBox(params.propertyAddress)}
+      ${p('<strong style="color:#1a1a1a;">What happens next:</strong>')}
+      ${greyBox(`
+        <ol style="color:#374151;font-size:14px;line-height:1.8;margin:0;padding-left:20px;">
+          <li>Confirm your details via the tenant portal</li>
+          <li>Upload your Right to Rent documents</li>
+          <li>Review and sign your tenancy agreement</li>
+          <li>Set up your deposit protection</li>
+        </ol>
+      `)}
+      ${ctaButton('Open tenant portal', params.portalLink)}
+      ${muted('If you have any questions, reply to this email or contact your landlord directly.')}
+    `,
+  })
+}
+
+// ─── 7. Applicant rejected (polite rejection) ───────────────────────────────
+// Used by: api/screening/select-tenant
+
+export function applicantRejectedHtml(params: {
+  candidateName: string
+  propertyAddress: string
+  landlordName: string
+}): string {
+  return baseEmailTemplate({
+    previewText: `Update on your application for ${params.propertyAddress}`,
+    subtitle: 'Applications',
+    content: `
+      ${p(`Hi ${params.candidateName},`)}
+      ${p(`Thank you for your interest in:`)}
+      ${infoBox(params.propertyAddress)}
+      ${p(`Unfortunately, <strong style="color:#1a1a1a;">${params.landlordName}</strong> has decided to go with another applicant for this property.`)}
+      ${p('We appreciate the time you took to apply and wish you the best in your property search.')}
+      ${muted('This is an automated notification. Please do not reply to this email.')}
+    `,
+  })
+}
+
+// ─── 8. Landlord notification (screening complete) ───────────────────────────
 // Used by: lib/scoring/engine.ts
 
 export function landlordNotificationHtml(params: {

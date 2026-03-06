@@ -3,7 +3,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: 'Tenant Screening — Find Reliable Tenants | LetSorted',
+  title: 'Tenant Screening — Find Reliable Tenants',
   description:
     'AI-powered tenant screening for UK landlords. Verify income, check affordability, and flag risks from bank statements and references. One shareable application link per property.',
 }

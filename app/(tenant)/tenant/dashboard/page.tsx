@@ -59,6 +59,8 @@ export default async function TenantDashboardPage() {
         id: tenant.id,
         name: tenant.name,
         email: tenant.email,
+        status: tenant.status,
+        onboardingState: tenant.onboardingState as Record<string, boolean> | null,
       }}
       property={{
         id: property.id,
