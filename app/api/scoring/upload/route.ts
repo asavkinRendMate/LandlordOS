@@ -24,6 +24,8 @@ interface StatementFile {
 
 export async function POST(req: Request) {
   try {
+    console.log(`[screening] ── SCORING UPLOAD ─────────────────────`)
+
     const formData = await req.formData()
 
     const files = formData.getAll('file') as File[]
@@ -32,6 +34,15 @@ export async function POST(req: Request) {
     const reportType = formData.get('reportType') as string | null
     const applicantName = formData.get('applicantName') as string | null
     const declaredIncome = formData.get('declaredIncome') as string | null
+
+    console.log(`[screening] applicantName="${applicantName}", reportType=${reportType}, propertyId=${propertyId}, tenantId=${tenantId}`)
+    console.log(`[screening:pdf] Files received: ${files.length}`)
+    for (let i = 0; i < files.length; i++) {
+      console.log(`[screening:pdf] File ${i + 1}: ${files[i].name} ${(files[i].size / 1024).toFixed(0)}KB ${files[i].type}`)
+    }
+    if (declaredIncome) {
+      console.log(`[screening] Declared income: £${declaredIncome}`)
+    }
 
     // Validate files
     if (files.length === 0) {
@@ -101,9 +112,12 @@ export async function POST(req: Request) {
       data: { statementFiles: statementFiles as unknown as Prisma.InputJsonValue },
     })
 
+    console.log(`[screening:db] Report created: ${report.id}, ${statementFiles.length} files uploaded`)
+    console.log(`[screening] Triggering background analysis for reportId=${report.id}`)
+
     // Trigger scoring in the background — do NOT await
     analyzeStatement(report.id).catch((err) =>
-      console.error(`[scoring/upload] background analysis failed for ${report.id}:`, err),
+      console.error(`[screening] ❌ Background analysis failed for ${report.id}:`, err),
     )
 
     return NextResponse.json(

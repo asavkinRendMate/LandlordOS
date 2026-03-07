@@ -24,11 +24,15 @@ export async function POST(
 ) {
   try {
     const { token } = params
+    console.log(`[screening] ── INVITE SUBMIT ────────────────────`)
+    console.log(`[screening] Token: ${token}`)
 
     const invite = await prisma.screeningInvite.findUnique({ where: { token } })
     if (!invite) {
+      console.warn(`[screening] Invite not found for token: ${token}`)
       return NextResponse.json({ error: 'Invite not found' }, { status: 404 })
     }
+    console.log(`[screening] Invite loaded — id=${invite.id}, candidate="${invite.candidateName}" <${invite.candidateEmail}>, status=${invite.status}, rent=£${(invite.monthlyRentPence / 100).toFixed(2)}`)
 
     // Check expiry
     const now = new Date()
@@ -56,6 +60,15 @@ export async function POST(
     const formData = await req.formData()
     const files = formData.getAll('file') as File[]
     const declaredIncome = formData.get('declaredIncome') as string | null
+    const isJointApplication = formData.get('isJointApplication') === 'true'
+    console.log(`[screening:pdf] Files received: ${files.length}`)
+    for (let i = 0; i < files.length; i++) {
+      console.log(`[screening:pdf] File ${i + 1}: ${files[i].name} ${(files[i].size / 1024).toFixed(0)}KB ${files[i].type}`)
+    }
+    if (declaredIncome) {
+      console.log(`[screening] Declared income: £${declaredIncome}`)
+    }
+    console.log(`[screening] Joint application (declared by candidate): ${isJointApplication}`)
 
     // Validate files
     if (files.length === 0) {
@@ -104,6 +117,11 @@ export async function POST(
         isLocked: true,
         monthlyRentPence: invite.monthlyRentPence,
         declaredIncomePence: declaredIncome ? Math.round(Number(declaredIncome) * 100) : null,
+        // Store joint application declaration as marker — engine reads this before analysis,
+        // then overwrites with actual joint applicant data after AI response.
+        jointApplicants: isJointApplication
+          ? ({ declaredByApplicant: true } as unknown as Prisma.InputJsonValue)
+          : undefined,
       },
     })
 
@@ -128,9 +146,12 @@ export async function POST(
       data: { statementFiles: statementFiles as unknown as Prisma.InputJsonValue },
     })
 
+    console.log(`[screening:db] Report created: ${report.id}, ${statementFiles.length} files uploaded`)
+    console.log(`[screening] Triggering background analysis for reportId=${report.id}`)
+
     // Trigger analysis in background
     analyzeStatement(report.id).catch((err) =>
-      console.error(`[screening/invite/submit] background analysis failed for ${report.id}:`, err),
+      console.error(`[screening] ❌ Background analysis failed for ${report.id}:`, err),
     )
 
     return NextResponse.json({
