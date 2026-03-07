@@ -26,7 +26,7 @@ export default function Footer({ variant }: FooterProps) {
       <div className="max-w-5xl mx-auto">
 
         {/* Three-column grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-10 pb-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 pb-10">
 
           {/* Company info */}
           <div className="space-y-3">
@@ -57,6 +57,20 @@ export default function Footer({ variant }: FooterProps) {
             <a href="mailto:hello@letsorted.co.uk" className="block text-gray-500 hover:text-gray-800 transition-colors text-xs">
               Contact
             </a>
+          </div>
+
+          {/* Resources */}
+          <div className="space-y-2.5">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Resources</p>
+            <Link href="/guides" className="block text-gray-500 hover:text-gray-800 transition-colors text-xs">
+              Landlord Guides
+            </Link>
+            <Link href="/renters-rights-act" className="block text-gray-500 hover:text-gray-800 transition-colors text-xs">
+              Renters&apos; Rights Act
+            </Link>
+            <Link href="/screening" className="block text-gray-500 hover:text-gray-800 transition-colors text-xs">
+              Tenant Screening
+            </Link>
           </div>
 
           {/* Trust badges */}

@@ -345,6 +345,12 @@ export default function LandingPage() {
         <div className="max-w-[1280px] mx-auto px-6 h-16 flex items-center justify-between">
           <Image src="/logo.svg" alt="LetSorted" width={150} height={50} priority />
           <div className="flex items-center gap-2.5">
+            <a
+              href="/guides"
+              className="hidden sm:inline-block border border-green-600 text-green-600 bg-white hover:bg-green-600/[0.06] font-semibold px-5 py-2.5 rounded-lg text-sm transition-all duration-150"
+            >
+              Guides
+            </a>
             <button
               onClick={() => setBetaOpen(true)}
               className="border border-green-600 text-green-600 bg-white hover:bg-green-600/[0.06] font-semibold px-5 py-2.5 rounded-lg text-sm transition-all duration-150"

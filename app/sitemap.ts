@@ -1,9 +1,26 @@
 import type { MetadataRoute } from 'next'
+import { getAllGuides } from '@/lib/guides'
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://letsorted.co.uk'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date()
+
+  const guides = getAllGuides()
+  const guideEntries: MetadataRoute.Sitemap = [
+    {
+      url: `${BASE_URL}/guides`,
+      lastModified: now,
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    ...guides.map((g) => ({
+      url: `${BASE_URL}/guides/${g.frontmatter.slug}`,
+      lastModified: new Date(g.frontmatter.updatedAt || g.frontmatter.publishedAt),
+      changeFrequency: 'monthly' as const,
+      priority: 0.7,
+    })),
+  ]
 
   return [
     // ── Core ──────────────────────────────────────────────────────────────────
@@ -65,6 +82,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'monthly',
       priority: 0.7,
     },
+
+    // ── Guides ─────────────────────────────────────────────────────────────────
+    ...guideEntries,
 
     // ── Legal ─────────────────────────────────────────────────────────────────
     {
