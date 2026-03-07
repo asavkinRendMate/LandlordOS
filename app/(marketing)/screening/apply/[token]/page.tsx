@@ -78,6 +78,8 @@ export default function CandidateApplyPage() {
 
   // Form
   const [declaredIncome, setDeclaredIncome] = useState('')
+  const [isJointApplication, setIsJointApplication] = useState(false)
+  const [incomeHintOpen, setIncomeHintOpen] = useState(false)
   const [files, setFiles] = useState<File[]>([])
   const [fileError, setFileError] = useState<string | null>(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -180,6 +182,7 @@ export default function CandidateApplyPage() {
     try {
       const formData = new FormData()
       if (declaredIncome) formData.append('declaredIncome', declaredIncome)
+      if (isJointApplication) formData.append('isJointApplication', 'true')
       for (const f of files) {
         formData.append('file', f)
       }
@@ -671,21 +674,101 @@ export default function CandidateApplyPage() {
           <div className="space-y-5">
             <h2 className="text-lg font-bold text-gray-900">Upload your bank statements</h2>
 
-            {/* Declared income (optional) */}
+            {/* Declared income */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Monthly income (£) <span className="text-gray-400 font-normal">— optional</span>
+                Monthly take-home income (£) <span className="text-gray-400 font-normal">— optional</span>
               </label>
               <input
                 type="number"
                 value={declaredIncome}
                 onChange={(e) => setDeclaredIncome(e.target.value)}
-                placeholder="Your approximate monthly income"
+                placeholder={isJointApplication ? 'Combined monthly take-home pay' : 'Your monthly take-home pay'}
                 min="0"
                 step="1"
                 className={inputClass}
               />
-              <p className="text-xs text-gray-400 mt-1">Helps verify your income against bank statements.</p>
+              <p className="text-xs text-gray-400 mt-1">
+                Enter your total monthly income after tax (take-home pay). Include all regular income sources.
+              </p>
+
+              {/* Expandable hint */}
+              <button
+                type="button"
+                onClick={() => setIncomeHintOpen(!incomeHintOpen)}
+                className="text-xs text-green-600 hover:text-green-700 font-medium mt-1.5 flex items-center gap-1 transition-colors"
+              >
+                What counts as income?
+                <svg className={`w-3 h-3 transition-transform duration-200 ${incomeHintOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              <div className={`overflow-hidden transition-all duration-200 ${incomeHintOpen ? 'max-h-96 opacity-100 mt-2' : 'max-h-0 opacity-0'}`}>
+                <div className="bg-gray-50 rounded-lg border border-gray-100 p-3.5 text-xs text-gray-600 space-y-2.5">
+                  <div>
+                    <p className="font-semibold text-gray-700 mb-1">Include:</p>
+                    <ul className="space-y-0.5 list-disc list-inside text-gray-500">
+                      <li>Your monthly salary or wages (after tax)</li>
+                      <li>Regular freelance or self-employed income</li>
+                      <li>Dividends if you&apos;re a company director</li>
+                      <li>Universal Credit or Housing Benefit</li>
+                      <li>Pension payments</li>
+                      <li>Any other regular monthly income</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-700 mb-1">If applying jointly with a partner:</p>
+                    <p className="text-gray-500">Include your combined household income and upload bank statements for both of you.</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-700 mb-1">Do not include:</p>
+                    <ul className="space-y-0.5 list-disc list-inside text-gray-500">
+                      <li>One-off bonuses or irregular payments</li>
+                      <li>Annual income — convert to monthly first (annual / 12)</li>
+                      <li>Gross/before-tax salary</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              {/* Example pills */}
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                <span className="text-[11px] text-gray-400 bg-gray-50 border border-gray-100 rounded-full px-2.5 py-1">Employed: take-home pay after tax</span>
+                <span className="text-[11px] text-gray-400 bg-gray-50 border border-gray-100 rounded-full px-2.5 py-1">Self-employed: average monthly net profit</span>
+                <span className="text-[11px] text-gray-400 bg-gray-50 border border-gray-100 rounded-full px-2.5 py-1">Joint: combined take-home for both applicants</span>
+              </div>
+            </div>
+
+            {/* Joint application toggle */}
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={() => setIsJointApplication(!isJointApplication)}
+                className="w-full flex items-center justify-between bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl px-4 py-3 transition-colors"
+              >
+                <div className="text-left">
+                  <p className="text-sm font-medium text-gray-700">Joint application (with partner/spouse)</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Turn this on if you are applying together and will upload statements for both people</p>
+                </div>
+                <div className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ml-3 ${isJointApplication ? 'bg-green-500' : 'bg-gray-300'}`}>
+                  <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${isJointApplication ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
+                </div>
+              </button>
+
+              {isJointApplication && (
+                <div className="bg-teal-50 border border-teal-200 rounded-xl p-4">
+                  <div className="flex gap-2">
+                    <svg className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div className="text-xs text-teal-800 space-y-1.5">
+                      <p className="font-semibold">Joint application</p>
+                      <p>Please upload bank statements for both applicants. Make sure the monthly income above reflects your combined take-home pay.</p>
+                      <p className="text-teal-600">Example: You earn £2,000/mo and your partner earns £2,500/mo — enter £4,500 as your monthly income.</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* File upload */}
