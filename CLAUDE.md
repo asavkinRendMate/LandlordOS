@@ -769,6 +769,9 @@ npx tsc --noEmit         # TypeScript check
 - `ScoringProgressScreen.tsx` — animated progress screen with polling
   - Shows SVG logo, step-by-step progress, polling for report status
 - `TenantDetailsForm.tsx` — shared form for tenant name/email/phone editing
+- `PostHogProvider.tsx` — PostHog initialisation, cookie-consent-gated session recording, manual SPA pageview capture
+  - EU data residency (`eu.i.posthog.com`); session recording only after `analytics` cookie consent
+- `PostHogIdentify.tsx` — calls `posthog.identify(userId)` with Supabase UUID only (no PII)
 
 ### Supabase Storage
 - `lib/storage.ts` — general helpers (uploadFile, getSignedUrl, deleteFile), optional `bucket` param (defaults to `'documents'`)
@@ -842,10 +845,21 @@ ADMIN_PASSWORD=            # Optional — for /admin login
 # Live Chat
 NEXT_PUBLIC_CRISP_WEBSITE_ID=  # Optional — chat widget hidden if not set
 
-# Analytics (optional)
+# Analytics (optional — each tool is disabled when its key var is empty/unset)
+# On/off switches: NEXT_PUBLIC_GA_ID, NEXT_PUBLIC_CLARITY_ID, NEXT_PUBLIC_FB_PIXEL_ID
 NEXT_PUBLIC_GA_ID=
 NEXT_PUBLIC_FB_PIXEL_ID=
 NEXT_PUBLIC_CLARITY_ID=
+
+# Error tracking — Sentry (optional — disabled when NEXT_PUBLIC_SENTRY_DSN is empty)
+NEXT_PUBLIC_SENTRY_DSN=    # On/off switch — empty = Sentry disabled entirely
+SENTRY_AUTH_TOKEN=         # Server-only — source map uploads (CI)
+SENTRY_ORG=                # Sentry organisation slug
+SENTRY_PROJECT=            # Sentry project slug
+
+# Product analytics — PostHog (optional — disabled when NEXT_PUBLIC_POSTHOG_KEY is empty, EU data residency)
+NEXT_PUBLIC_POSTHOG_KEY=   # On/off switch — empty = PostHog disabled entirely
+NEXT_PUBLIC_POSTHOG_HOST=  # Default: https://eu.i.posthog.com
 
 # Payments (not yet integrated)
 STRIPE_SECRET_KEY=

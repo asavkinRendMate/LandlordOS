@@ -216,3 +216,12 @@ Landlord Decision → Accept/Reject → Move-in Process
 - **Storage:** All files encrypted at rest (Supabase)
 - **Access:** Signed URLs with 60-minute expiry
 - **Audit:** Full access logging via Supabase
+- **Cookie consent:** `vanilla-cookieconsent` with necessary / analytics / marketing categories
+  - Sentry error tracking runs always (legitimate interest)
+  - PostHog session recording + pageviews only after analytics consent accepted
+  - PostHog uses EU data residency (`eu.i.posthog.com`)
+
+### Monitoring & Analytics
+- **Error tracking:** Sentry (`@sentry/nextjs`) — client + server + edge, 10% trace sampling in production
+- **Product analytics:** PostHog (`posthog-js`) — pageviews, session recording (consent-gated)
+- **User identification:** PostHog `identify()` with Supabase UUID only (no PII) in dashboard layout

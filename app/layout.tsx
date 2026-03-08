@@ -1,7 +1,9 @@
 import type { Metadata } from 'next'
 import { Plus_Jakarta_Sans } from 'next/font/google'
+import { Suspense } from 'react'
 import Analytics from '@/components/shared/Analytics'
 import CookieConsent from '@/components/shared/CookieConsent'
+import PostHogProvider from '@/components/shared/PostHogProvider'
 import './globals.css'
 import 'vanilla-cookieconsent/dist/cookieconsent.css'
 import './cookie-consent-overrides.css'
@@ -25,6 +27,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`${font.className} antialiased`}>
         {children}
         <Analytics />
+        <Suspense fallback={null}>
+          <PostHogProvider />
+        </Suspense>
         <CookieConsent />
       </body>
     </html>

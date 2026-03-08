@@ -11,6 +11,11 @@ const schema = z.object({
   ANTHROPIC_API_KEY: z.string().optional(),
   ADMIN_USERNAME: z.string().optional(),
   ADMIN_PASSWORD: z.string().optional(),
+
+  // Sentry (server-only — NEXT_PUBLIC_SENTRY_DSN read via process.env in config files)
+  SENTRY_AUTH_TOKEN: z.string().optional(),
+  SENTRY_ORG: z.string().optional(),
+  SENTRY_PROJECT: z.string().optional(),
 })
 
 // Throws at startup if any required variable is missing or malformed.
@@ -26,4 +31,7 @@ export const env = schema.parse({
   ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
   ADMIN_USERNAME: process.env.ADMIN_USERNAME,
   ADMIN_PASSWORD: process.env.ADMIN_PASSWORD,
+  SENTRY_AUTH_TOKEN: process.env.SENTRY_AUTH_TOKEN,
+  SENTRY_ORG: process.env.SENTRY_ORG,
+  SENTRY_PROJECT: process.env.SENTRY_PROJECT,
 })

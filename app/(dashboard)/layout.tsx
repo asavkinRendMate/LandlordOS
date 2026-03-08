@@ -3,6 +3,7 @@ import { createAuthClient } from '@/lib/supabase/auth'
 import { prisma } from '@/lib/prisma'
 import { DashboardShell } from '@/components/dashboard/shell'
 import NameModalGate from '@/components/dashboard/NameModalGate'
+import PostHogIdentify from '@/components/shared/PostHogIdentify'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = createAuthClient()
@@ -36,6 +37,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       hasTenantProfile={!!tenantProfile}
       openMaintenanceCount={openMaintenanceCount}
     >
+      <PostHogIdentify userId={user.id} />
       <NameModalGate needsName={needsName}>
         {children}
       </NameModalGate>
