@@ -83,7 +83,7 @@ export default function CookieConsent() {
                 {
                   title: 'Analytics cookies',
                   description:
-                    'Google Analytics and Microsoft Clarity help us ' +
+                    'Google Analytics, Microsoft Clarity and PostHog help us ' +
                     'understand how people use LetSorted so we can improve it. ' +
                     'No personal data is sold.',
                   linkedCategory: 'analytics',
