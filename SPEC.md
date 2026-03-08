@@ -36,7 +36,7 @@
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Magic Link Auth (Supabase) | LIVE | Email-based, no passwords |
-| Property Management | LIVE | Address, type, bedrooms, rooms, status tracking |
+| Property Management | LIVE | Address, type, bedrooms (synced picker), rooms, status tracking |
 | Multi-tenant Dashboard | LIVE | Landlord + tenant context switching |
 | Document Storage | LIVE | Supabase Storage, signed URLs |
 | Admin Panel | LIVE | User/property management |

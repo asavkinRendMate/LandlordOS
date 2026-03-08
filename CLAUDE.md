@@ -756,6 +756,8 @@ npx tsc --noEmit         # TypeScript check
 - Loading states with `Suspense` boundaries, not manual `isLoading`
 - Zod version is **v4** — use `error:` not `errorMap:` for custom messages
 - Form field styles in `lib/form-styles.ts` — `inputClass`, `selectClass` (full-width), `selectClassCompact` (fixed-width for flex rows). All `<select>` elements use `appearance-none` + `.select-chevron` CSS class for consistent custom arrow. Never define inline select/input styles per-page — import from form-styles.
+- Room type dropdowns: options sorted alphabetically via `ROOM_TYPE_LABELS` object order in `lib/room-utils.ts`
+- Property detail RoomsSection: bedroom picker (1–6) is two-way synced with room list — picker highlights based on BEDROOM-type room count; clicking picker adds/removes bedroom rows; manually adding/removing bedroom rooms updates picker highlight
 
 ### Shared Components
 - `DocumentUploadModal.tsx` — reusable drag-and-drop upload modal
