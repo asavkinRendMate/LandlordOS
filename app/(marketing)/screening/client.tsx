@@ -106,8 +106,11 @@ export default function ScreeningPage() {
         if (data.senderName) setSenderName(data.senderName)
         sessionStorage.removeItem('pendingInvite')
         setRestored(true)
-        // Auto-dismiss after 5 seconds
         setTimeout(() => setRestored(false), 5000)
+        // Scroll to the form after a tick so the DOM has updated
+        setTimeout(() => {
+          document.getElementById('invite-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }, 100)
       }
     } catch {}
   }, [])
@@ -315,7 +318,7 @@ export default function ScreeningPage() {
                     <svg className="w-4 h-4 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
-                    <span>Your invite details have been restored. Click <strong>Send invite</strong> to continue.</span>
+                    <span>Your invite details are ready — just hit <strong>Send invite</strong> to continue.</span>
                   </div>
                 )}
 
