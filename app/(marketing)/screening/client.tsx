@@ -198,12 +198,14 @@ export default function ScreeningPage() {
             >
               Home
             </Link>
-            <Link
-              href="/screening/invites"
-              className="text-gray-500 hover:text-gray-700 font-medium px-4 py-2.5 text-sm transition-colors"
-            >
-              My invites
-            </Link>
+            {userEmail ? (
+              <Link
+                href="/screening/invites"
+                className="text-gray-500 hover:text-gray-700 font-medium px-4 py-2.5 text-sm transition-colors"
+              >
+                My invites
+              </Link>
+            ) : null}
             {userEmail ? (
               <>
                 <span className="text-gray-400 text-sm hidden sm:inline">{userEmail}</span>

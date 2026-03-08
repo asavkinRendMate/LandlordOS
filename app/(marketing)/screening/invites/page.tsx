@@ -64,7 +64,7 @@ export default function InvitesPage() {
     const supabase = createClient()
     supabase.auth.getUser().then(({ data }) => {
       if (!data.user) {
-        router.push(`/login?next=${encodeURIComponent('/screening/invites')}`)
+        router.replace(`/login?next=${encodeURIComponent('/screening/invites')}`)
         return
       }
       setUserEmail(data.user.email ?? null)
@@ -73,7 +73,7 @@ export default function InvitesPage() {
     fetch('/api/screening/invites')
       .then((res) => {
         if (res.status === 401) {
-          router.push(`/login?next=${encodeURIComponent('/screening/invites')}`)
+          router.replace(`/login?next=${encodeURIComponent('/screening/invites')}`)
           return null
         }
         return res.json()
