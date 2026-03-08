@@ -1,6 +1,5 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
@@ -1198,8 +1197,6 @@ function TenantMaintenanceSection({
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function TenantDashboardClient({ tenant, property }: Props) {
-  const router = useRouter()
-
   // Identify tenant to Crisp (widget loaded by tenant layout)
   useEffect(() => {
     if (typeof window === 'undefined' || !window.$crisp) return
@@ -1217,7 +1214,7 @@ export default function TenantDashboardClient({ tenant, property }: Props) {
 
   async function signOut() {
     await createClient().auth.signOut()
-    router.push('/login')
+    window.location.href = '/login'
   }
 
   return (

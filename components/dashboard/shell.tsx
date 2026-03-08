@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { useState, useCallback } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
@@ -110,6 +110,7 @@ function UserFooter({ email, onSignOut, onOpenChat }: { email: string; onSignOut
       </div>
       {onOpenChat && (
         <button
+          type="button"
           onClick={onOpenChat}
           className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-sm text-[#9CA3AF] hover:text-[#16a34a] hover:bg-green-50 transition-all duration-150"
         >
@@ -120,6 +121,7 @@ function UserFooter({ email, onSignOut, onOpenChat }: { email: string; onSignOut
         </button>
       )}
       <button
+        type="button"
         onClick={onSignOut}
         className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-sm text-[#9CA3AF] hover:text-[#1A1A1A] hover:bg-gray-50 transition-all duration-150"
       >
@@ -165,14 +167,13 @@ export function DashboardShell({
   hasTenantProfile,
   openMaintenanceCount = 0,
 }: DashboardShellProps) {
-  const router = useRouter()
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   const initials = (user.email ?? 'U')[0].toUpperCase()
 
   async function handleSignOut() {
     await createClient().auth.signOut()
-    router.push('/login')
+    window.location.href = '/login'
   }
 
   const handleOpenChat = useCallback(() => {
