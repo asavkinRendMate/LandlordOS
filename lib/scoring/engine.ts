@@ -450,6 +450,19 @@ Notes: De-duplicate firedRules. Average the averageBalance. Sum monthly income c
     }
   }
   const parsed = JSON.parse(jsonStr) as ClaudeAnalysisResponse
+
+  // Coerce numeric fields — AI sometimes returns strings instead of numbers
+  parsed.monthlyIncome = parseFloat(String(parsed.monthlyIncome ?? '0')) || 0
+  parsed.averageBalance = parseFloat(String(parsed.averageBalance ?? '0')) || 0
+  parsed.rentToIncomeRatio = parseFloat(String(parsed.rentToIncomeRatio ?? '0')) || 0
+  parsed.analysedMonths = parseFloat(String(parsed.analysedMonths ?? '0')) || 0
+  if (parsed.incomeBreakdown) {
+    parsed.incomeBreakdown = parsed.incomeBreakdown.map((p) => ({
+      ...p,
+      monthlyIncome: parseFloat(String(p.monthlyIncome ?? '0')) || 0,
+    }))
+  }
+
   console.log(`[screening:ai] Synthesis result — income=£${parsed.monthlyIncome}, balance=£${parsed.averageBalance}, firedRules=[${parsed.firedRules.join(', ')}]`)
   return parsed
 }
@@ -631,6 +644,18 @@ IMPORTANT: Your response must be valid JSON only. Do not include your scoring wo
   }
 
   const parsed = JSON.parse(jsonStr) as ClaudeAnalysisResponse
+
+  // Coerce numeric fields — AI sometimes returns strings instead of numbers
+  parsed.monthlyIncome = parseFloat(String(parsed.monthlyIncome ?? '0')) || 0
+  parsed.averageBalance = parseFloat(String(parsed.averageBalance ?? '0')) || 0
+  parsed.rentToIncomeRatio = parseFloat(String(parsed.rentToIncomeRatio ?? '0')) || 0
+  parsed.analysedMonths = parseFloat(String(parsed.analysedMonths ?? '0')) || 0
+  if (parsed.incomeBreakdown) {
+    parsed.incomeBreakdown = parsed.incomeBreakdown.map((p) => ({
+      ...p,
+      monthlyIncome: parseFloat(String(p.monthlyIncome ?? '0')) || 0,
+    }))
+  }
 
   // Log parsed response details
   console.log(`[screening:ai] ── PARSED RESPONSE ──────────────────`)
