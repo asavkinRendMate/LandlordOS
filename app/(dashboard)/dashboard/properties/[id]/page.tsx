@@ -1016,18 +1016,19 @@ const MAINT_STATUS_BADGE: Record<string, string> = {
 
 const roomInputClass = `${inputClass} min-w-0`
 
-function RoomsSection({ propertyId, rooms: initialRooms, initialBedrooms }: { propertyId: string; rooms: PropertyRoom[]; initialBedrooms: number | null }) {
+function RoomsSection({ propertyId, rooms: initialRooms }: { propertyId: string; rooms: PropertyRoom[] }) {
   const [rooms, setRooms] = useState<PropertyRoom[]>(initialRooms)
-  const [bedrooms, setBedrooms] = useState<number>(initialBedrooms ?? 1)
   const [editing, setEditing] = useState(false)
   const [editRooms, setEditRooms] = useState<RoomEntry[]>([])
   const [saving, setSaving] = useState(false)
   const [addingRoom, setAddingRoom] = useState(false)
   const [newRoom, setNewRoom] = useState<RoomEntry>({ type: 'OTHER', name: '' })
 
+  // Derive bedroom count from the room list (two-way sync)
+  const bedroomCount = editRooms.filter((r) => r.type === 'BEDROOM').length
+
   function startEdit() {
     setEditRooms(rooms.map((r) => ({ type: r.type, name: r.name })))
-    setBedrooms(initialBedrooms ?? 1)
     setAddingRoom(false)
     setNewRoom({ type: 'OTHER', name: '' })
     setEditing(true)
@@ -1045,6 +1046,37 @@ function RoomsSection({ propertyId, rooms: initialRooms, initialBedrooms }: { pr
     setEditRooms((prev) => [...prev, { type, name }])
   }
 
+  function handleBedroomPick(target: number) {
+    if (target === bedroomCount) return
+
+    setEditRooms((prev) => {
+      if (target > bedroomCount) {
+        // Add bedrooms
+        const toAdd: RoomEntry[] = []
+        for (let i = bedroomCount + 1; i <= target; i++) {
+          toAdd.push({ type: 'BEDROOM', name: `Bedroom ${i}` })
+        }
+        return [...prev, ...toAdd]
+      } else {
+        // Remove bedrooms from the bottom
+        const removing = bedroomCount - target
+        if (removing > 0 && !window.confirm(`Remove ${removing} bedroom${removing > 1 ? 's' : ''} from the list?`)) {
+          return prev
+        }
+        let removed = 0
+        // Walk backwards to remove last bedroom rows first
+        const result = [...prev]
+        for (let i = result.length - 1; i >= 0 && removed < removing; i--) {
+          if (result[i].type === 'BEDROOM') {
+            result.splice(i, 1)
+            removed++
+          }
+        }
+        return result
+      }
+    })
+  }
+
   function confirmNewRoom() {
     if (!newRoom.name.trim()) return
     addEditRoom(newRoom.type, newRoom.name.trim())
@@ -1055,11 +1087,11 @@ function RoomsSection({ propertyId, rooms: initialRooms, initialBedrooms }: { pr
   async function saveRooms() {
     setSaving(true)
     try {
-      // Save bedrooms via PATCH
+      // Save bedrooms via PATCH (use derived count from room list)
       await fetch(`/api/properties/${propertyId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bedrooms }),
+        body: JSON.stringify({ bedrooms: bedroomCount || 1 }),
       })
 
       // Save rooms via POST
@@ -1082,6 +1114,9 @@ function RoomsSection({ propertyId, rooms: initialRooms, initialBedrooms }: { pr
   const usedTypes = new Set(editRooms.map((r) => r.type))
   const availableQuickAdd = QUICK_ADD_ROOMS.filter((r) => !usedTypes.has(r.type))
 
+  // Display bedroom count from saved rooms in read mode
+  const savedBedroomCount = rooms.filter((r) => r.type === 'BEDROOM').length
+
   return (
     <div className="bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4 mb-5">
       <div className="flex items-center justify-between mb-3">
@@ -1095,7 +1130,7 @@ function RoomsSection({ propertyId, rooms: initialRooms, initialBedrooms }: { pr
 
       {editing ? (
         <div className="space-y-4">
-          {/* Bedroom count picker */}
+          {/* Bedroom count picker — synced with room list */}
           <div>
             <p className="text-sm text-[#374151] mb-1.5">Bedrooms</p>
             <div className="flex gap-2">
@@ -1103,9 +1138,9 @@ function RoomsSection({ propertyId, rooms: initialRooms, initialBedrooms }: { pr
                 <button
                   key={n}
                   type="button"
-                  onClick={() => setBedrooms(n)}
+                  onClick={() => handleBedroomPick(n)}
                   className={`w-9 h-9 rounded-lg text-sm font-medium transition-all ${
-                    bedrooms === n
+                    bedroomCount === n
                       ? 'bg-[#16a34a] text-white'
                       : 'bg-gray-100 text-[#374151] hover:bg-gray-200'
                   }`}
@@ -1210,8 +1245,8 @@ function RoomsSection({ propertyId, rooms: initialRooms, initialBedrooms }: { pr
         </div>
       ) : rooms.length > 0 ? (
         <div>
-          {bedrooms && (
-            <p className="text-xs text-[#9CA3AF] mb-2">{bedrooms} bedroom{bedrooms !== 1 ? 's' : ''}</p>
+          {savedBedroomCount > 0 && (
+            <p className="text-xs text-[#9CA3AF] mb-2">{savedBedroomCount} bedroom{savedBedroomCount !== 1 ? 's' : ''}</p>
           )}
           <div className="flex flex-wrap gap-2">
             {rooms.map((room) => (
@@ -2308,7 +2343,7 @@ export default function PropertyPage() {
       <ComplianceSection propertyId={property.id} />
 
       {/* ── Rooms ──────────────────────────────────────────────────────────── */}
-      <RoomsSection propertyId={property.id} rooms={property.rooms} initialBedrooms={property.bedrooms} />
+      <RoomsSection propertyId={property.id} rooms={property.rooms} />
 
       {/* ── Check-in Report ────────────────────────────────────────────────── */}
       <CheckInSection propertyId={property.id} />

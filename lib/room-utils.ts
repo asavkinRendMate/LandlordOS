@@ -4,19 +4,19 @@ export interface RoomEntry {
 }
 
 export const ROOM_TYPE_LABELS: Record<string, string> = {
-  BEDROOM: 'Bedroom',
-  LIVING_ROOM: 'Living Room',
-  KITCHEN: 'Kitchen',
   BATHROOM: 'Bathroom',
-  WC: 'WC',
-  HALLWAY: 'Hallway',
-  DINING_ROOM: 'Dining Room',
-  UTILITY_ROOM: 'Utility Room',
-  GARDEN: 'Garden',
-  GARAGE: 'Garage',
-  LOFT: 'Loft',
+  BEDROOM: 'Bedroom',
   CONSERVATORY: 'Conservatory',
+  DINING_ROOM: 'Dining Room',
+  GARAGE: 'Garage',
+  GARDEN: 'Garden',
+  HALLWAY: 'Hallway',
+  KITCHEN: 'Kitchen',
+  LIVING_ROOM: 'Living Room',
+  LOFT: 'Loft',
   OTHER: 'Other',
+  UTILITY_ROOM: 'Utility Room',
+  WC: 'WC',
 }
 
 export const QUICK_ADD_ROOMS: RoomEntry[] = [
