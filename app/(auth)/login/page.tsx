@@ -66,11 +66,12 @@ export default function LoginPage() {
       console.error('[login] verifyOtp (type=magiclink) error:', result.error.code, result.error.message, result.error.status)
       setError(`Code verification failed: ${result.error.message}`)
       setCode(['', '', '', '', '', '', '', ''])
+      setVerifying(false)
       inputRefs.current[0]?.focus()
     } else {
+      // Keep verifying=true so the spinner stays visible until navigation completes
       window.location.href = '/dashboard'
     }
-    setVerifying(false)
   }
 
   function handleCodeChange(index: number, value: string) {
