@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
-import { createAuthClient } from '@/lib/supabase/auth'
+import { sendOtpDirect } from '@/lib/supabase/otp'
 
 // ── GET — fetch tenant data by token ─────────────────────────────────────────
 
@@ -69,14 +69,8 @@ export async function POST(req: Request, { params }: { params: { token: string }
       }),
     ])
 
-    // Send sign-in code via Supabase Auth
-    const supabase = createAuthClient()
-    const { error } = await supabase.auth.signInWithOtp({
-      email: tenant.email,
-      options: {
-        shouldCreateUser: true,
-      },
-    })
+    // Send sign-in code via Supabase Auth (direct API, no PKCE code_challenge)
+    const { error } = await sendOtpDirect(tenant.email)
     if (error) {
       console.error('[tenant/join POST] OTP send error', error)
       return NextResponse.json({ error: 'Failed to send sign-in code' }, { status: 500 })

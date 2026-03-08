@@ -1,13 +1,12 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
+import { sendOtpDirect } from '@/lib/supabase/otp'
 import Footer from '@/components/shared/Footer'
 
 export default function LoginPage() {
-  const router = useRouter()
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
@@ -30,17 +29,11 @@ export default function LoginPage() {
     setLoading(true)
     setError(null)
 
-    const supabase = createClient()
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        shouldCreateUser: true,
-      },
-    })
+    const { error } = await sendOtpDirect(email)
 
     if (error) {
-      console.error('[login] signInWithOtp error:', error.code, error.message, error.status)
-      setError(error.message)
+      console.error('[login] sendOtp error:', error)
+      setError(error)
     } else {
       setSent(true)
     }
@@ -64,7 +57,7 @@ export default function LoginPage() {
       setCode(['', '', '', '', '', ''])
       inputRefs.current[0]?.focus()
     } else {
-      router.push('/dashboard')
+      window.location.href = '/dashboard'
     }
     setVerifying(false)
   }
@@ -119,16 +112,10 @@ export default function LoginPage() {
     setLoading(true)
     setError(null)
 
-    const supabase = createClient()
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        shouldCreateUser: true,
-      },
-    })
+    const { error } = await sendOtpDirect(email)
 
     if (error) {
-      setError(error.message)
+      setError(error)
     } else {
       setError(null)
       setCode(['', '', '', '', '', ''])
