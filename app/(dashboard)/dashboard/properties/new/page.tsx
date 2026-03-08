@@ -6,14 +6,8 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import PaymentSetupModal from '@/components/shared/PaymentSetupModal'
-
-// ── Shared field styles ───────────────────────────────────────────────────────
-
-const inputClass =
-  'w-full bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-[#1A1A1A] placeholder-gray-400 text-sm focus:outline-none focus:border-[#16a34a] focus:ring-1 focus:ring-[#16a34a]/20 transition-colors'
-
-const selectClass =
-  'w-full bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-[#1A1A1A] text-sm focus:outline-none focus:border-[#16a34a] focus:ring-1 focus:ring-[#16a34a]/20 transition-colors appearance-none'
+import { suggestRooms, type RoomEntry, ROOM_TYPE_LABELS, QUICK_ADD_ROOMS } from '@/lib/room-utils'
+import { inputClass, selectClass, selectClassCompact } from '@/lib/form-styles'
 
 function FieldError({ message }: { message?: string }) {
   if (!message) return null
@@ -66,6 +60,7 @@ const propertySchema = z.object({
   city: z.string().min(1, 'Required'),
   postcode: z.string().min(5, 'Enter a valid postcode'),
   type: z.enum(['FLAT', 'HOUSE', 'HMO', 'OTHER']),
+  bedrooms: z.number().int().min(1).max(6),
 })
 
 const tenantSchema = z.object({
@@ -97,9 +92,10 @@ function PropertyForm({ onNext }: { onNext: (v: PropertyValues) => void }) {
   const [showSuggestions, setShowSuggestions] = useState(false)
 
   const { register, handleSubmit, setValue, watch, formState: { errors } } =
-    useForm<PropertyValues>({ resolver: zodResolver(propertySchema), defaultValues: { type: 'FLAT' } })
+    useForm<PropertyValues>({ resolver: zodResolver(propertySchema), defaultValues: { type: 'FLAT', bedrooms: 1 } })
 
   const postcode = watch('postcode')
+  const bedrooms = watch('bedrooms')
 
   async function lookupAddress() {
     if (!postcode || postcode.length < 5) return
@@ -178,6 +174,27 @@ function PropertyForm({ onNext }: { onNext: (v: PropertyValues) => void }) {
       </div>
 
       <div>
+        <Label>Bedrooms</Label>
+        <div className="flex gap-2">
+          {[1, 2, 3, 4, 5, 6].map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => setValue('bedrooms', n)}
+              className={`w-10 h-10 rounded-lg text-sm font-medium transition-all ${
+                bedrooms === n
+                  ? 'bg-[#16a34a] text-white'
+                  : 'bg-gray-100 text-[#374151] hover:bg-gray-200'
+              }`}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
+        <FieldError message={errors.bedrooms?.message} />
+      </div>
+
+      <div>
         <Label htmlFor="name">
           Nickname <span className="text-[#9CA3AF]">(optional)</span>
         </Label>
@@ -193,7 +210,109 @@ function PropertyForm({ onNext }: { onNext: (v: PropertyValues) => void }) {
   )
 }
 
-// ── Step 2 — Occupancy ────────────────────────────────────────────────────────
+// ── Step 2 — Rooms ──────────────────────────────────────────────────────────
+
+function RoomsStep({
+  propertyType,
+  bedrooms,
+  onNext,
+  onBack,
+}: {
+  propertyType: string
+  bedrooms: number
+  onNext: (rooms: RoomEntry[]) => void
+  onBack: () => void
+}) {
+  const [rooms, setRooms] = useState<RoomEntry[]>(() =>
+    suggestRooms(propertyType, bedrooms),
+  )
+
+  function updateRoom(index: number, field: keyof RoomEntry, value: string) {
+    setRooms((prev) => prev.map((r, i) => (i === index ? { ...r, [field]: value } : r)))
+  }
+
+  function removeRoom(index: number) {
+    setRooms((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  function addRoom(type: string, name: string) {
+    setRooms((prev) => [...prev, { type, name }])
+  }
+
+  const usedTypes = new Set(rooms.map((r) => r.type))
+  const availableQuickAdd = QUICK_ADD_ROOMS.filter((r) => !usedTypes.has(r.type))
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        {rooms.map((room, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <select
+              value={room.type}
+              onChange={(e) => updateRoom(i, 'type', e.target.value)}
+              className={selectClassCompact}
+            >
+              {Object.entries(ROOM_TYPE_LABELS).map(([val, label]) => (
+                <option key={val} value={val}>{label}</option>
+              ))}
+            </select>
+            <input
+              value={room.name}
+              onChange={(e) => updateRoom(i, 'name', e.target.value)}
+              className={`${inputClass} flex-1 min-w-0`}
+              placeholder="Room name"
+            />
+            {rooms.length > 1 && (
+              <button
+                type="button"
+                onClick={() => removeRoom(i)}
+                className="shrink-0 w-8 h-8 rounded-lg text-[#9CA3AF] hover:text-red-500 hover:bg-red-50 flex items-center justify-center transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {availableQuickAdd.length > 0 && (
+        <div>
+          <p className="text-xs text-[#9CA3AF] mb-2">Quick add:</p>
+          <div className="flex flex-wrap gap-2">
+            {availableQuickAdd.map((r) => (
+              <button
+                key={r.type}
+                type="button"
+                onClick={() => addRoom(r.type, r.name)}
+                className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-[#374151] text-xs rounded-lg transition-colors"
+              >
+                + {r.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="pt-2 flex flex-col gap-3">
+        <button
+          type="button"
+          onClick={() => onNext(rooms)}
+          disabled={rooms.length === 0 || rooms.some((r) => !r.name.trim())}
+          className="w-full bg-[#16a34a] hover:bg-[#15803d] disabled:opacity-50 text-white font-semibold rounded-xl py-3 text-sm transition-colors"
+        >
+          Continue
+        </button>
+        <button type="button" onClick={onBack} className="text-sm text-[#9CA3AF] hover:text-[#6B7280] transition-colors text-center">
+          ← Back
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── Step 3 — Occupancy ────────────────────────────────────────────────────────
 
 function OccupancyStep({ onHasTenant, onVacant }: { onHasTenant: () => void; onVacant: () => void }) {
   return (
@@ -227,7 +346,7 @@ function OccupancyStep({ onHasTenant, onVacant }: { onHasTenant: () => void; onV
   )
 }
 
-// ── Step 3 — Tenant details ───────────────────────────────────────────────────
+// ── Step 4 — Tenant details ───────────────────────────────────────────────────
 
 function TenantForm({ onNext, onBack, submitting }: { onNext: (v: TenantValues) => void; onBack: () => void; submitting: boolean }) {
   const { register, handleSubmit, formState: { errors } } =
@@ -291,8 +410,9 @@ function TenantForm({ onNext, onBack, submitting }: { onNext: (v: TenantValues) 
 
 const stepHeadings: Record<number, string> = {
   1: 'Add a property',
-  2: 'Is it currently let?',
-  3: 'Tenant details',
+  2: 'Set up rooms',
+  3: 'Is it currently let?',
+  4: 'Tenant details',
 }
 
 // ── Main wizard ───────────────────────────────────────────────────────────────
@@ -301,11 +421,12 @@ export default function NewPropertyPage() {
   const router = useRouter()
   const [step, setStep] = useState(1)
   const [propertyData, setPropertyData] = useState<PropertyValues | null>(null)
+  const [roomsData, setRoomsData] = useState<RoomEntry[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showPaymentModal, setShowPaymentModal] = useState(false)
 
-  async function createProperty(data: PropertyValues): Promise<{ id: string; requiresCard?: boolean } | null> {
+  async function createPropertyWithRooms(data: PropertyValues, rooms: RoomEntry[]): Promise<{ id: string; requiresCard?: boolean } | null> {
     const res = await fetch('/api/properties', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -313,7 +434,23 @@ export default function NewPropertyPage() {
     })
     const json = await res.json()
     if (!res.ok) { setError(json.error ?? 'Failed to create property'); return null }
-    return { id: json.data.id as string, requiresCard: json.requiresCard }
+
+    const propertyId = json.data.id as string
+
+    if (rooms.length > 0) {
+      const roomsRes = await fetch(`/api/properties/${propertyId}/rooms`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rooms: rooms.map((r, i) => ({ type: r.type, name: r.name, order: i })),
+        }),
+      })
+      if (!roomsRes.ok) {
+        console.error('Failed to save rooms')
+      }
+    }
+
+    return { id: propertyId, requiresCard: json.requiresCard }
   }
 
   async function handleSubscriptionAfterCard() {
@@ -329,10 +466,15 @@ export default function NewPropertyPage() {
     setStep(2)
   }
 
+  function handleRoomsNext(rooms: RoomEntry[]) {
+    setRoomsData(rooms)
+    setStep(3)
+  }
+
   async function handleVacant() {
     if (!propertyData) return
     setSubmitting(true); setError(null)
-    const result = await createProperty(propertyData)
+    const result = await createPropertyWithRooms(propertyData, roomsData)
     setSubmitting(false)
     if (!result) return
     if (result.requiresCard) {
@@ -342,11 +484,11 @@ export default function NewPropertyPage() {
     }
   }
 
-  async function handleStep3(tenantValues: TenantValues) {
+  async function handleStep4(tenantValues: TenantValues) {
     if (!propertyData) return
     setSubmitting(true); setError(null)
 
-    const result = await createProperty(propertyData)
+    const result = await createPropertyWithRooms(propertyData, roomsData)
     if (!result) { setSubmitting(false); return }
 
     const monthlyRent = Math.round(parseFloat(tenantValues.monthlyRentStr) * 100)
@@ -377,7 +519,7 @@ export default function NewPropertyPage() {
     }
   }
 
-  const totalSteps = 3
+  const totalSteps = 4
   const heading = stepHeadings[step]
 
   return (
@@ -409,16 +551,23 @@ export default function NewPropertyPage() {
             </div>
           )}
 
-          {submitting && step !== 3 ? (
+          {submitting && step !== 4 ? (
             <div className="flex items-center justify-center py-16">
               <div className="w-6 h-6 border-2 border-[#16a34a] border-t-transparent rounded-full animate-spin" />
             </div>
           ) : step === 1 ? (
             <PropertyForm onNext={handleStep1} />
           ) : step === 2 ? (
-            <OccupancyStep onHasTenant={() => setStep(3)} onVacant={handleVacant} />
+            <RoomsStep
+              propertyType={propertyData?.type ?? 'FLAT'}
+              bedrooms={propertyData?.bedrooms ?? 1}
+              onNext={handleRoomsNext}
+              onBack={() => setStep(1)}
+            />
+          ) : step === 3 ? (
+            <OccupancyStep onHasTenant={() => setStep(4)} onVacant={handleVacant} />
           ) : (
-            <TenantForm onNext={handleStep3} onBack={() => setStep(2)} submitting={submitting} />
+            <TenantForm onNext={handleStep4} onBack={() => setStep(3)} submitting={submitting} />
           )}
 
         </div>

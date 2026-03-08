@@ -7,14 +7,7 @@ import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import Image from 'next/image'
 import ScoringProgressScreen from '@/components/shared/ScoringProgressScreen'
-
-// ── Styles ────────────────────────────────────────────────────────────────────
-
-const inputClass =
-  'w-full bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500/30 transition-colors'
-
-const selectClass =
-  'w-full bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-gray-900 text-sm focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500/30 transition-colors appearance-none'
+import { inputClass, selectClass } from '@/lib/form-styles'
 
 function Label({ children, htmlFor }: { children: React.ReactNode; htmlFor?: string }) {
   return (

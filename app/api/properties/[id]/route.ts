@@ -13,6 +13,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       where: { id: params.id, userId: user.id },
       include: {
         complianceDocs: true,
+        rooms: { orderBy: { order: 'asc' } },
         tenancies: {
           where: { status: { not: 'ENDED' } },
           orderBy: { createdAt: 'desc' },
@@ -61,6 +62,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 
 const patchSchema = z.object({
   requireFinancialVerification: z.boolean().optional(),
+  bedrooms: z.number().int().min(1).max(10).optional(),
 })
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {

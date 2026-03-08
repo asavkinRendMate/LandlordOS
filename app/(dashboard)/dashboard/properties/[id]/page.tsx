@@ -5,6 +5,8 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import DocumentUploadModal from '@/components/shared/DocumentUploadModal'
 import TenantDetailsForm, { type TenantFormData } from '@/components/shared/TenantDetailsForm'
+import { type RoomEntry, ROOM_TYPE_LABELS, QUICK_ADD_ROOMS } from '@/lib/room-utils'
+import { inputClass, selectClassCompact } from '@/lib/form-styles'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -57,6 +59,14 @@ interface FinancialReport {
   failureReason?: string | null
 }
 
+interface PropertyRoom {
+  id: string
+  type: string
+  name: string
+  floor: number | null
+  order: number
+}
+
 interface Property {
   id: string
   name: string | null
@@ -66,10 +76,12 @@ interface Property {
   postcode: string
   status: string
   type: string
+  bedrooms: number | null
   requireFinancialVerification: boolean
   tenants: Tenant[]
   complianceDocs: ComplianceDoc[]
   tenancies: Tenancy[]
+  rooms: PropertyRoom[]
 }
 
 interface Tenant {
@@ -1000,6 +1012,311 @@ const MAINT_STATUS_BADGE: Record<string, string> = {
   RESOLVED:    'bg-green-100 text-green-700',
 }
 
+// ── Rooms Section ─────────────────────────────────────────────────────────────
+
+const roomInputClass = `${inputClass} min-w-0`
+
+function RoomsSection({ propertyId, rooms: initialRooms, initialBedrooms }: { propertyId: string; rooms: PropertyRoom[]; initialBedrooms: number | null }) {
+  const [rooms, setRooms] = useState<PropertyRoom[]>(initialRooms)
+  const [bedrooms, setBedrooms] = useState<number>(initialBedrooms ?? 1)
+  const [editing, setEditing] = useState(false)
+  const [editRooms, setEditRooms] = useState<RoomEntry[]>([])
+  const [saving, setSaving] = useState(false)
+  const [addingRoom, setAddingRoom] = useState(false)
+  const [newRoom, setNewRoom] = useState<RoomEntry>({ type: 'OTHER', name: '' })
+
+  function startEdit() {
+    setEditRooms(rooms.map((r) => ({ type: r.type, name: r.name })))
+    setBedrooms(initialBedrooms ?? 1)
+    setAddingRoom(false)
+    setNewRoom({ type: 'OTHER', name: '' })
+    setEditing(true)
+  }
+
+  function updateEditRoom(index: number, field: keyof RoomEntry, value: string) {
+    setEditRooms((prev) => prev.map((r, i) => (i === index ? { ...r, [field]: value } : r)))
+  }
+
+  function removeEditRoom(index: number) {
+    setEditRooms((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  function addEditRoom(type: string, name: string) {
+    setEditRooms((prev) => [...prev, { type, name }])
+  }
+
+  function confirmNewRoom() {
+    if (!newRoom.name.trim()) return
+    addEditRoom(newRoom.type, newRoom.name.trim())
+    setNewRoom({ type: 'OTHER', name: '' })
+    setAddingRoom(false)
+  }
+
+  async function saveRooms() {
+    setSaving(true)
+    try {
+      // Save bedrooms via PATCH
+      await fetch(`/api/properties/${propertyId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bedrooms }),
+      })
+
+      // Save rooms via POST
+      const res = await fetch(`/api/properties/${propertyId}/rooms`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rooms: editRooms.map((r, i) => ({ type: r.type, name: r.name, order: i })),
+        }),
+      })
+      if (res.ok) {
+        const json = await res.json()
+        setRooms(json.data)
+        setEditing(false)
+      }
+    } catch { /* silent */ }
+    setSaving(false)
+  }
+
+  const usedTypes = new Set(editRooms.map((r) => r.type))
+  const availableQuickAdd = QUICK_ADD_ROOMS.filter((r) => !usedTypes.has(r.type))
+
+  return (
+    <div className="bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4 mb-5">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium">Rooms</p>
+        {!editing && (
+          <button onClick={startEdit} className="text-xs text-[#16a34a] hover:text-[#15803d] font-medium transition-colors">
+            Edit rooms
+          </button>
+        )}
+      </div>
+
+      {editing ? (
+        <div className="space-y-4">
+          {/* Bedroom count picker */}
+          <div>
+            <p className="text-sm text-[#374151] mb-1.5">Bedrooms</p>
+            <div className="flex gap-2">
+              {[1, 2, 3, 4, 5, 6].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setBedrooms(n)}
+                  className={`w-9 h-9 rounded-lg text-sm font-medium transition-all ${
+                    bedrooms === n
+                      ? 'bg-[#16a34a] text-white'
+                      : 'bg-gray-100 text-[#374151] hover:bg-gray-200'
+                  }`}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Room rows */}
+          <div className="space-y-2">
+            {editRooms.map((room, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <select
+                  value={room.type}
+                  onChange={(e) => updateEditRoom(i, 'type', e.target.value)}
+                  className={selectClassCompact}
+                >
+                  {Object.entries(ROOM_TYPE_LABELS).map(([val, label]) => (
+                    <option key={val} value={val}>{label}</option>
+                  ))}
+                </select>
+                <input
+                  value={room.name}
+                  onChange={(e) => updateEditRoom(i, 'name', e.target.value)}
+                  className={`${roomInputClass} flex-1`}
+                  placeholder="Room name"
+                />
+                {editRooms.length > 1 && (
+                  <button type="button" onClick={() => removeEditRoom(i)}
+                    className="shrink-0 w-7 h-7 rounded text-[#9CA3AF] hover:text-red-500 hover:bg-red-50 flex items-center justify-center transition-colors">
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Inline add-room form */}
+          {addingRoom && (
+            <div className="flex items-center gap-2">
+              <select
+                value={newRoom.type}
+                onChange={(e) => setNewRoom((prev) => ({ ...prev, type: e.target.value }))}
+                className={selectClassCompact}
+              >
+                {Object.entries(ROOM_TYPE_LABELS).map(([val, label]) => (
+                  <option key={val} value={val}>{label}</option>
+                ))}
+              </select>
+              <input
+                value={newRoom.name}
+                onChange={(e) => setNewRoom((prev) => ({ ...prev, name: e.target.value }))}
+                onKeyDown={(e) => e.key === 'Enter' && confirmNewRoom()}
+                className={`${roomInputClass} flex-1`}
+                placeholder="Room name"
+                autoFocus
+              />
+              <button type="button" onClick={confirmNewRoom} disabled={!newRoom.name.trim()}
+                className="shrink-0 w-7 h-7 rounded text-[#16a34a] hover:bg-green-50 disabled:opacity-30 flex items-center justify-center transition-colors">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </button>
+              <button type="button" onClick={() => { setAddingRoom(false); setNewRoom({ type: 'OTHER', name: '' }) }}
+                className="shrink-0 w-7 h-7 rounded text-[#9CA3AF] hover:text-red-500 hover:bg-red-50 flex items-center justify-center transition-colors">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          )}
+
+          {/* Quick add chips + Add Room button */}
+          <div className="flex flex-wrap gap-1.5">
+            {availableQuickAdd.map((r) => (
+              <button key={r.type} type="button" onClick={() => addEditRoom(r.type, r.name)}
+                className="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-[#374151] text-xs rounded-md transition-colors">
+                + {r.name}
+              </button>
+            ))}
+            {!addingRoom && (
+              <button type="button" onClick={() => setAddingRoom(true)}
+                className="px-2.5 py-1 bg-[#16a34a]/10 hover:bg-[#16a34a]/20 text-[#16a34a] text-xs font-medium rounded-md transition-colors">
+                + Add Room
+              </button>
+            )}
+          </div>
+
+          <div className="flex gap-2">
+            <button onClick={saveRooms} disabled={saving || editRooms.length === 0 || editRooms.some((r) => !r.name.trim())}
+              className="px-4 py-2 bg-[#16a34a] hover:bg-[#15803d] disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors">
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+            <button onClick={() => setEditing(false)} className="px-4 py-2 text-sm text-[#9CA3AF] hover:text-[#6B7280] transition-colors">
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : rooms.length > 0 ? (
+        <div>
+          {bedrooms && (
+            <p className="text-xs text-[#9CA3AF] mb-2">{bedrooms} bedroom{bedrooms !== 1 ? 's' : ''}</p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            {rooms.map((room) => (
+              <div key={room.id} className="flex items-center gap-1.5 bg-gray-50 border border-gray-100 rounded-lg px-3 py-1.5">
+                <span className="text-sm text-[#1A1A1A]">{room.name}</span>
+                <span className="text-xs text-[#9CA3AF]">{ROOM_TYPE_LABELS[room.type] ?? room.type}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <p className="text-sm text-[#9CA3AF]">No rooms configured yet.</p>
+      )}
+    </div>
+  )
+}
+
+// ── Check-in Section ──────────────────────────────────────────────────────────
+
+function CheckInSection({ propertyId }: { propertyId: string }) {
+  const [report, setReport] = useState<{ id: string; status: string; pdfUrl: string | null } | null>(null)
+  const [loading, setLoading] = useState(true)
+  const router = useRouter()
+
+  useEffect(() => {
+    fetch(`/api/check-in?propertyId=${propertyId}`)
+      .then((r) => r.json())
+      .then((json) => {
+        if (json.data) setReport(json.data)
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [propertyId])
+
+  async function createReport() {
+    const res = await fetch('/api/check-in', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ propertyId }),
+    })
+    if (res.ok) {
+      const json = await res.json()
+      router.push(`/dashboard/properties/${propertyId}/check-in?reportId=${json.data.id}`)
+    }
+  }
+
+  if (loading) return null
+
+  return (
+    <div className="bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4 mb-5">
+      <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium mb-3">Check-in Report</p>
+
+      {report?.status === 'AGREED' ? (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-green-400" />
+            <span className="text-sm text-[#1A1A1A] font-medium">Report agreed</span>
+          </div>
+          <div className="flex gap-2">
+            {report.pdfUrl && (
+              <button
+                onClick={() => window.open(`/api/check-in/${report.id}/pdf`, '_blank')}
+                className="text-xs text-[#16a34a] hover:text-[#15803d] font-medium transition-colors"
+              >
+                Download PDF
+              </button>
+            )}
+            <button
+              onClick={() => router.push(`/dashboard/properties/${propertyId}/check-in?reportId=${report.id}`)}
+              className="text-xs text-[#16a34a] hover:text-[#15803d] font-medium transition-colors"
+            >
+              View report
+            </button>
+          </div>
+        </div>
+      ) : report ? (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${report.status === 'DRAFT' ? 'bg-gray-400' : 'bg-orange-400'}`} />
+            <span className="text-sm text-[#6B7280]">
+              {report.status === 'DRAFT' ? 'Draft in progress' : report.status === 'PENDING' ? 'Sent to tenant' : 'Under review'}
+            </span>
+          </div>
+          <button
+            onClick={() => router.push(`/dashboard/properties/${propertyId}/check-in?reportId=${report.id}`)}
+            className="text-xs text-[#16a34a] hover:text-[#15803d] font-medium transition-colors"
+          >
+            Continue
+          </button>
+        </div>
+      ) : (
+        <button onClick={createReport}
+          className="inline-flex items-center gap-1.5 text-sm text-[#16a34a] hover:text-[#15803d] font-medium transition-colors">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          Create check-in report
+        </button>
+      )}
+    </div>
+  )
+}
+
+// ── Maintenance Section ───────────────────────────────────────────────────────
+
 const MAINT_STATUS_LABEL: Record<string, string> = {
   OPEN: 'Open', IN_PROGRESS: 'In progress', RESOLVED: 'Resolved',
 }
@@ -1635,6 +1952,8 @@ function ApplicationsSection({
   const [resendingId, setResendingId] = useState<string | null>(null)
   const [selectInvite, setSelectInvite] = useState<SentInvite | null>(null)
   const [selecting, setSelecting] = useState(false)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const address = [property.line1, property.city, property.postcode].filter(Boolean).join(', ')
   const validEmails = emails.filter((e) => EMAIL_RE.test(e))
@@ -1708,6 +2027,20 @@ function ApplicationsSection({
     setResendingId(null)
   }
 
+  async function handleDeleteInvite(id: string) {
+    setDeletingId(id)
+    const prev = sentInvites
+    setSentInvites((cur) => cur.filter((inv) => inv.id !== id))
+    setConfirmDeleteId(null)
+    try {
+      const res = await fetch(`/api/screening/invites/${id}`, { method: 'DELETE' })
+      if (!res.ok) setSentInvites(prev)
+    } catch {
+      setSentInvites(prev)
+    }
+    setDeletingId(null)
+  }
+
   // Can select tenant: only if no active/invited tenant exists
   const hasActiveTenant = property.tenants.some((t) => t.status === 'TENANT' || t.status === 'INVITED')
   const canSelectTenant = !hasActiveTenant && (property.status === 'VACANT' || property.status === 'APPLICATION_OPEN')
@@ -1778,38 +2111,57 @@ function ApplicationsSection({
           <div className="space-y-0">
             {sentInvites.map((inv) => {
               const badge = INVITE_STATUS_BADGE[inv.status] ?? INVITE_STATUS_BADGE.PENDING
+              const isConfirming = confirmDeleteId === inv.id
               return (
-                <div key={inv.id} className="flex items-center justify-between py-2.5 border-b border-gray-100 last:border-0">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm text-[#1A1A1A]">{inv.candidateEmail}</span>
-                      {inv.requiresFinancialCheck && (
-                        <span className="text-[10px] text-gray-400 bg-gray-50 border border-gray-100 rounded px-1.5 py-0.5">
-                          Financial check
-                        </span>
-                      )}
+                <div key={inv.id} className={`py-2.5 border-b border-gray-100 last:border-0 transition-opacity duration-200 ${deletingId === inv.id ? 'opacity-50' : ''}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm text-[#1A1A1A]">{inv.candidateEmail}</span>
+                        {inv.requiresFinancialCheck && (
+                          <span className="text-[10px] text-gray-400 bg-gray-50 border border-gray-100 rounded px-1.5 py-0.5">
+                            Financial check
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-[#9CA3AF] mt-0.5">
+                        Invited {formatDate(inv.createdAt)} · <span className={`font-medium ${badge.cls.includes('text-') ? '' : 'text-gray-500'}`}>{badge.label}</span>
+                      </p>
                     </div>
-                    <p className="text-xs text-[#9CA3AF] mt-0.5">
-                      Invited {formatDate(inv.createdAt)} · <span className={`font-medium ${badge.cls.includes('text-') ? '' : 'text-gray-500'}`}>{badge.label}</span>
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {canSelectTenant && (inv.status === 'COMPLETED' || inv.status === 'PAID') && (
+                    <div className="flex items-center gap-2 shrink-0">
+                      {canSelectTenant && (inv.status === 'COMPLETED' || inv.status === 'PAID') && (
+                        <button
+                          onClick={() => setSelectInvite(inv)}
+                          className="text-xs text-[#16a34a] hover:text-[#15803d] font-medium transition-colors"
+                        >
+                          Select as tenant
+                        </button>
+                      )}
                       <button
-                        onClick={() => setSelectInvite(inv)}
-                        className="text-xs text-[#16a34a] hover:text-[#15803d] font-medium transition-colors"
+                        onClick={() => handleResend(inv.candidateEmail, inv.id)}
+                        disabled={resendingId === inv.id}
+                        className="shrink-0 text-xs text-gray-400 hover:text-[#16a34a] transition-colors disabled:opacity-50"
                       >
-                        Select as tenant
+                        {resendingId === inv.id ? 'Sending…' : 'Resend'}
                       </button>
-                    )}
-                    <button
-                      onClick={() => handleResend(inv.candidateEmail, inv.id)}
-                      disabled={resendingId === inv.id}
-                      className="shrink-0 text-xs text-gray-400 hover:text-[#16a34a] transition-colors disabled:opacity-50"
-                    >
-                      {resendingId === inv.id ? 'Sending…' : 'Resend'}
-                    </button>
+                      <button
+                        onClick={() => setConfirmDeleteId(isConfirming ? null : inv.id)}
+                        className="p-1 text-gray-300 hover:text-red-500 transition-colors rounded"
+                        title="Delete screening"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /><line x1="10" x2="10" y1="11" y2="17" /><line x1="14" x2="14" y1="11" y2="17" /></svg>
+                      </button>
+                    </div>
                   </div>
+                  {isConfirming && (
+                    <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between">
+                      <p className="text-xs text-gray-500">Delete this screening? This cannot be undone.</p>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => handleDeleteInvite(inv.id)} className="text-xs font-medium text-red-600 hover:text-red-700 transition-colors">Delete</button>
+                        <button onClick={() => setConfirmDeleteId(null)} className="text-xs font-medium text-gray-400 hover:text-gray-600 transition-colors">Cancel</button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )
             })}
@@ -1954,6 +2306,12 @@ export default function PropertyPage() {
 
       {/* ── Compliance & Documents ────────────────────────────────────────── */}
       <ComplianceSection propertyId={property.id} />
+
+      {/* ── Rooms ──────────────────────────────────────────────────────────── */}
+      <RoomsSection propertyId={property.id} rooms={property.rooms} initialBedrooms={property.bedrooms} />
+
+      {/* ── Check-in Report ────────────────────────────────────────────────── */}
+      <CheckInSection propertyId={property.id} />
 
       {/* ── Tenant section ──────────────────────────────────────────────────── */}
       {(() => {

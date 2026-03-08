@@ -80,6 +80,7 @@ model Property {
   city             String
   postcode         String
   type             PropertyType   @default(FLAT)
+  bedrooms         Int?
   status           PropertyStatus @default(VACANT)
   applicationToken String?        @unique @map("application_token")
   requireFinancialVerification Boolean @default(false) @map("require_financial_verification")
@@ -92,7 +93,10 @@ model Property {
   documents           PropertyDocument[]
   maintenanceRequests MaintenanceRequest[]
   financialReports    FinancialReport[]
+  rooms               PropertyRoom[]
+  checkInReports      CheckInReport[]
 
+  @@index([userId])
   @@map("properties")
 }
 
@@ -163,6 +167,9 @@ model Tenancy {
   updatedAt          DateTime      @updatedAt @map("updated_at")
   payments           RentPayment[]
 
+  @@index([propertyId])
+  @@index([tenantId])
+  @@index([propertyId, status])
   @@map("tenancies")
 }
 
@@ -189,6 +196,9 @@ model RentPayment {
   createdAt      DateTime      @default(now()) @map("created_at")
   updatedAt      DateTime      @updatedAt @map("updated_at")
 
+  @@index([tenancyId])
+  @@index([tenancyId, dueDate])
+  @@index([status, dueDate])
   @@map("rent_payments")
 }
 
@@ -222,7 +232,11 @@ model Tenant {
   acknowledgments     DocumentAcknowledgment[]
   maintenanceRequests MaintenanceRequest[]
   financialReports    FinancialReport[]
+  checkInReports      CheckInReport[]
 
+  @@index([propertyId])
+  @@index([userId])
+  @@index([email, status])
   @@map("tenants")
 }
 
@@ -254,6 +268,7 @@ model TenantDocument {
   expiryDate   DateTime?          @map("expiry_date")
   note         String?
 
+  @@index([tenantId])
   @@map("tenant_documents")
 }
 
@@ -290,6 +305,7 @@ model PropertyDocument {
 
   acknowledgments DocumentAcknowledgment[]
 
+  @@index([propertyId])
   @@map("property_documents")
 }
 
@@ -339,6 +355,9 @@ model MaintenanceRequest {
   statusHistory  MaintenanceStatusHistory[]
   photos         MaintenancePhoto[]
 
+  @@index([propertyId])
+  @@index([tenantId])
+  @@index([propertyId, status])
   @@map("maintenance_requests")
 }
 
@@ -352,6 +371,7 @@ model MaintenanceStatusHistory {
   changedAt  DateTime           @default(now()) @map("changed_at")
   note       String?
 
+  @@index([requestId])
   @@map("maintenance_status_history")
 }
 
@@ -367,6 +387,7 @@ model MaintenancePhoto {
   uploadedAt DateTime           @default(now()) @map("uploaded_at")
   caption    String?
 
+  @@index([requestId])
   @@map("maintenance_photos")
 }
 
@@ -448,6 +469,10 @@ model FinancialReport {
   createdAt            DateTime     @default(now()) @map("created_at")
   updatedAt            DateTime     @updatedAt @map("updated_at")
 
+  @@index([tenantId])
+  @@index([propertyId])
+  @@index([inviteId])
+  @@index([inviteId, status])
   @@map("financial_reports")
 }
 
@@ -477,6 +502,8 @@ model ScreeningInvite {
 
   reports FinancialReport[]
 
+  @@index([landlordId])
+  @@index([landlordId, status])
   @@map("screening_invites")
 }
 
@@ -511,6 +538,8 @@ model ScreeningPackage {
 
   usages ScreeningPackageUsage[]
 
+  @@index([userId])
+  @@index([userId, paymentStatus])
   @@map("screening_packages")
 }
 
@@ -524,5 +553,93 @@ model ScreeningPackageUsage {
 
   report FinancialReport?
 
+  @@index([packageId])
   @@map("screening_package_usages")
+}
+
+// ── Property Rooms ──────────────────────────────────────────────────────────
+
+enum RoomType {
+  BEDROOM
+  LIVING_ROOM
+  KITCHEN
+  BATHROOM
+  WC
+  HALLWAY
+  DINING_ROOM
+  UTILITY_ROOM
+  GARDEN
+  GARAGE
+  LOFT
+  CONSERVATORY
+  OTHER
+}
+
+model PropertyRoom {
+  id         String   @id @default(uuid())
+  propertyId String   @map("property_id")
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  type       RoomType
+  name       String
+  floor      Int?
+  order      Int      @default(0)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  photos CheckInPhoto[]
+
+  @@index([propertyId])
+  @@map("property_rooms")
+}
+
+// ── Check-in Reports ────────────────────────────────────────────────────────
+
+enum CheckInReportStatus {
+  DRAFT
+  PENDING
+  IN_REVIEW
+  AGREED
+  DISPUTED
+}
+
+model CheckInReport {
+  id                  String              @id @default(uuid())
+  propertyId          String              @map("property_id")
+  property            Property            @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  tenantId            String?             @map("tenant_id")
+  tenant              Tenant?             @relation(fields: [tenantId], references: [id])
+  status              CheckInReportStatus @default(DRAFT)
+  token               String              @unique @default(uuid())
+  landlordConfirmedAt DateTime?           @map("landlord_confirmed_at")
+  tenantConfirmedAt   DateTime?           @map("tenant_confirmed_at")
+  pdfUrl              String?             @map("pdf_url")
+  pdfGeneratedAt      DateTime?           @map("pdf_generated_at")
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+
+  photos CheckInPhoto[]
+
+  @@index([propertyId])
+  @@index([tenantId])
+  @@map("check_in_reports")
+}
+
+// GDPR: Check-in photos retained for tenancy duration + 3 months
+model CheckInPhoto {
+  id           String          @id @default(uuid())
+  reportId     String          @map("report_id")
+  report       CheckInReport   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  roomId       String?         @map("room_id")
+  room         PropertyRoom?   @relation(fields: [roomId], references: [id])
+  roomName     String          @map("room_name")
+  uploadedBy   String          @map("uploaded_by") // "LANDLORD" | "TENANT"
+  uploaderName String          @map("uploader_name")
+  fileUrl      String          @map("file_url")
+  caption      String?
+  condition    String?         // "GOOD" | "MINOR_ISSUE" | "DAMAGE"
+  takenAt      DateTime?       @map("taken_at")
+  createdAt    DateTime        @default(now()) @map("created_at")
+
+  @@index([reportId])
+  @@index([roomId])
+  @@map("check_in_photos")
 }

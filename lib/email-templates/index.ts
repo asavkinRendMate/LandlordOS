@@ -195,3 +195,75 @@ export function landlordNotificationHtml(params: {
     `,
   })
 }
+
+// ─── 9. Check-in review request (to tenant) ─────────────────────────────────
+// Used by: api/check-in/[reportId] when status → PENDING
+
+export function checkInReviewHtml(params: {
+  tenantName: string
+  landlordName: string
+  propertyAddress: string
+  reviewUrl: string
+}): string {
+  return baseEmailTemplate({
+    previewText: `Please review your check-in report for ${params.propertyAddress}`,
+    subtitle: 'Check-in Report',
+    content: `
+      ${p(`Hi ${params.tenantName},`)}
+      ${p(`${params.landlordName} has prepared a check-in report for:`)}
+      ${infoBox(params.propertyAddress)}
+      ${p('Please review the photos documenting the condition of your new home. You can also add your own photos if you notice anything.')}
+      ${ctaButton('Review check-in report', params.reviewUrl)}
+      ${muted('This report protects both you and your landlord during deposit disputes.')}
+    `,
+  })
+}
+
+// ─── 10. Check-in tenant response (to landlord) ─────────────────────────────
+// Used by: api/check-in/token/[token]/confirm
+
+export function checkInTenantResponseHtml(params: {
+  landlordName: string
+  tenantName: string
+  propertyAddress: string
+  action: 'confirmed' | 'disputed' | 'added photos'
+  checkInUrl: string
+}): string {
+  const actionText = params.action === 'confirmed'
+    ? `${params.tenantName} has confirmed the check-in report is accurate.`
+    : params.action === 'disputed'
+      ? `${params.tenantName} has raised concerns about the check-in report.`
+      : `${params.tenantName} has added photos to the check-in report.`
+
+  return baseEmailTemplate({
+    previewText: `${params.tenantName} has ${params.action} the check-in report`,
+    subtitle: 'Check-in Report',
+    content: `
+      ${p(`Hi ${params.landlordName},`)}
+      ${p(actionText)}
+      ${infoBox(params.propertyAddress)}
+      ${ctaButton('View check-in report', params.checkInUrl)}
+    `,
+  })
+}
+
+// ─── 11. Check-in complete (to tenant) ──────────────────────────────────────
+// Used by: lib/check-in-pdf.ts after PDF generation
+
+export function checkInCompleteHtml(params: {
+  tenantName: string
+  propertyAddress: string
+  downloadUrl: string
+}): string {
+  return baseEmailTemplate({
+    previewText: `Your check-in report is ready — ${params.propertyAddress}`,
+    subtitle: 'Check-in Report',
+    content: `
+      ${p(`Hi ${params.tenantName},`)}
+      ${p('Your check-in report has been agreed by both parties and the PDF is ready to download.')}
+      ${infoBox(params.propertyAddress)}
+      ${ctaButton('Download check-in report', params.downloadUrl)}
+      ${muted('Keep this report safe — it documents the condition of the property at the start of your tenancy.')}
+    `,
+  })
+}

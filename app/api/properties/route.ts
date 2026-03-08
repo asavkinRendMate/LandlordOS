@@ -12,6 +12,7 @@ const schema = z.object({
   city: z.string().min(1),
   postcode: z.string().min(1),
   type: z.enum(['FLAT', 'HOUSE', 'HMO', 'OTHER']),
+  bedrooms: z.number().int().min(1).max(10).optional(),
 })
 
 export async function POST(req: Request) {
@@ -31,7 +32,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
     }
 
-    const { name, line1, line2, city, postcode, type } = result.data
+    const { name, line1, line2, city, postcode, type, bedrooms } = result.data
 
     // Ensure user row exists (created by DB trigger on first sign-in, but race-safe)
     await prisma.user.upsert({
@@ -52,6 +53,7 @@ export async function POST(req: Request) {
           city,
           postcode: postcode.toUpperCase(),
           type,
+          bedrooms: bedrooms ?? null,
         },
       })
 

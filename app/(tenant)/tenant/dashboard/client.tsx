@@ -6,6 +6,8 @@ import { createClient } from '@/lib/supabase/client'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import DocumentUploadModal from '@/components/shared/DocumentUploadModal'
 import { openCrispChat } from '@/components/shared/CrispChat'
+import { compressImage } from '@/lib/image-utils'
+import { selectClass } from '@/lib/form-styles'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -714,36 +716,6 @@ const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 const MAX_PHOTO_SIZE = 10 * 1024 * 1024
 const MAX_PHOTOS = 10
 
-async function compressImage(file: File, maxPx = 1920, quality = 0.82): Promise<File> {
-  return new Promise((resolve) => {
-    const url = URL.createObjectURL(file)
-    const img = new window.Image()
-    img.onload = () => {
-      URL.revokeObjectURL(url)
-      const scale = Math.min(1, maxPx / Math.max(img.width, img.height))
-      const w = Math.round(img.width * scale)
-      const h = Math.round(img.height * scale)
-      const canvas = document.createElement('canvas')
-      canvas.width = w
-      canvas.height = h
-      const ctx = canvas.getContext('2d')
-      if (!ctx) { resolve(file); return }
-      ctx.drawImage(img, 0, 0, w, h)
-      canvas.toBlob(
-        (blob) => {
-          if (!blob) { resolve(file); return }
-          const name = file.name.replace(/\.[^.]+$/, '.jpg')
-          resolve(new File([blob], name, { type: 'image/jpeg' }))
-        },
-        'image/jpeg',
-        quality,
-      )
-    }
-    img.onerror = () => { URL.revokeObjectURL(url); resolve(file) }
-    img.src = url
-  })
-}
-
 // ── Tenant Maintenance section ────────────────────────────────────────────────
 
 function TenantMaintenanceSection({
@@ -1093,7 +1065,7 @@ function TenantMaintenanceSection({
                   <select
                     value={priority}
                     onChange={(e) => setPriority(e.target.value as typeof priority)}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500/40 focus:border-green-500 transition-colors"
+                    className={selectClass}
                   >
                     {PRIORITY_OPTIONS.map((o) => (
                       <option key={o.value} value={o.value}>

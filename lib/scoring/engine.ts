@@ -263,8 +263,12 @@ Rules:
       'x-api-key': apiKey,
       'anthropic-version': '2023-06-01',
     },
+    // Using Haiku for name verification —
+    // simple pattern matching task,
+    // no complex reasoning needed.
+    // ~80% cost saving vs Sonnet for this step.
     body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: 500,
       system: verifySystem,
       messages: [
