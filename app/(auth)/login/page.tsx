@@ -13,7 +13,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
 
   // OTP code input
-  const [code, setCode] = useState(['', '', '', '', '', ''])
+  const [code, setCode] = useState(['', '', '', '', '', '', '', ''])
   const [verifying, setVerifying] = useState(false)
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
 
@@ -65,7 +65,7 @@ export default function LoginPage() {
     if (result.error) {
       console.error('[login] verifyOtp (type=magiclink) error:', result.error.code, result.error.message, result.error.status)
       setError(`Code verification failed: ${result.error.message}`)
-      setCode(['', '', '', '', '', ''])
+      setCode(['', '', '', '', '', '', '', ''])
       inputRefs.current[0]?.focus()
     } else {
       window.location.href = '/dashboard'
@@ -82,14 +82,14 @@ export default function LoginPage() {
     setCode(newCode)
 
     // Auto-advance to next input
-    if (value && index < 5) {
+    if (value && index < 7) {
       inputRefs.current[index + 1]?.focus()
     }
 
-    // Auto-submit when all 6 digits entered
-    if (value && index === 5) {
+    // Auto-submit when all 8 digits entered
+    if (value && index === 7) {
       const fullCode = newCode.join('')
-      if (fullCode.length === 6) {
+      if (fullCode.length === 8) {
         handleVerify(fullCode)
       }
     }
@@ -103,16 +103,16 @@ export default function LoginPage() {
 
   function handleCodePaste(e: React.ClipboardEvent) {
     e.preventDefault()
-    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6)
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 8)
     if (!pasted) return
 
     const newCode = [...code]
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 8; i++) {
       newCode[i] = pasted[i] || ''
     }
     setCode(newCode)
 
-    if (pasted.length === 6) {
+    if (pasted.length === 8) {
       handleVerify(pasted)
     } else {
       inputRefs.current[pasted.length]?.focus()
@@ -129,7 +129,7 @@ export default function LoginPage() {
       setError(error)
     } else {
       setError(null)
-      setCode(['', '', '', '', '', ''])
+      setCode(['', '', '', '', '', '', '', ''])
       inputRefs.current[0]?.focus()
     }
     setLoading(false)
@@ -153,12 +153,12 @@ export default function LoginPage() {
             </div>
             <h2 className="text-gray-900 font-semibold text-lg mb-1">Enter your sign-in code</h2>
             <p className="text-gray-500 text-sm leading-relaxed">
-              We sent a 6-digit code to<br />
+              We sent an 8-digit code to<br />
               <span className="text-gray-700 font-medium">{email}</span>
             </p>
 
-            {/* 6-digit OTP input */}
-            <div className="flex justify-center gap-2 mt-6" onPaste={handleCodePaste}>
+            {/* 8-digit OTP input */}
+            <div className="flex justify-center gap-1.5 mt-6" onPaste={handleCodePaste}>
               {code.map((digit, i) => (
                 <input
                   key={i}
@@ -171,7 +171,7 @@ export default function LoginPage() {
                   onChange={(e) => handleCodeChange(i, e.target.value)}
                   onKeyDown={(e) => handleCodeKeyDown(i, e)}
                   disabled={verifying}
-                  className="w-11 h-13 text-center text-xl font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-[#16a34a] focus:ring-1 focus:ring-[#16a34a]/30 transition-colors disabled:opacity-50"
+                  className="w-9 h-12 text-center text-lg font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-[#16a34a] focus:ring-1 focus:ring-[#16a34a]/30 transition-colors disabled:opacity-50"
                 />
               ))}
             </div>
@@ -194,7 +194,7 @@ export default function LoginPage() {
               </button>
               <div>
                 <button
-                  onClick={() => { setSent(false); setEmail(''); setCode(['', '', '', '', '', '']); setError(null) }}
+                  onClick={() => { setSent(false); setEmail(''); setCode(['', '', '', '', '', '', '', '']); setError(null) }}
                   className="text-sm text-gray-400 hover:text-gray-600 transition-colors"
                 >
                   Use a different email
