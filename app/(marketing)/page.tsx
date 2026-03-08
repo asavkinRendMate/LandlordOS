@@ -467,7 +467,7 @@ export default function LandingPage() {
           {/* Arrow-relative wrapper */}
           <div className="relative">
             {/* Track — md:mx-14 and xl:mx-16 create room for arrows */}
-            <div className="overflow-hidden md:mx-14 xl:mx-16">
+            <div className="overflow-x-clip py-2 md:mx-14 xl:mx-16">
               <div
                 className="flex"
                 style={{
@@ -494,12 +494,12 @@ export default function LandingPage() {
                 {journeySteps.map((step, i) => (
                   <div
                     key={step.slug}
-                    className="shrink-0 bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden flex flex-col"
+                    className="shrink-0 bg-white rounded-xl shadow-md border border-gray-100 flex flex-col overflow-hidden"
                     style={{ width: `${cardWidth}px` }}
                   >
                     {/* Screenshot 4:3 */}
                     {step.slug === 'tenant-screening' ? (
-                      <div className="relative w-full" style={{ paddingTop: '75%' }}>
+                      <div className="relative w-full aspect-[4/3] overflow-hidden">
                         <Image
                           src="/screenshots/find-the-right-tenant.jpg"
                           alt="Find the right tenant — screening invite and AI report"
@@ -510,14 +510,13 @@ export default function LandingPage() {
                       </div>
                     ) : (
                       <div
-                        className="relative w-full"
+                        className="w-full aspect-[4/3] flex items-center justify-center"
                         style={{
-                          paddingTop: '75%',
                           background: 'linear-gradient(135deg, #E8F0EB 0%, #D4E6D9 100%)',
                           boxShadow: 'inset 0 0 0 1px rgba(45,106,79,0.1)',
                         }}
                       >
-                        <span className="absolute inset-0 flex items-center justify-center text-sm text-[#16a34a]/40 font-medium">
+                        <span className="text-sm text-[#16a34a]/40 font-medium">
                           [ Screenshot coming soon ]
                         </span>
                       </div>
