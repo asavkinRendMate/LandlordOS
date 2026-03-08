@@ -5,7 +5,7 @@ const baseInput =
   'bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-[#1A1A1A] text-sm focus:outline-none focus:border-[#16a34a] focus:ring-1 focus:ring-[#16a34a]/20 transition-colors'
 
 const baseSelect =
-  'bg-white border border-gray-200 rounded-lg pl-3.5 pr-9 py-2.5 text-[#1A1A1A] text-sm focus:outline-none focus:border-[#16a34a] focus:ring-1 focus:ring-[#16a34a]/20 transition-colors appearance-none select-chevron'
+  'bg-white border border-gray-200 rounded-lg px-3.5 pr-10 py-2.5 text-[#1A1A1A] text-sm focus:outline-none focus:border-[#16a34a] focus:ring-1 focus:ring-[#16a34a]/20 transition-colors appearance-none select-chevron'
 
 /** Full-width input — most common usage. */
 export const inputClass = `w-full ${baseInput} placeholder-gray-400`
