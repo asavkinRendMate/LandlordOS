@@ -38,3 +38,6 @@ next-env.d.ts
 
 # supabase
 supabase/.temp
+
+# script output
+scripts/output/

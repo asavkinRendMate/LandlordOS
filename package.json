@@ -7,7 +7,8 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
-    "generate-article": "tsx scripts/generate-article.ts"
+    "generate-article": "npx tsx scripts/generate-article.ts",
+    "update-docs": "npx tsx scripts/update-docs.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
