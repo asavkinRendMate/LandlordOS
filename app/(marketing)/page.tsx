@@ -497,11 +497,11 @@ export default function LandingPage() {
                     className="shrink-0 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col"
                     style={{ width: `${cardWidth}px` }}
                   >
-                    {/* Screenshot 16:9 */}
+                    {/* Screenshot 4:3 */}
                     <div
                       className="relative w-full"
                       style={{
-                        paddingTop: '56.25%',
+                        paddingTop: '75%',
                         background: 'linear-gradient(135deg, #E8F0EB 0%, #D4E6D9 100%)',
                         boxShadow: 'inset 0 0 0 1px rgba(45,106,79,0.1)',
                       }}
