@@ -498,18 +498,30 @@ export default function LandingPage() {
                     style={{ width: `${cardWidth}px` }}
                   >
                     {/* Screenshot 4:3 */}
-                    <div
-                      className="relative w-full"
-                      style={{
-                        paddingTop: '75%',
-                        background: 'linear-gradient(135deg, #E8F0EB 0%, #D4E6D9 100%)',
-                        boxShadow: 'inset 0 0 0 1px rgba(45,106,79,0.1)',
-                      }}
-                    >
-                      <span className="absolute inset-0 flex items-center justify-center text-sm text-[#16a34a]/40 font-medium">
-                        [ Screenshot coming soon ]
-                      </span>
-                    </div>
+                    {step.slug === 'tenant-screening' ? (
+                      <div className="relative w-full" style={{ paddingTop: '75%' }}>
+                        <Image
+                          src="/screenshots/find-the-right-tenant.jpg"
+                          alt="Find the right tenant — screening invite and AI report"
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 768px) 100vw, (max-width: 1280px) 45vw, 33vw"
+                        />
+                      </div>
+                    ) : (
+                      <div
+                        className="relative w-full"
+                        style={{
+                          paddingTop: '75%',
+                          background: 'linear-gradient(135deg, #E8F0EB 0%, #D4E6D9 100%)',
+                          boxShadow: 'inset 0 0 0 1px rgba(45,106,79,0.1)',
+                        }}
+                      >
+                        <span className="absolute inset-0 flex items-center justify-center text-sm text-[#16a34a]/40 font-medium">
+                          [ Screenshot coming soon ]
+                        </span>
+                      </div>
+                    )}
 
                     {/* Card body */}
                     <div className="p-4 flex-1 flex flex-col">
