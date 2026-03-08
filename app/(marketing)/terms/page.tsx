@@ -99,7 +99,7 @@ export default function TermsPage() {
                   <li>You must provide accurate information when registering</li>
                   <li>You are responsible for maintaining the security of your account</li>
                   <li>
-                    We use magic link authentication — keep your email account secure, as it is your
+                    We use one-time code authentication — keep your email account secure, as it is your
                     method of access
                   </li>
                   <li>One account per person</li>

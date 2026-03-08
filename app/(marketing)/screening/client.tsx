@@ -22,7 +22,7 @@ const faqs = [
   },
   {
     q: 'Do I need a LetSorted account?',
-    a: 'Yes — you\'ll need to sign in with your email (magic link, no passwords) to send invites and view reports.',
+    a: 'Yes — you\'ll need to sign in with your email (one-time code, no passwords) to send invites and view reports.',
   },
   {
     q: 'Can the candidate verify the report?',

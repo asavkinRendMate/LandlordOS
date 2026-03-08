@@ -33,7 +33,7 @@ export async function GET(_req: Request, { params }: { params: { token: string }
   }
 }
 
-// ── POST — confirm details + send magic link ──────────────────────────────────
+// ── POST — confirm details + send sign-in code ────────────────────────────────
 
 const schema = z.object({
   name: z.string().min(1),
@@ -69,18 +69,17 @@ export async function POST(req: Request, { params }: { params: { token: string }
       }),
     ])
 
-    // Send magic link via Supabase Auth
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+    // Send sign-in code via Supabase Auth
     const supabase = createAuthClient()
     const { error } = await supabase.auth.signInWithOtp({
       email: tenant.email,
       options: {
-        emailRedirectTo: `${appUrl}/auth/callback?next=/tenant/dashboard`,
+        shouldCreateUser: true,
       },
     })
     if (error) {
-      console.error('[tenant/join POST] magic link error', error)
-      return NextResponse.json({ error: 'Failed to send sign-in link' }, { status: 500 })
+      console.error('[tenant/join POST] OTP send error', error)
+      return NextResponse.json({ error: 'Failed to send sign-in code' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })

@@ -11,16 +11,18 @@ import { baseEmailTemplate, ctaButton, p, muted } from '../lib/email-templates/b
 
 const DIVIDER = '\n' + '='.repeat(72) + '\n'
 
-// ── Magic Link ──────────────────────────────────────────────────────────────
+// ── Magic Link (OTP Code) ───────────────────────────────────────────────────
 
 const magicLinkHtml = baseEmailTemplate({
-  previewText: 'Sign in to LetSorted',
+  previewText: 'Your LetSorted sign-in code',
   subtitle: 'Sign In',
   content: `
-    <h1 style="font-size:22px;font-weight:700;color:#1a1a1a;margin:0 0 16px;">Sign in to LetSorted</h1>
-    ${p('Click the button below to sign in. This link expires in 10 minutes and can only be used once.')}
-    ${ctaButton('Sign in to LetSorted', '{{ .ConfirmationURL }}')}
-    ${muted("If you didn't request this link, you can safely ignore this email.")}
+    <h1 style="font-size:22px;font-weight:700;color:#1a1a1a;margin:0 0 16px;">Your sign-in code</h1>
+    ${p('Enter this code to sign in to LetSorted. It expires in 10 minutes.')}
+    <div style="text-align:center;margin:24px 0;">
+      <span style="font-family:'Courier New',Courier,monospace;font-size:36px;font-weight:700;letter-spacing:8px;color:#1a1a1a;background:#f0fdf4;border:2px solid #16a34a;border-radius:12px;padding:16px 28px;display:inline-block;">{{ .Token }}</span>
+    </div>
+    ${muted("If you didn't request this code, you can safely ignore this email.")}
   `,
   footerExtra: 'This is a transactional email sent because a sign-in was requested for this address.',
 })
@@ -28,12 +30,14 @@ const magicLinkHtml = baseEmailTemplate({
 // ── Confirm Signup ──────────────────────────────────────────────────────────
 
 const confirmSignupHtml = baseEmailTemplate({
-  previewText: 'Confirm your LetSorted account',
+  previewText: 'Your LetSorted sign-in code',
   subtitle: 'Account Confirmation',
   content: `
-    <h1 style="font-size:22px;font-weight:700;color:#1a1a1a;margin:0 0 16px;">Confirm your account</h1>
-    ${p('Welcome to LetSorted! Click below to confirm your email address and activate your account.')}
-    ${ctaButton('Confirm my account', '{{ .ConfirmationURL }}')}
+    <h1 style="font-size:22px;font-weight:700;color:#1a1a1a;margin:0 0 16px;">Your sign-in code</h1>
+    ${p('Welcome to LetSorted! Enter this code to confirm your account and sign in.')}
+    <div style="text-align:center;margin:24px 0;">
+      <span style="font-family:'Courier New',Courier,monospace;font-size:36px;font-weight:700;letter-spacing:8px;color:#1a1a1a;background:#f0fdf4;border:2px solid #16a34a;border-radius:12px;padding:16px 28px;display:inline-block;">{{ .Token }}</span>
+    </div>
   `,
   footerExtra: 'This is a transactional email sent because an account was created with this address.',
 })
@@ -69,8 +73,8 @@ const resetPasswordHtml = baseEmailTemplate({
 // ── Output ──────────────────────────────────────────────────────────────────
 
 const templates = [
-  { name: 'MAGIC LINK', subject: 'Sign in to LetSorted', html: magicLinkHtml },
-  { name: 'CONFIRM SIGNUP', subject: 'Confirm your LetSorted account', html: confirmSignupHtml },
+  { name: 'MAGIC LINK', subject: 'Your LetSorted sign-in code', html: magicLinkHtml },
+  { name: 'CONFIRM SIGNUP', subject: 'Your LetSorted sign-in code', html: confirmSignupHtml },
   { name: 'CHANGE EMAIL', subject: 'Confirm your new email address', html: changeEmailHtml },
   { name: 'RESET PASSWORD', subject: 'Reset your LetSorted password', html: resetPasswordHtml },
 ]

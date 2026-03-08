@@ -120,7 +120,7 @@ export default function PrivacyPage() {
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">3. How we use your data</h2>
                 <ul className="list-disc list-outside ml-5 space-y-1.5">
                   <li>To provide the LetSorted service</li>
-                  <li>To send transactional emails (magic links, rent reminders, maintenance notifications)</li>
+                  <li>To send transactional emails (sign-in codes, rent reminders, maintenance notifications)</li>
                   <li>To generate tenant reliability scores from bank statement analysis</li>
                   <li>To improve our service through analytics</li>
                   <li>To communicate with you about your account</li>

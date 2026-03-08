@@ -124,7 +124,7 @@ export default function TenantJoinPage() {
             </svg>
           </div>
           <h1 className="text-gray-900 font-bold text-xl mb-2">Already confirmed</h1>
-          <p className="text-gray-500 text-sm">You&apos;ve already confirmed your details. Check your email for a sign-in link to access your tenant portal.</p>
+          <p className="text-gray-500 text-sm">You&apos;ve already confirmed your details. Go to the <a href="/login" className="text-green-600 font-medium hover:underline">sign-in page</a> to access your tenant portal.</p>
         </div>
       </div>
     )
@@ -140,7 +140,10 @@ export default function TenantJoinPage() {
             </svg>
           </div>
           <h1 className="text-gray-900 font-bold text-xl mb-2">Check your email</h1>
-          <p className="text-gray-500 text-sm">We&apos;ve sent a sign-in link to <strong>{tenant?.email}</strong>. Click it to access your tenant portal.</p>
+          <p className="text-gray-500 text-sm mb-4">We&apos;ve sent a sign-in code to <strong>{tenant?.email}</strong>.</p>
+          <a href="/login" className="inline-block bg-[#22c55e] hover:bg-[#16a34a] text-white font-semibold rounded-xl px-6 py-3 text-sm transition-colors">
+            Enter code to sign in
+          </a>
         </div>
       </div>
     )
@@ -228,7 +231,7 @@ export default function TenantJoinPage() {
               disabled={submitState === 'submitting'}
               className="w-full bg-[#22c55e] hover:bg-[#16a34a] disabled:opacity-50 text-white font-semibold rounded-xl py-3 text-sm transition-colors"
             >
-              {submitState === 'submitting' ? 'Confirming…' : 'Confirm & get sign-in link'}
+              {submitState === 'submitting' ? 'Confirming…' : 'Confirm & send sign-in code'}
             </button>
           </form>
         </div>
