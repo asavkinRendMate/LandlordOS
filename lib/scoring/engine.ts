@@ -549,6 +549,9 @@ There are no exceptions to this. Calculate the percentage and fire the rule.
 ` : ''}SELF-EMPLOYED AND COMPANY DIRECTORS:
 Include salary + dividends + director's loan repayments as income. Do not penalise income arriving in multiple streams if the applicant appears self-employed.
 
+DIRECTOR'S LOAN REPAYMENTS:
+Outgoing payments with reference containing 'Director's Loan', 'Directors Loan', or 'Director Loan' are repayments TO the applicant's own company — not debt obligations. These are discretionary transfers, not mandatory debt repayments. DO NOT count these toward DEBT_ABOVE_20_PCT_INCOME. DO NOT flag as debt burden. DO NOT include in debt calculations. These are a NEUTRAL or POSITIVE signal — they indicate the applicant is a company director managing their own business finances.
+
 GAMBLING RULE: Only fire the single highest gambling rule (GAMBLING_ABOVE_10_PCT > GAMBLING_ABOVE_5_PCT > GAMBLING_ANY). But GAMBLING_4_PLUS_MONTHS fires independently.
 
 AFFORDABILITY (STRICT — fire exactly one based on actual ratio):
