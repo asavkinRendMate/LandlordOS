@@ -91,13 +91,33 @@ export default function ScreeningPage() {
   const [monthlyRent, setMonthlyRent] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [restored, setRestored] = useState(false)
 
-  // Pre-fill sender name from profile if logged in
+  // Restore pending invite from sessionStorage (after login redirect)
+  useEffect(() => {
+    try {
+      const pending = sessionStorage.getItem('pendingInvite')
+      if (pending) {
+        const data = JSON.parse(pending)
+        if (data.candidateName) setCandidateName(data.candidateName)
+        if (data.candidateEmail) setCandidateEmail(data.candidateEmail)
+        if (data.propertyAddress) setPropertyAddress(data.propertyAddress)
+        if (data.monthlyRent) setMonthlyRent(data.monthlyRent)
+        if (data.senderName) setSenderName(data.senderName)
+        sessionStorage.removeItem('pendingInvite')
+        setRestored(true)
+        // Auto-dismiss after 5 seconds
+        setTimeout(() => setRestored(false), 5000)
+      }
+    } catch {}
+  }, [])
+
+  // Pre-fill sender name from profile if logged in (only if not restored from pending)
   useEffect(() => {
     fetch('/api/user/profile')
       .then((res) => (res.ok ? res.json() : null))
       .then((json) => {
-        if (json?.data?.name) setSenderName(json.data.name)
+        if (json?.data?.name) setSenderName((prev) => prev || json.data.name)
       })
       .catch(() => {})
       .finally(() => setSenderNameLoaded(true))
@@ -125,6 +145,13 @@ export default function ScreeningPage() {
       })
 
       if (res.status === 401) {
+        sessionStorage.setItem('pendingInvite', JSON.stringify({
+          candidateName: candidateName.trim(),
+          candidateEmail: candidateEmail.trim(),
+          propertyAddress: propertyAddress.trim(),
+          monthlyRent,
+          senderName: senderName.trim(),
+        }))
         router.push(`/login?next=${encodeURIComponent('/screening')}`)
         return
       }
@@ -282,6 +309,15 @@ export default function ScreeningPage() {
                     className={inputClass}
                   />
                 </div>
+
+                {restored && (
+                  <div className="flex items-start gap-2.5 bg-green-50 border border-green-200 rounded-lg px-3.5 py-3 text-sm text-green-700">
+                    <svg className="w-4 h-4 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Your invite details have been restored. Click <strong>Send invite</strong> to continue.</span>
+                  </div>
+                )}
 
                 {error && (
                   <p className="text-red-500 text-sm">{error}</p>

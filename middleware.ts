@@ -46,7 +46,10 @@ export async function middleware(request: NextRequest) {
 
   // Redirect authenticated users away from the login page
   if (path === '/login' && user) {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
+    const next = request.nextUrl.searchParams.get('next')
+    // Only allow relative paths to prevent open redirect
+    const destination = next?.startsWith('/') ? next : '/dashboard'
+    return NextResponse.redirect(new URL(destination, request.url))
   }
 
   return supabaseResponse

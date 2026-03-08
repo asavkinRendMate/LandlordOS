@@ -1,12 +1,16 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { sendOtpDirect } from '@/lib/supabase/otp'
 import Footer from '@/components/shared/Footer'
 
 export default function LoginPage() {
+  const searchParams = useSearchParams()
+  const nextParam = searchParams.get('next')
+  const returnTo = nextParam?.startsWith('/') ? nextParam : '/dashboard'
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
@@ -70,7 +74,7 @@ export default function LoginPage() {
       inputRefs.current[0]?.focus()
     } else {
       // Keep verifying=true so the spinner stays visible until navigation completes
-      window.location.href = '/dashboard'
+      window.location.href = returnTo
     }
   }
 
