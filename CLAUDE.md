@@ -769,6 +769,9 @@ npx tsc --noEmit         # TypeScript check
 - `ScoringProgressScreen.tsx` — animated progress screen with polling
   - Shows SVG logo, step-by-step progress, polling for report status
 - `TenantDetailsForm.tsx` — shared form for tenant name/email/phone editing
+- `Analytics.tsx` — GA, Clarity, FB Pixel init, gated by cookie consent // Updated: 2026-03-08 — FB Pixel fix
+  - Consent events: listen on `window` (vanilla-cookieconsent v3 uses global `dispatchEvent`)
+  - GA + Clarity require `analytics` consent; FB Pixel requires `marketing` consent
 - `PostHogProvider.tsx` — PostHog initialisation, cookie-consent-gated session recording, manual SPA pageview capture
   - EU data residency (`eu.i.posthog.com`); session recording only after `analytics` cookie consent
 - `PostHogIdentify.tsx` — calls `posthog.identify(userId)` with Supabase UUID only (no PII)

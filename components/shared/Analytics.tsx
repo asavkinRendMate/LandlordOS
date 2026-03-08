@@ -116,12 +116,13 @@ export default function Analytics() {
     handleConsent()
 
     // Listen for new / changed consent
-    document.addEventListener('cc:onConsent', handleConsent)
-    document.addEventListener('cc:onChange', handleConsent)
+    // vanilla-cookieconsent v3 dispatches on window (global dispatchEvent), not document
+    window.addEventListener('cc:onConsent', handleConsent)
+    window.addEventListener('cc:onChange', handleConsent)
 
     return () => {
-      document.removeEventListener('cc:onConsent', handleConsent)
-      document.removeEventListener('cc:onChange', handleConsent)
+      window.removeEventListener('cc:onConsent', handleConsent)
+      window.removeEventListener('cc:onChange', handleConsent)
     }
   }, [])
 
