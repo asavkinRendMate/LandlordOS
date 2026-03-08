@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
 
 // ─── FAQ Data ──────────────────────────────────────────────────────────────────
 
@@ -81,6 +82,15 @@ const inputClass =
 export default function ScreeningPage() {
   const router = useRouter()
   const [openFaq, setOpenFaq] = useState<number | null>(null)
+  const [userEmail, setUserEmail] = useState<string | null>(null)
+
+  // Check auth state
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getUser().then(({ data }) => {
+      setUserEmail(data.user?.email ?? null)
+    })
+  }, [])
 
   // Form state
   const [senderName, setSenderName] = useState('')
@@ -194,6 +204,29 @@ export default function ScreeningPage() {
             >
               My invites
             </Link>
+            {userEmail ? (
+              <>
+                <span className="text-gray-400 text-sm hidden sm:inline">{userEmail}</span>
+                <button
+                  onClick={async () => {
+                    const supabase = createClient()
+                    await supabase.auth.signOut()
+                    setUserEmail(null)
+                    router.refresh()
+                  }}
+                  className="text-gray-500 hover:text-gray-700 font-medium px-4 py-2.5 text-sm transition-colors"
+                >
+                  Sign out
+                </button>
+              </>
+            ) : (
+              <Link
+                href={`/login?next=${encodeURIComponent('/screening')}`}
+                className="bg-green-600 hover:bg-green-700 text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors"
+              >
+                Sign in
+              </Link>
+            )}
           </div>
         </div>
       </nav>

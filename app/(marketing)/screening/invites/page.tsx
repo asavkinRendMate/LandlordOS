@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
 
 interface InviteItem {
   id: string
@@ -57,8 +58,18 @@ export default function InvitesPage() {
   const [loading, setLoading] = useState(true)
   const [invites, setInvites] = useState<InviteItem[]>([])
   const [filter, setFilter] = useState<FilterTab>('all')
+  const [userEmail, setUserEmail] = useState<string | null>(null)
 
   useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data.user) {
+        router.push(`/login?next=${encodeURIComponent('/screening/invites')}`)
+        return
+      }
+      setUserEmail(data.user.email ?? null)
+    })
+
     fetch('/api/screening/invites')
       .then((res) => {
         if (res.status === 401) {
@@ -97,12 +108,29 @@ export default function InvitesPage() {
           <Link href="/">
             <Image src="/logo.svg" alt="LetSorted" width={150} height={50} priority />
           </Link>
-          <Link
-            href="/screening"
-            className="bg-green-600 hover:bg-green-700 text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors"
-          >
-            Send invite
-          </Link>
+          <div className="flex items-center gap-2.5">
+            <Link
+              href="/screening"
+              className="bg-green-600 hover:bg-green-700 text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors"
+            >
+              Send invite
+            </Link>
+            {userEmail && (
+              <>
+                <span className="text-gray-400 text-sm hidden sm:inline">{userEmail}</span>
+                <button
+                  onClick={async () => {
+                    const supabase = createClient()
+                    await supabase.auth.signOut()
+                    router.push('/screening')
+                  }}
+                  className="text-gray-500 hover:text-gray-700 font-medium px-4 py-2.5 text-sm transition-colors"
+                >
+                  Sign out
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </nav>
 
