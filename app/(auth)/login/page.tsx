@@ -45,15 +45,26 @@ export default function LoginPage() {
     setError(null)
 
     const supabase = createClient()
-    const { error } = await supabase.auth.verifyOtp({
+
+    // Try type 'email' first (current docs), fall back to 'magiclink' (legacy)
+    let result = await supabase.auth.verifyOtp({
       email,
       token: otpCode,
       type: 'email',
     })
 
-    if (error) {
-      console.error('[login] verifyOtp error:', error.code, error.message, error.status)
-      setError('Invalid or expired code. Please try again.')
+    if (result.error) {
+      console.error('[login] verifyOtp (type=email) error:', result.error.code, result.error.message, result.error.status)
+      result = await supabase.auth.verifyOtp({
+        email,
+        token: otpCode,
+        type: 'magiclink',
+      })
+    }
+
+    if (result.error) {
+      console.error('[login] verifyOtp (type=magiclink) error:', result.error.code, result.error.message, result.error.status)
+      setError(`Code verification failed: ${result.error.message}`)
       setCode(['', '', '', '', '', ''])
       inputRefs.current[0]?.focus()
     } else {
