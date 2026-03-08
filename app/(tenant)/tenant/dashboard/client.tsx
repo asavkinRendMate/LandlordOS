@@ -746,6 +746,9 @@ function TenantMaintenanceSection({
   const [loadingDetail, setLoadingDetail] = useState<string | null>(null)
   const [detailCache, setDetailCache] = useState<Record<string, RequestDetail>>({})
 
+  // Lightbox
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null)
+
   const loadRequests = useCallback(async () => {
     setLoading(true)
     const res = await fetch(`/api/maintenance?tenantId=${tenantId}`)
@@ -970,9 +973,9 @@ function TenantMaintenanceSection({
                               {detail.photos.filter(p => p.role === 'TENANT').map((photo) => (
                                 <div key={photo.id}>
                                   {photo.signedUrl ? (
-                                    <a href={photo.signedUrl} target="_blank" rel="noopener noreferrer">
+                                    <button type="button" onClick={() => setLightboxSrc(photo.signedUrl)} className="cursor-zoom-in">
                                       <img src={photo.signedUrl} alt={photo.caption ?? ''} className="w-full aspect-square object-cover rounded-lg" />
-                                    </a>
+                                    </button>
                                   ) : (
                                     <div className="w-full aspect-square bg-gray-100 rounded-lg flex items-center justify-center">
                                       <svg className="w-5 h-5 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -995,9 +998,9 @@ function TenantMaintenanceSection({
                               {detail.photos.filter(p => p.role === 'LANDLORD').map((photo) => (
                                 <div key={photo.id}>
                                   {photo.signedUrl ? (
-                                    <a href={photo.signedUrl} target="_blank" rel="noopener noreferrer">
+                                    <button type="button" onClick={() => setLightboxSrc(photo.signedUrl)} className="cursor-zoom-in">
                                       <img src={photo.signedUrl} alt={photo.caption ?? ''} className="w-full aspect-square object-cover rounded-lg" />
-                                    </a>
+                                    </button>
                                   ) : (
                                     <div className="w-full aspect-square bg-gray-100 rounded-lg flex items-center justify-center">
                                       <svg className="w-5 h-5 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1162,6 +1165,35 @@ function TenantMaintenanceSection({
           </div>
         </div>
       )}
+
+      {/* Photo lightbox */}
+      {lightboxSrc && (
+        <PhotoLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
+      )}
+    </div>
+  )
+}
+
+function PhotoLightbox({ src, onClose }: { src: string; onClose: () => void }) {
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="relative max-w-4xl w-full" onClick={(e) => e.stopPropagation()}>
+        <button onClick={onClose} className="absolute -top-10 right-0 text-white/60 hover:text-white transition-colors">
+          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={src} alt="Photo full view" className="max-h-[85vh] mx-auto rounded-xl object-contain w-full" />
+      </div>
     </div>
   )
 }
