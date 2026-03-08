@@ -209,6 +209,9 @@ export default function LandingPage() {
   const [loading, setLoading] = useState(false)
   const [formError, setFormError] = useState('')
 
+  // Lightbox state
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null)
+
   // Beta modal state
   const [betaOpen, setBetaOpen] = useState(false)
   const [betaCode, setBetaCode] = useState('')
@@ -238,6 +241,16 @@ export default function LandingPage() {
     },
     [betaCode, router],
   )
+
+  // Lightbox Escape key
+  useEffect(() => {
+    if (!lightboxSrc) return
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setLightboxSrc(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [lightboxSrc])
 
   // Scroll reveal — native IntersectionObserver, no libraries
   useEffect(() => {
@@ -499,7 +512,11 @@ export default function LandingPage() {
                   >
                     {/* Screenshot 4:3 */}
                     {step.slug === 'tenant-screening' ? (
-                      <div className="relative w-full aspect-[4/3] overflow-hidden">
+                      <button
+                        type="button"
+                        onClick={() => setLightboxSrc('/screenshots/find-the-right-tenant.jpg')}
+                        className="relative w-full aspect-[4/3] overflow-hidden cursor-zoom-in"
+                      >
                         <Image
                           src="/screenshots/find-the-right-tenant.jpg"
                           alt="Find the right tenant — screening invite and AI report"
@@ -507,7 +524,7 @@ export default function LandingPage() {
                           className="object-cover"
                           sizes="(max-width: 768px) 100vw, (max-width: 1280px) 45vw, 33vw"
                         />
-                      </div>
+                      </button>
                     ) : (
                       <div
                         className="w-full aspect-[4/3] flex items-center justify-center"
@@ -752,6 +769,31 @@ export default function LandingPage() {
           )}
         </div>
       </section>
+
+      {/* ── Screenshot lightbox ────────────────────────────────────────────── */}
+      {lightboxSrc && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+          onClick={() => setLightboxSrc(null)}
+        >
+          <div className="relative max-w-4xl w-full" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => setLightboxSrc(null)}
+              className="absolute -top-10 right-0 text-white/60 hover:text-white transition-colors"
+            >
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={lightboxSrc}
+              alt="Screenshot full view"
+              className="max-h-[85vh] mx-auto rounded-xl object-contain w-full"
+            />
+          </div>
+        </div>
+      )}
 
       {/* ── Beta access modal ──────────────────────────────────────────────── */}
       {betaOpen && (
