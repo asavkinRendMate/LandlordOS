@@ -494,7 +494,7 @@ export default function LandingPage() {
                 {journeySteps.map((step, i) => (
                   <div
                     key={step.slug}
-                    className="shrink-0 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col"
+                    className="shrink-0 bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden flex flex-col"
                     style={{ width: `${cardWidth}px` }}
                   >
                     {/* Screenshot 4:3 */}
