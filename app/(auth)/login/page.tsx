@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { Suspense, useState, useRef, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
@@ -8,6 +8,14 @@ import { sendOtpDirect } from '@/lib/supabase/otp'
 import Footer from '@/components/shared/Footer'
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginContent />
+    </Suspense>
+  )
+}
+
+function LoginContent() {
   const searchParams = useSearchParams()
   const nextParam = searchParams.get('next')
   const returnTo = nextParam?.startsWith('/') ? nextParam : '/dashboard'
