@@ -1,437 +1,218 @@
 # SPEC.md — Product Specification
 
-## Product
+## Product Vision & Target User
 
-**Name:** LetSorted (letsorted.co.uk)
-**Target:** UK private landlords who self-manage 1–5 properties
-**Core value:** Simple property management — tenants, documents, rent and compliance in one place. Renters' Rights Act 2025 readiness built in, not the primary pitch.
+**LetSorted** (letsorted.co.uk) — Simple property management for UK self-managing landlords.
 
----
+**Target:** 1–5 property landlords managing independently (1.4M in UK). Currently using spreadsheets, folders, and WhatsApp.
 
-## Background & Market Context
+**Core Value:** Complete tenant lifecycle management — applications, documents, rent tracking, maintenance, and RRA 2025 compliance in one clean interface.
 
-The Renters' Rights Act 2025 received Royal Assent on 27 October 2025 and comes into force **1 May 2026**. Key changes creating urgent pain for self-managing landlords:
-
-- Section 21 "no fault" evictions abolished — landlords must use Section 8 Grounds with documented evidence
-- All ASTs convert to Assured Periodic Tenancies (APT) — no more fixed terms
-- Rent increases: maximum once per year, only via formal Section 13 Notice
-- 15 new offences, fines up to £40,000
-- Mandatory PRS Database registration for all landlords
-- Awaab's Law applied to private rentals — damp/mould complaints require 24-hour response
-
-**Target segment:** ~1.4 million self-managing UK landlords (52% of 2.82M total). 83% own 1–4 properties. Currently managing via spreadsheets, folder systems, and WhatsApp.
+**Positioning:** Only product combining landlord compliance + tenant onboarding + tenant portal designed specifically for small-portfolio self-managers (not lettings agents).
 
 ---
 
-## Competitor Landscape
-
-| Product | Strengths | Gap we exploit |
-|---|---|---|
-| August (Goodlord) | Strong lettings-agent tool, polished | Agent-focused, too complex for self-managers |
-| NRLA Portfolio | NRLA brand trust, compliance tools | Clunky UX, no tenant-facing portal |
-| Rentila | Free tier, decent rent tracker | No compliance focus, dated design |
-| PaTMa | Compliance alerts, portfolio view | No tenant onboarding, no tenant portal |
-
-**Positioning:** LetSorted is the only product that combines landlord compliance + tenant onboarding + tenant portal in a single clean UI built for 1–5 property self-managing landlords. Not competing with agent software.
-
----
-
-## User Roles
-
-| Role | Access | Auth |
-|---|---|---|
-| Landlord | Full dashboard, all properties | Magic link (email) |
-| Tenant | Tenant portal (`/tenant/dashboard`) | Magic link (email) |
-| Applicant | Apply form only (`/apply/[propertyId]`) | None — public form |
-| Admin | Internal metrics (future) | — |
-
-One Supabase user account can be both a landlord and a tenant simultaneously. The dashboard shell shows a "My Rental" context switcher when the signed-in user has an active Tenant record.
-
-**Tenant statuses (TenantStatus enum):**
-- `CANDIDATE` — submitted application via public apply form, not yet reviewed
-- `INVITED` — landlord added them manually or accepted their application; invite email sent
-- `TENANT` — confirmed their details via `/tenant/join/[token]`; has access to tenant dashboard
-- `FORMER_TENANT` — tenancy ended
-
----
-
-## Monetisation
+## Pricing Model
 
 ### Subscription
-- **1 property: FREE forever** (acquisition hook)
+- **1 property: FREE forever** (acquisition)
 - **2+ properties: £10/month per property**
 
-### One-time Paid Events (pay per use)
-| Event | Price |
-|---|---|
-| Screening Pack — AI analysis of applicant documents | £15 |
-| APT Contract generation | £10 |
-| Inventory Report PDF | £5 |
-| Dispute Pack | £29 |
+### Pay-Per-Use Features
+| Feature | Price | Status |
+|---------|-------|---------|
+| AI Financial Scoring | £15 | LIVE |
+| APT Contract Generation | £10 | NOT STARTED |
+| Inventory Report PDF | £5 | NOT STARTED |
+| Dispute Evidence Pack | £29 | NOT STARTED |
 
-Payment via Stripe. Subscription managed via Stripe Billing. One-time events charged via Stripe Payment Intents.
-
----
-
-## Full Product Flow
-
-### 1. Onboarding
-
-**Landlord registers:**
-1. Enters email → receives magic link
-2. Clicks link → authenticated session
-3. Minimal onboarding: name + property count
-4. Redirected to dashboard
-
-**Dashboard overview:**
-- Cards for each property with status indicator:
-  - 🟢 Active & compliant
-  - 🟡 Needs attention (expiring cert / open ticket)
-  - 🔴 Critical (overdue compliance / unpaid rent)
-  - ⚪ Vacant
-- Global alert bar at top: "Gas Safety expires in 14 days — Flat 2, Manchester"
-- "Add property" CTA prominent when dashboard is empty
+**Payment:** Stripe (subscriptions via Billing Portal, one-time via Payment Intents)
 
 ---
 
-### 2. Add Property
+## Feature List with Status
 
-Fields: address, city, postcode, property type (flat/house/HMO/other)
+### Core Platform
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Magic Link Auth (Supabase) | LIVE | Email-based, no passwords |
+| Property Management | LIVE | Address, type, bedrooms, rooms, status tracking |
+| Multi-tenant Dashboard | LIVE | Landlord + tenant context switching |
+| Document Storage | LIVE | Supabase Storage, signed URLs |
+| Admin Panel | LIVE | User/property management |
 
-On creation:
-- Property status set to VACANT
-- Compliance checklist auto-created with 4 items (all blank):
-  - Gas Safety Certificate
-  - EPC
-  - EICR
-  - How to Rent Guide
+### Tenant Pipeline
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Public Application Form | LIVE | `/apply/[propertyId]` |
+| Tenant Invitation System | LIVE | Email invites + join tokens |
+| Tenant Status Pipeline | LIVE | CANDIDATE → INVITED → TENANT |
+| Tenant Onboarding | LIVE | `/tenant/join/[token]` flow |
+| AI Screening Integration | PRE-LAUNCH | Stripe payment not connected |
 
----
+### Document Management
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Property Documents | LIVE | 14 types, expiry tracking |
+| Tenant Documents | LIVE | 9 types, upload by both parties |
+| Document Acknowledgment | LIVE | Tenant "mark as reviewed" |
+| Compliance Dashboard | LIVE | Gas/EPC/EICR/H2R status cards |
+| AI Date Extraction | NOT STARTED | Claude extraction from PDFs |
 
-### 3. Compliance & Document Management
+### Financial Management
+| Feature | Status | Notes |
+|---------|--------|-------|
+| AI Financial Scoring | LIVE | Bank statement analysis |
+| Scoring Verification | LIVE | Public `/verify/[token]` pages |
+| Rent Payment Tracking | LIVE | Manual landlord entry |
+| Payment Status Pipeline | LIVE | PENDING → EXPECTED → RECEIVED/LATE |
+| GoCardless Integration | NOT STARTED | Auto-collect rent |
 
-Section on every property detail page. Two overlapping systems:
+### Maintenance
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Maintenance Requests | LIVE | Tenant submission, landlord management |
+| Photo Upload System | LIVE | Both parties can attach photos |
+| Priority Management | LIVE | LOW/MEDIUM/HIGH/URGENT |
+| Status Tracking | LIVE | OPEN → IN_PROGRESS → RESOLVED |
+| Awaab's Law Timer | NOT STARTED | 24h damp/mould response |
 
-#### Dashboard compliance strip (legacy ComplianceDoc model)
-Four coloured dots shown on each property card on the overview dashboard (Gas, EPC, EICR, H2R). Status is set on the `ComplianceDoc` record and drives the alert bar ("EPC expires in 14 days — Flat 2, Manchester"). These records are seeded when a property is created.
+### Tenancy Management
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Deposit Tracking | LIVE | Amount, scheme, protection status |
+| Check-in Reports | LIVE | Room-by-room photo system |
+| Contract Generation | NOT STARTED | APT template + e-signatures |
+| Section 13 Notices | NOT STARTED | Rent increase workflow |
+| Section 8 Notices | NOT STARTED | Possession grounds system |
 
-#### Property document system (PropertyDocument model)
-Full document management with Supabase Storage. 14 document types:
-Gas Safety Certificate, EPC, EICR, How to Rent Guide, Tenancy Agreement, Inventory Report, Deposit Certificate, Right to Rent, Building Insurance, Landlord Insurance, Section 13 Notice, Section 8 Notice, Check-out Inventory, Other.
+### Tenant Portal
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Document Access | LIVE | View/acknowledge property docs |
+| Document Upload | LIVE | Upload own ID/income docs |
+| Maintenance Submission | LIVE | Create requests with photos |
+| Rent Payment View | LIVE | Read-only payment history |
+| Notice Period | NOT STARTED | Tenant-initiated termination |
 
-**On the property detail page:**
-- 4 compliance status cards at top (Gas Safety, EPC, EICR, How to Rent) — status derived from uploaded PropertyDocuments (not the legacy ComplianceDoc). Status logic: no doc → "Not uploaded" (grey), expiry >30 days → "Valid" (green), expiry ≤30 days → "Expiring soon" (orange), expiry passed → "Expired" (red), How to Rent → "Issued" (green) when any doc of that type exists.
-- "Upload" button → drag-and-drop modal. Per-file: document type dropdown (required) + expiry date (shown only for Gas Safety, EPC, EICR). Multiple files in one batch.
-- Document grid: file type icon (PDF red, image blue, DOCX blue, other grey), document name, type label, file size, upload date, expiry badge, tenant acknowledgment status.
-- Download (signed URL, 60-min expiry) and delete (with confirmation).
-
-**AI date extraction:** planned but not yet implemented. Spec: after upload, POST to `/api/ai/extract-dates`, Claude returns `{ expiryDate, issuedDate }`, UI pre-fills with "AI extracted — please verify" indicator.
-
-#### Tenant document acknowledgment
-Tenants see all property documents (PropertyDocument) for their property in the tenant dashboard. Each document has a "Mark as reviewed" checkbox. On click: POST `/api/documents/[id]/acknowledge`, creates a `DocumentAcknowledgment` record. Once acknowledged, shows "Reviewed on [date]" (cannot uncheck). Landlord sees acknowledgment status per document on the property detail page.
-
-#### Tenant document management (TenantDocument model)
-Separate from PropertyDocument. Tenant-specific documents uploaded by either the landlord (on the tenant detail page) or the tenant themselves (via the tenant portal).
-
-**9 document types:** Passport, Right to Rent, Proof of Income, Bank Statements, Employer Reference, Previous Landlord Reference, Guarantor Agreement, Pet Agreement, Other.
-
-**Required docs (shown on tenant detail page with status dots):** Right to Rent, Passport, Proof of Income, Bank Statements, Employer Reference, Previous Landlord Reference.
-
-**Other docs:** Guarantor Agreement, Pet Agreement, Other.
-
-**Expiry tracking:** Right to Rent and Passport have expiry dates. Status: Valid (green) / Expiring soon ≤30 days (orange) / Expired (red) / Missing (grey dot).
-
-**Tenant card on property page:** shows 4 status dots (Right to Rent, Passport, Proof of Income, Bank Statements). Card border colour: red if R2R missing/expired, orange if any of the 4 are missing, green if all 4 valid.
-
-**Storage:** private `tenant-documents` bucket in Supabase Storage. Path: `/{propertyId}/{tenantId}/{docId}/{filename}`. Always served via signed URLs (60-min expiry).
-
-**API routes:**
-- `GET /api/tenant-documents?tenantId=` — list tenant docs (landlord or tenant self)
-- `POST /api/tenant-documents/upload` — multipart upload
-- `GET /api/tenant-documents/[id]` — signed URL for download
-- `DELETE /api/tenant-documents/[id]` — remove from storage + DB
-- `PATCH /api/tenants/[id]` — update tenant name/phone
-
----
-
-### 4. Tenant Pipeline (Vacant Property)
-
-#### Step 1: Application Link
-- Application link shown on property detail page: `[domain]/apply/[propertyId]`
-- Copy-to-clipboard button + "Send by email" inline form (emails the link via Resend)
-- Planned: "Open applications" button explicitly sets Property status → APPLICATION_OPEN
-
-#### Step 2: Applicant Form (public, no login)
-Applicant fills in at `/apply/[propertyId]`:
-- Full name, email, phone (optional)
-- Current address
-- Employment status (employed / self-employed / student / other)
-- Monthly income (£)
-- Message to landlord (optional)
-- Confirmation checkbox
-- Submits → Tenant record created with status CANDIDATE
-- File uploads (ID doc, payslips, references) — **planned, not yet implemented**
-- Confirmation/notification emails — **planned, not yet implemented**
-
-#### Step 3: Landlord Manages Applications
-- "Applications" section on property detail shows all CANDIDATE tenants (name, email, status)
-- "Send invite email" button converts candidate to INVITED and emails them join link
-- Shortlist / Reject / AI scoring — **planned, not yet implemented**
-
-#### Step 4: Tenant Onboarding
-- Tenant receives invite email with link to `/tenant/join/[inviteToken]`
-- Confirms name, phone; reads property address (read-only)
-- On submit: status → TENANT, `confirmedAt` set, magic link emailed to tenant
-- Tenant signs in via magic link → `/tenant/dashboard`
-
-#### Step 5: AI Screening (Paid — £15 Screening Pack) — planned
-- Stripe payment checked
-- POST to `/api/ai/screen-applicant` with uploaded documents
-- Claude analyses income, affordability (rent ≤35% income), document quality
-- Returns GREEN / AMBER / RED score with structured summary
+### Notifications & Alerts
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Email Templates | LIVE | Resend integration, 8 templates |
+| Compliance Alerts | NOT STARTED | Cron job for expiry warnings |
+| Rent Reminders | NOT STARTED | Automated tenant notifications |
+| Maintenance Updates | NOT STARTED | Status change notifications |
 
 ---
 
-### 4b. AI Financial Scoring (implemented)
+## User Flows
 
-Bank statement analysis powered by Claude API. Evaluates tenant financial health using a rule-based scoring system.
+### Landlord Onboarding
+```
+Email → Magic Link → Name + Property Count → Dashboard
+↓
+Add Property → Address + Type + Bedrooms → Configure Rooms → Compliance Checklist Created
+↓
+Upload Documents → Gas/EPC/EICR/H2R → Status Cards Update
+```
 
-#### Models
-- `ScoringRule` — 30 rules across 6 categories (AFFORDABILITY, STABILITY, DEBT, GAMBLING, LIQUIDITY, POSITIVE). Each rule has a unique key, description, point value (positive or negative), and active flag.
-- `ScoringConfig` — versioned configuration snapshots. One active at a time. Financial reports reference the config version used.
-- `FinancialReport` — the scoring result. Links to tenant and property (both optional). Statuses: PENDING → PROCESSING → COMPLETED or FAILED.
+### Tenant Lifecycle
+```
+VACANT Property → Generate Application Link → Share with Prospects
+↓
+Applicant Completes `/apply/[propertyId]` → Status: CANDIDATE
+↓
+Landlord Reviews → Send Invite → Status: INVITED → Email Sent
+↓
+Tenant Clicks `/tenant/join/[token]` → Confirms Details → Status: TENANT
+↓
+Tenant Portal Access → Upload Documents → Maintenance Requests
+```
 
-#### Flow
-1. Landlord uploads tenant's bank statement PDF via property detail page
-2. `POST /api/scoring/upload` — file stored in `bank-statements` bucket, FinancialReport created (PENDING)
-3. Background: `analyzeStatement()` runs asynchronously
-   - Downloads PDF from storage, converts to base64
-   - Sends to Claude API with all active rule descriptions and monthly rent context
-   - Claude returns: fired rule keys, monthly income, average balance, rent-to-income ratio, summary, confidence level
-   - Gambling rules deduplicated (only highest penalty applied)
-   - Score calculated: starts at 100, rules add/subtract points, clamped to 0–100
-   - Grade assigned: Excellent (85+), Good (70+), Fair (55+), Poor (40+), High Risk (<40)
-   - Report saved with score, grade, AI summary, breakdown by category, applied rules
-4. Frontend polls `GET /api/scoring/[reportId]` for results
-5. Results shown inline on property detail page per tenant: grade badge, score, AI summary
-
-#### Verification
-- Each report has a unique `verificationToken`
-- Public verification page at `/verify/[token]` — shows grade, score, summary, date
-- No auth required — designed for sharing with landlords/agents
-
-#### Configuration
-- `prisma/seed-scoring.ts` seeds 30 rules + ScoringConfig v1
-- Rules can be deactivated individually; config versioning tracks which rules were active for each report
-- Property has `requireFinancialVerification` flag (toggleable by landlord)
-
-#### Not yet implemented
-- Stripe payment for scoring (currently free)
-- PDF report generation
-- Financial Passport product (`/passport` page exists as pre-launch landing)
+### Screening Flow
+```
+Bank Statement Upload → AI Analysis (Claude) → Score 0-100 + Grade
+↓
+Verification Token Generated → Public `/verify/[token]` Page
+↓
+Landlord Decision → Accept/Reject → Move-in Process
+```
 
 ---
 
-### 5. Move-In Process
+## Technical Architecture
 
-#### Deposit
-- Landlord enters deposit amount
-- System generates PDF instruction: how to receive and protect deposit in chosen scheme (DPS / MyDeposits / TDS)
-- Landlord marks "Deposit protected" + enters reference number
-- **30-day deadline enforced:** alert if unprotected after 30 days from tenancy start
+### Stack
+- **Framework:** Next.js 14 (App Router)
+- **Database:** PostgreSQL (Supabase)
+- **ORM:** Prisma
+- **Auth:** Supabase Auth (magic links)
+- **Storage:** Supabase Storage (documents, photos)
+- **Email:** Resend
+- **Payments:** Stripe
+- **AI:** Anthropic Claude (financial analysis)
+- **Styling:** Tailwind CSS
+- **Deployment:** Vercel
 
-#### Contract Generation (Paid — £10)
-- Stripe payment checked
-- System fills pre-approved APT template (solicitor-reviewed)
-- Auto-populated fields: landlord name, tenant name, property address, monthly rent, payment day, start date, notice periods
-- PDF generated
-- Both parties receive email with link to sign
-- **E-signature flow:**
-  - Unique signing link per party
-  - Click "I agree" button + timestamp + IP + email recorded
-  - Both signed → `contractUrl` saved to Tenancy, status updated
-  - Valid under Electronic Communications Act 2000
+### Hosting & Infrastructure
+- **Frontend:** Vercel
+- **Database:** Supabase (managed PostgreSQL)
+- **File Storage:** Supabase Storage
+- **CDN:** Vercel Edge Network
+- **Environment:** Production + Preview branches
 
-#### Inventory Report (Paid — £5)
-- Both parties invited via email to upload photos
-- Mobile-optimised upload interface
-- Structure: Room → Add photos → Add comment per photo
-- Photos auto-timestamped and geotagged (if permission granted)
-- Once both parties submit:
-  - PDF Inventory Report generated
-  - Both receive copy via email
-  - Both click "Confirm" in their portal
-- On both confirmations: Tenancy status → ACTIVE, Property status → ACTIVE
+### Authentication & Authorization
+- **Method:** Supabase Auth magic links (passwordless)
+- **Session:** HTTP-only cookies via `@supabase/ssr`
+- **RLS:** Row Level Security on all tables
+- **Multi-role:** Single user can be both landlord and tenant
 
----
+### Storage Strategy
+| Bucket | Path Pattern | Access |
+|--------|-------------|--------|
+| `property-documents` | `/{propertyId}/{docId}/{filename}` | Private (signed URLs) |
+| `tenant-documents` | `/{propertyId}/{tenantId}/{docId}/{filename}` | Private (signed URLs) |
+| `maintenance-photos` | `/{requestId}/{role}/{photoId}-{filename}` | Private (signed URLs) |
+| `bank-statements` | `/{reportId}/{filename}` | Private (scoring only) |
+| `check-in-photos` | `/{reportId}/{roomId}/{photoId}` | Private (signed URLs) |
 
-### 6. Active Tenancy Management
-
-#### Rent Tracking
-Implemented via the `RentPayment` model. Status enum: `PENDING → EXPECTED → RECEIVED | LATE | PARTIAL`.
-
-`lib/payments.ts` provides two functions:
-- `generateUpcomingPayments(tenancyId)` — idempotent, creates EXPECTED records for the next 3 months based on tenancy `paymentDay` and `monthlyRent`
-- `updatePaymentStatuses()` — transitions EXPECTED → LATE when due date passes without payment
-
-- Landlord manually marks rent as received (status → RECEIVED) and can record partial payments
-- Automated emails (planned — via Resend):
-  - Reminder to tenant 3 days before due date
-  - Alert to landlord if unpaid on due date
-  - Escalation if still unpaid 7 days after due date
-- Dashboard shows red badge on property card if any rent LATE
-
-**GoCardless Direct Debit (planned):** future integration to auto-collect rent and reconcile against RentPayment records automatically.
-
-#### Tenant Portal (implemented)
-Accessible at `/tenant/dashboard` — requires magic link sign-in (email). Tenant can:
-- View property address and key tenancy details (landlord name, landlord email)
-- Download and acknowledge landlord-uploaded PropertyDocuments (mark as reviewed)
-- Upload their own TenantDocuments (passport, R2R, income proof, bank statements, etc.)
-- View rent payment status (read-only)
-- Submit maintenance requests (title, description) and view submitted requests with status
-- If the tenant's account is also a landlord: "Switch to landlord dashboard" context switcher in nav
-- Planned: give notice, photo upload on maintenance requests from portal
-
-#### Maintenance Requests (implemented)
-Model: `MaintenanceRequest` with priority (LOW/MEDIUM/HIGH/URGENT) and status (OPEN/IN_PROGRESS/RESOLVED). Related models: `MaintenanceStatusHistory` (immutable audit trail) and `MaintenancePhoto` (photo uploads).
-
-**Landlord view:**
-- `/dashboard/maintenance` — list all requests across all properties, filterable by status (All/Open/In Progress/Resolved), sorted by priority then date
-- `/dashboard/maintenance/[id]` — detail page with full description, photo gallery, status management, timeline of all status changes
-- Dashboard overview shows top 3 active requests (OPEN + IN_PROGRESS) in "Active Maintenance" section
-- Landlord can: change status (Open → In Progress → Resolved), change priority, add note on status change
-
-**Tenant view:**
-- Tenant portal shows maintenance form (title, description) and list of submitted requests with status
-- Tenant can submit new requests (creates MaintenanceRequest + initial StatusHistory entry)
-
-**Photo system:**
-- Both landlord and tenant can upload photos (JPEG/PNG/WebP, max 10 MB, max 20 per request)
-- Stored in `maintenance-photos` Supabase Storage bucket at `/{requestId}/{role}/{photoId}-{filename}`
-- Tenant can delete own photos; landlord can delete any photo
-- Signed URLs (60 min expiry) for viewing
-
-**API routes:**
-- `GET /api/maintenance` — list requests (landlord: by property, tenant: by tenantId)
-- `POST /api/maintenance` — create request (requires propertyId, tenantId, title, description)
-- `GET /api/maintenance/[id]` — full detail with status history and photos
-- `PATCH /api/maintenance/[id]` — update status/priority (landlord only)
-- `GET/POST /api/maintenance/[id]/photos` — list/upload photos
-- `DELETE /api/maintenance/[id]/photos/[photoId]` — delete photo
-
-**Not yet implemented:**
-- Category field (no DAMP_MOULD category yet)
-- Awaab's Law timer (`respondBy` field)
-- Notification emails on submission or status change
-- Landlord comments/notes independent of status changes
-
-#### Section 13 Notice (Rent Increase)
-- Landlord can raise rent maximum once per 12 months
-- System checks date of last increase — blocks if <12 months
-- Landlord enters new amount
-- System generates Section 13 Notice PDF
-- Email sent to tenant with notice
-- 2-month notice period before new rent applies
-- New monthly amount updated in Tenancy on effective date
+### Payment Architecture
+- **Subscriptions:** Stripe Billing Portal
+- **One-time:** Payment Intents
+- **Webhook:** `/api/webhooks/stripe` (subscription events)
+- **Customer:** 1:1 mapping with User via `stripeCustomerId`
 
 ---
 
-### 7. Termination
+## Compliance & Legal
 
-#### Tenant-Initiated
-1. Tenant clicks "Give notice" in portal
-2. System enforces **minimum 2-month notice** — earliest possible date shown
-3. Landlord notified with move-out date
-4. Property status → NOTICE_GIVEN
-5. Auto-checklist created for landlord:
-   - Schedule check-out inspection
-   - Arrange deposit return via scheme
-   - Update PRS Database registration
-   - Re-issue How to Rent Guide for next tenant
+### Renters' Rights Act 2025
+- **Effective:** 1 May 2026
+- **Section 21 Abolition:** All notices must use Section 8 grounds with evidence
+- **Periodic Tenancies:** All ASTs convert to Assured Periodic Tenancies
+- **Rent Increases:** Maximum once per year via Section 13 Notice
+- **New Offences:** 15 new offences, fines up to £40,000
 
-#### Landlord-Initiated (Section 8)
-1. Landlord selects "Serve notice" in dashboard
-2. Selects Section 8 Ground from list:
-   - Ground 8/10/11: Rent arrears
-   - Ground 1: Landlord/family moving in
-   - Ground 2: Property sale
-   - Ground 7A/14: Anti-social behaviour
-3. System displays: required evidence, notice period, process steps
-4. System generates Section 8 Notice PDF with correct ground
-5. Landlord downloads and serves (system logs date)
+### Deposit Protection
+- **Schemes:** DPS, MyDeposits, TDS integration
+- **Timeline:** 30-day protection deadline enforced
+- **Alerts:** Automated warnings for unprotected deposits
 
-#### Check-Out Inspection
-- Both parties upload photos (same flow as inventory)
-- Side-by-side comparison with move-in photos shown to landlord
-- Landlord decides: full return / partial deduction / full deduction
-- System generates instructions for deposit scheme dispute process
-- Tenancy status → ENDED, Property status → VACANT
+### Awaab's Law (Private Rentals)
+- **Scope:** Damp and mould complaints
+- **Response Time:** 24 hours maximum
+- **Implementation Status:** Timer system NOT STARTED
+- **Compliance:** Maintenance category system ready for DAMP_MOULD type
 
----
+### Document Requirements
+- **Gas Safety:** Annual certificate mandatory
+- **EPC:** Valid certificate required
+- **EICR:** Every 5 years
+- **How to Rent:** Latest government guide
+- **Right to Rent:** Tenant verification mandatory
 
-### 8. Dispute Pack (Paid — £29)
-
-Available for any active or ended tenancy. Generates one-click evidence package:
-
-Contents:
-- Full maintenance ticket history (description, photos, dates, status changes)
-- All rent payment records (paid/overdue timeline)
-- All signed documents (contract, inventory)
-- Inventory photos: move-in vs move-out side by side
-- All notices served with dates
-- Chronological event log of the entire tenancy
-- Pre-filled letter template for:
-  - First-tier Tribunal (Property Chamber)
-  - Property Ombudsman
-  - Deposit scheme dispute
-
-Delivered as PDF package via email and download link.
-
----
-
-### 9. Compliance Alerts (Cron Job)
-
-Daily cron at 08:00 UK time (`/api/cron/alerts`):
-
-Checks all properties for:
-- Compliance docs expiring within 30 days → email to landlord
-- Deposit unprotected >28 days from tenancy start → urgent email
-- Rent overdue →already handled by rent tracker
-- Awaab's Law tickets approaching 24h deadline → immediate email
-
----
-
-## Email Templates
-
-| Template | Trigger | Recipient |
-|---|---|---|
-| Magic link | Login request | Landlord |
-| Application received | Applicant submits form | Applicant |
-| New application | Applicant submits form | Landlord |
-| Application shortlisted | Landlord shortlists | Applicant |
-| Application rejected | Landlord rejects | Applicant |
-| Application accepted | Landlord accepts | Applicant |
-| Rent reminder | 3 days before due date | Tenant |
-| Rent overdue | Day of due date if unpaid | Landlord |
-| Maintenance received | Ticket submitted | Landlord |
-| Maintenance update | Status changed | Tenant |
-| Compliance expiry | 30/14/7 days before | Landlord |
-| Section 13 Notice | Rent increase triggered | Tenant |
-| Contract to sign | Contract generated | Both parties |
-| Inventory to upload | Inventory initiated | Both parties |
-| Dispute Pack ready | Pack generated | Landlord |
-
----
-
-## Out of Scope (MVP)
-
-- Open Banking / bank feed integration
-- Native mobile apps (mobile web only)
-- HMRC / Making Tax Digital integration
-- Contractor portal
-- Automated deposit transfer
-- Multi-user / team accounts (one landlord per account)
-- Live chat or video calls
-- WhatsApp notifications (Phase 2)
-- Tenant referencing via external agencies
+### Data Protection (GDPR)
+- **Retention:** Check-in photos deleted 3 months post-tenancy
+- **Storage:** All files encrypted at rest (Supabase)
+- **Access:** Signed URLs with 60-minute expiry
+- **Audit:** Full access logging via Supabase
