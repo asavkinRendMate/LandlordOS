@@ -145,62 +145,77 @@ export default function LoginPage() {
         </div>
 
         {sent ? (
-          <div className="bg-white border border-gray-200 rounded-2xl p-8 text-center shadow-sm">
-            <div className="w-12 h-12 bg-[#16a34a]/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-6 h-6 text-[#16a34a]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
-            </div>
-            <h2 className="text-gray-900 font-semibold text-lg mb-1">Enter your sign-in code</h2>
-            <p className="text-gray-500 text-sm leading-relaxed">
-              We sent an 8-digit code to<br />
-              <span className="text-gray-700 font-medium">{email}</span>
-            </p>
-
-            {/* 8-digit OTP input */}
-            <div className="flex justify-center gap-1.5 mt-6" onPaste={handleCodePaste}>
-              {code.map((digit, i) => (
-                <input
-                  key={i}
-                  ref={(el) => { inputRefs.current[i] = el }}
-                  type="text"
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  maxLength={1}
-                  value={digit}
-                  onChange={(e) => handleCodeChange(i, e.target.value)}
-                  onKeyDown={(e) => handleCodeKeyDown(i, e)}
-                  disabled={verifying}
-                  className="w-9 h-12 text-center text-lg font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-[#16a34a] focus:ring-1 focus:ring-[#16a34a]/30 transition-colors disabled:opacity-50"
-                />
-              ))}
-            </div>
-
-            {error && (
-              <p className="text-red-600 text-sm mt-3">{error}</p>
-            )}
-
-            {verifying && (
-              <p className="text-gray-500 text-sm mt-3">Verifying…</p>
-            )}
-
-            <div className="mt-6 space-y-2">
-              <button
-                onClick={handleResend}
-                disabled={loading}
-                className="text-sm text-[#16a34a] hover:text-[#15803d] transition-colors disabled:opacity-50"
-              >
-                {loading ? 'Sending…' : 'Resend code'}
-              </button>
-              <div>
-                <button
-                  onClick={() => { setSent(false); setEmail(''); setCode(['', '', '', '', '', '', '', '']); setError(null) }}
-                  className="text-sm text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  Use a different email
-                </button>
+          <div className="bg-white border border-gray-200 rounded-2xl p-8 text-center shadow-sm relative overflow-hidden">
+            {verifying ? (
+              /* ── Verifying overlay ──────────────────────────────────── */
+              <div className="py-4">
+                <div className="w-12 h-12 mx-auto mb-5 relative">
+                  <svg className="w-12 h-12 animate-spin text-[#16a34a]" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                    <path className="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                </div>
+                <h2 className="text-gray-900 font-semibold text-lg mb-1">Signing you in</h2>
+                <p className="text-gray-500 text-sm">Verifying your code…</p>
+                <div className="mt-5 mx-auto w-48 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-[#16a34a] rounded-full animate-progress" />
+                </div>
               </div>
-            </div>
+            ) : (
+              /* ── Code entry ─────────────────────────────────────────── */
+              <>
+                <div className="w-12 h-12 bg-[#16a34a]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-6 h-6 text-[#16a34a]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <h2 className="text-gray-900 font-semibold text-lg mb-1">Enter your sign-in code</h2>
+                <p className="text-gray-500 text-sm leading-relaxed">
+                  We sent an 8-digit code to<br />
+                  <span className="text-gray-700 font-medium">{email}</span>
+                </p>
+
+                {/* 8-digit OTP input */}
+                <div className="flex justify-center gap-1.5 mt-6" onPaste={handleCodePaste}>
+                  {code.map((digit, i) => (
+                    <input
+                      key={i}
+                      ref={(el) => { inputRefs.current[i] = el }}
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      maxLength={1}
+                      value={digit}
+                      onChange={(e) => handleCodeChange(i, e.target.value)}
+                      onKeyDown={(e) => handleCodeKeyDown(i, e)}
+                      className="w-9 h-12 text-center text-lg font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-[#16a34a] focus:ring-1 focus:ring-[#16a34a]/30 transition-colors"
+                    />
+                  ))}
+                </div>
+
+                {error && (
+                  <p className="text-red-600 text-sm mt-3">{error}</p>
+                )}
+
+                <div className="mt-6 space-y-2">
+                  <button
+                    onClick={handleResend}
+                    disabled={loading}
+                    className="text-sm text-[#16a34a] hover:text-[#15803d] transition-colors disabled:opacity-50"
+                  >
+                    {loading ? 'Sending…' : 'Resend code'}
+                  </button>
+                  <div>
+                    <button
+                      onClick={() => { setSent(false); setEmail(''); setCode(['', '', '', '', '', '', '', '']); setError(null) }}
+                      className="text-sm text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      Use a different email
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         ) : (
           <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm">
