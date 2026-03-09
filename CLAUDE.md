@@ -922,8 +922,8 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
 - Never add tenantName/tenantEmail/tenantPhone to Tenancy — use the Tenant relation
 - Never show grade labels or "/100" score to candidates — only show neutral reliability messaging
 - Never expose raw AI output to users — always parse, validate, and clean with `cleanSummary()`
-- Never create a new Supabase table without immediately enabling RLS and writing policies in the same migration file
-- Never leave a table with UNRESTRICTED badge in Supabase dashboard — this means RLS is disabled and any authenticated user can read/write all rows
+- Never create a new Supabase table without immediately enabling RLS and writing policies in the same migration file — pattern: see `supabase/migrations/20260327_add_rls_policies.sql` // Updated: 2026-03-09 — RLS policy requirements
+- Never leave a table with UNRESTRICTED badge in Supabase dashboard — all tables must show globe icon (RLS enabled)
 
 ---
 
