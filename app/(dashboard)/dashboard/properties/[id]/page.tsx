@@ -2172,7 +2172,13 @@ function ApplicationsSection({
                   <div className="flex items-center justify-between">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm text-[#1A1A1A] font-medium">{inv.candidateName ?? inv.email}</span>
+                        {inv.status === 'complete' && inv.reportId ? (
+                          <Link href={`/screening/report/${inv.reportId}`} title="View report" className="text-sm text-[#1A1A1A] font-medium hover:text-[#16a34a] transition-colors underline decoration-gray-300 hover:decoration-[#16a34a]">
+                            {inv.candidateName ?? inv.email}
+                          </Link>
+                        ) : (
+                          <span className="text-sm text-[#1A1A1A] font-medium">{inv.candidateName ?? inv.email}</span>
+                        )}
                         <span className={`text-[10px] font-medium rounded px-1.5 py-0.5 ${badge.cls}`}>
                           {badge.label}
                         </span>
@@ -2186,18 +2192,10 @@ function ApplicationsSection({
                       {canSelectTenant && inv.status === 'complete' && inv.candidateId && (
                         <button
                           onClick={() => setSelectInvite(inv)}
-                          className="text-xs text-[#16a34a] hover:text-[#15803d] font-medium transition-colors"
+                          className="px-3 py-1.5 text-xs font-medium text-white bg-[#16a34a] hover:bg-[#15803d] rounded-md transition-colors"
                         >
                           Select as tenant
                         </button>
-                      )}
-                      {inv.status === 'complete' && inv.reportId && (
-                        <Link
-                          href={`/screening/report/${inv.reportId}`}
-                          className="text-xs text-[#16a34a] hover:text-[#15803d] font-medium transition-colors"
-                        >
-                          View report
-                        </Link>
                       )}
                       {inv.status === 'invited' && (
                         <button
