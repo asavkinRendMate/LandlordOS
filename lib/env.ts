@@ -20,6 +20,11 @@ const schema = z.object({
 
 // Throws at startup if any required variable is missing or malformed.
 // Import this only from server-side modules — never from 'use client' files.
+//
+// Client-side env vars (read via process.env.NEXT_PUBLIC_* in 'use client' files):
+//   NEXT_PUBLIC_DEMO_LANDLORD_PASSWORD — optional, demo login button password
+//   NEXT_PUBLIC_DEMO_TENANT_PASSWORD   — optional, demo login button password
+//   Demo buttons only visible on login page when BOTH are set and non-empty.
 export const env = schema.parse({
   NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
   NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,

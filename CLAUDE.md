@@ -596,6 +596,7 @@ model ScoringConfig { /* full schema */ }
 | Check-in reports | BETA | Property rooms, photo capture, tenant/landlord sign-off |
 | Financial Passport | PRE-LAUNCH | Email capture landing page only |
 | Live chat (Crisp) | LIVE | Marketing pages only |
+| Demo login | LIVE | Landlord + tenant demo buttons on login page, env-var gated |
 | Stripe payments | NOT STARTED | All purchases use MOCK_PAID |
 
 ---
@@ -886,6 +887,10 @@ SENTRY_PROJECT=            # Sentry project slug
 # Product analytics — PostHog (optional — disabled when NEXT_PUBLIC_POSTHOG_KEY is empty, EU data residency)
 NEXT_PUBLIC_POSTHOG_KEY=   # On/off switch — empty = PostHog disabled entirely
 NEXT_PUBLIC_POSTHOG_HOST=  # Default: https://eu.i.posthog.com
+
+# Demo login (optional — buttons hidden when either var is empty/unset) // Updated: 2026-03-09 — demo login buttons
+NEXT_PUBLIC_DEMO_LANDLORD_PASSWORD=  # Password for demo.landlord@letsorted.co.uk
+NEXT_PUBLIC_DEMO_TENANT_PASSWORD=    # Password for demo.tenant@letsorted.co.uk
 
 # Payments (not yet integrated)
 STRIPE_SECRET_KEY=

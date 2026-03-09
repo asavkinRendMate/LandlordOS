@@ -36,6 +36,7 @@
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Magic Link Auth (Supabase) | LIVE | Email-based, no passwords |
+| Demo Login Buttons | LIVE | Landlord + tenant demo access, env-var gated (`NEXT_PUBLIC_DEMO_*_PASSWORD`) |
 | Property Management | LIVE | Address, type, bedrooms (synced picker), rooms, status tracking |
 | Multi-tenant Dashboard | LIVE | Landlord + tenant context switching |
 | Document Storage | LIVE | Supabase Storage, signed URLs |
