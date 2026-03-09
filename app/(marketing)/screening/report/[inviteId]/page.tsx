@@ -171,13 +171,14 @@ export default function ReportPage() {
   return (
     <div className="min-h-screen bg-white">
       <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-100">
-        <div className="max-w-[1280px] mx-auto px-6 h-16 flex items-center justify-between">
+        <div className="max-w-[1280px] mx-auto px-4 py-3 md:px-6 md:py-0 md:h-16 flex items-center justify-between">
           <Link href="/">
-            <Image src="/logo.svg" alt="LetSorted" width={150} height={50} priority />
+            <Image src="/logo-icon.svg" alt="LetSorted" width={32} height={32} className="md:hidden" priority />
+            <Image src="/logo.svg" alt="LetSorted" width={150} height={50} className="hidden md:block" priority />
           </Link>
           <Link
             href="/screening/invites"
-            className="text-gray-500 hover:text-gray-700 text-sm font-medium"
+            className="text-gray-500 hover:text-gray-700 text-xs md:text-sm font-medium"
           >
             All invites
           </Link>

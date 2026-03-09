@@ -175,14 +175,15 @@ export default function InvitesPage() {
   return (
     <div className="min-h-screen bg-white">
       <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-100">
-        <div className="max-w-[1280px] mx-auto px-6 h-16 flex items-center justify-between">
+        <div className="max-w-[1280px] mx-auto px-4 py-3 md:px-6 md:py-0 md:h-16 flex items-center justify-between">
           <Link href="/">
-            <Image src="/logo.svg" alt="LetSorted" width={150} height={50} priority />
+            <Image src="/logo-icon.svg" alt="LetSorted" width={32} height={32} className="md:hidden" priority />
+            <Image src="/logo.svg" alt="LetSorted" width={150} height={50} className="hidden md:block" priority />
           </Link>
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-1.5 md:gap-2.5">
             <Link
               href="/screening"
-              className="bg-green-600 hover:bg-green-700 text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors"
+              className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 md:px-5 md:py-2.5 rounded-lg text-xs md:text-sm transition-colors"
             >
               Send invite
             </Link>
@@ -195,7 +196,7 @@ export default function InvitesPage() {
                     await supabase.auth.signOut()
                     router.push('/screening')
                   }}
-                  className="text-gray-500 hover:text-gray-700 font-medium px-4 py-2.5 text-sm transition-colors"
+                  className="text-gray-500 hover:text-gray-700 font-medium px-3 py-2 md:px-4 md:py-2.5 text-xs md:text-sm transition-colors"
                 >
                   Sign out
                 </button>

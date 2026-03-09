@@ -27,9 +27,10 @@ export default function PrivacyPage() {
 
       {/* Nav */}
       <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-100">
-        <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+        <div className="max-w-5xl mx-auto px-4 py-3 md:px-6 md:py-0 md:h-16 flex items-center justify-between">
           <Link href="/">
-            <Image src="/logo.svg" alt="LetSorted" width={120} height={40} priority />
+            <Image src="/logo-icon.svg" alt="LetSorted" width={28} height={28} className="md:hidden" priority />
+            <Image src="/logo.svg" alt="LetSorted" width={120} height={40} className="hidden md:block" priority />
           </Link>
           <Link
             href="/"
