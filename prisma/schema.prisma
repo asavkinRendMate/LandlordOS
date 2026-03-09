@@ -346,6 +346,8 @@ model MaintenanceRequest {
   description    String
   priority       MaintenancePriority @default(MEDIUM)
   status         MaintenanceStatus   @default(OPEN)
+  category       String?             // e.g. 'DAMP_MOULD' — triggers Awaab's Law timer
+  respondBy      DateTime?           @map("respond_by") // Awaab's Law: auto-set to createdAt + 24h for DAMP_MOULD
   inProgressAt   DateTime?           @map("in_progress_at")
   resolvedAt     DateTime?           @map("resolved_at")
   resolvedBy     String?             @map("resolved_by")
@@ -621,6 +623,20 @@ model CheckInReport {
   @@index([propertyId])
   @@index([tenantId])
   @@map("check_in_reports")
+}
+
+// ── Compliance Alert Log ────────────────────────────────────────────────────
+// Deduplication log for cron-triggered compliance/deposit alerts.
+
+model ComplianceAlertLog {
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  notificationId String   @map("notification_id")
+  referenceId    String   @map("reference_id")
+  sentAt         DateTime @default(now()) @map("sent_at")
+
+  @@index([notificationId, referenceId, sentAt])
+  @@map("compliance_alert_log")
 }
 
 // GDPR: Check-in photos retained for tenancy duration + 3 months

@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { createAuthClient } from '@/lib/supabase/auth'
+import { sendEmail } from '@/lib/resend'
+import {
+  maintenanceStatusUpdateLandlordHtml,
+  maintenanceStatusUpdateTenantHtml,
+} from '@/lib/email-templates'
 
 // GET /api/maintenance/[id]
 export async function GET(
@@ -68,6 +73,7 @@ export async function PATCH(
 
     const { status, priority, note } = parsed.data
 
+    const oldStatus = request.status
     const updated = await prisma.$transaction(async (tx) => {
       // Build update data
       const updateData: Record<string, unknown> = {}
@@ -104,6 +110,59 @@ export async function PATCH(
         data: updateData,
       })
     })
+
+    // Non-blocking status change notifications
+    if (status !== undefined && status !== oldStatus) {
+      try {
+        const full = await prisma.maintenanceRequest.findUnique({
+          where: { id },
+          include: {
+            property: {
+              include: { user: { select: { email: true, name: true } } },
+            },
+            tenant: { select: { name: true, email: true } },
+          },
+        })
+        if (full) {
+          const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://letsorted.co.uk'
+          const propertyAddress = `${full.property.line1}, ${full.property.city} ${full.property.postcode}`
+          const landlordName = full.property.user.name?.split(' ')[0] || 'there'
+          const formatStatus = (s: string) =>
+            s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+
+          await Promise.all([
+            sendEmail({
+              to: full.property.user.email,
+              subject: `Maintenance update: ${full.title} \u2014 ${propertyAddress}`,
+              html: maintenanceStatusUpdateLandlordHtml({
+                landlordName,
+                requestTitle: full.title,
+                propertyAddress,
+                tenantName: full.tenant.name,
+                oldStatus: formatStatus(oldStatus),
+                newStatus: formatStatus(status),
+                dashboardUrl: `${appUrl}/dashboard/maintenance/${id}`,
+              }),
+            }),
+            sendEmail({
+              to: full.tenant.email,
+              subject: `Update on your maintenance request \u2014 ${full.title}`,
+              html: maintenanceStatusUpdateTenantHtml({
+                tenantName: full.tenant.name,
+                requestTitle: full.title,
+                propertyAddress,
+                oldStatus: formatStatus(oldStatus),
+                newStatus: formatStatus(status),
+                landlordNote: note ?? undefined,
+                dashboardUrl: `${appUrl}/tenant/dashboard`,
+              }),
+            }),
+          ])
+        }
+      } catch (emailErr) {
+        console.error('[PATCH /api/maintenance/[id]] Email notification failed', emailErr)
+      }
+    }
 
     return NextResponse.json({ data: updated })
   } catch (err) {

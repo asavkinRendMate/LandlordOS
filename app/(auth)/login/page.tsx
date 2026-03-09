@@ -8,9 +8,12 @@ import { sendOtpDirect } from '@/lib/supabase/otp'
 import Footer from '@/components/shared/Footer'
 
 // Demo credentials — inlined at build time, empty string if unset
+const demoLandlordEmail = process.env.NEXT_PUBLIC_DEMO_LANDLORD_EMAIL ?? ''
 const demoLandlordPassword = process.env.NEXT_PUBLIC_DEMO_LANDLORD_PASSWORD ?? ''
+const demoTenantEmail = process.env.NEXT_PUBLIC_DEMO_TENANT_EMAIL ?? ''
 const demoTenantPassword = process.env.NEXT_PUBLIC_DEMO_TENANT_PASSWORD ?? ''
-const showDemo = demoLandlordPassword.length > 0 && demoTenantPassword.length > 0
+const showDemo = demoLandlordEmail.length > 0 && demoLandlordPassword.length > 0
+  && demoTenantEmail.length > 0 && demoTenantPassword.length > 0
 
 export default function LoginPage() {
   return (
@@ -161,12 +164,8 @@ function LoginContent() {
     setDemoLoading(role)
     setDemoError(null)
 
-    const demoEmail = role === 'landlord'
-      ? 'demo.landlord@letsorted.co.uk'
-      : 'demo.tenant@letsorted.co.uk'
-    const demoPassword = role === 'landlord'
-      ? demoLandlordPassword
-      : demoTenantPassword
+    const demoEmail = role === 'landlord' ? demoLandlordEmail : demoTenantEmail
+    const demoPassword = role === 'landlord' ? demoLandlordPassword : demoTenantPassword
 
     const supabase = createClient()
     const { error } = await supabase.auth.signInWithPassword({

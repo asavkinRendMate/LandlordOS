@@ -28,10 +28,6 @@ export default withSentryConfig(config, {
   // Hides source maps from client bundles
   hideSourceMaps: true,
 
-  // Automatically instruments API routes and server components
-  autoInstrumentServerFunctions: true,
-  autoInstrumentMiddleware: true,
-
   // Disable Sentry telemetry
   telemetry: false,
 })

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 type User = {
   id: string
@@ -133,7 +134,15 @@ export default function AdminPage() {
       {/* Header */}
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
-          <h1 className="text-lg font-semibold text-gray-900">LetSorted Admin</h1>
+          <div className="flex items-center gap-6">
+            <h1 className="text-lg font-semibold text-gray-900">LetSorted Admin</h1>
+            <nav className="flex gap-4 text-sm">
+              <span className="text-gray-900 font-medium">Data</span>
+              <Link href="/admin/notifications" className="text-gray-500 hover:text-gray-900">
+                Notifications
+              </Link>
+            </nav>
+          </div>
           <button
             onClick={handleSignOut}
             className="text-sm text-gray-500 hover:text-gray-900"
