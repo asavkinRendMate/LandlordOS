@@ -95,6 +95,7 @@ model Property {
   financialReports    FinancialReport[]
   rooms               PropertyRoom[]
   checkInReports      CheckInReport[]
+  applicationInvites  ApplicationInvite[]
 
   @@index([userId])
   @@map("properties")
@@ -471,11 +472,29 @@ model FinancialReport {
   createdAt            DateTime     @default(now()) @map("created_at")
   updatedAt            DateTime     @updatedAt @map("updated_at")
 
+  screeningLogs ScreeningLog[]
+
   @@index([tenantId])
   @@index([propertyId])
   @@index([inviteId])
   @@index([inviteId, status])
   @@map("financial_reports")
+}
+
+// ── Screening Logs ──────────────────────────────────────────────────────────
+
+model ScreeningLog {
+  id                String          @id @default(cuid())
+  screeningReportId String          @map("screening_report_id")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  stage             String          // INIT, PDF, VERIFY, VALIDATE, ANALYSE, SCORE, SAVE, COMPLETE, ERROR
+  level             String          // INFO, WARN, ERROR
+  message           String
+  data              Json?
+  screeningReport   FinancialReport @relation(fields: [screeningReportId], references: [id], onDelete: Cascade)
+
+  @@index([screeningReportId])
+  @@map("screening_logs")
 }
 
 // ── Screening Invites ─────────────────────────────────────────────────────────
@@ -637,6 +656,23 @@ model ComplianceAlertLog {
 
   @@index([notificationId, referenceId, sentAt])
   @@map("compliance_alert_log")
+}
+
+// ── Application Invites ─────────────────────────────────────────────────────
+// Tracks emails sent via "Invite applicants" on the property page.
+// Persisted so invites survive page reload. Merged with Tenant CANDIDATE
+// records on the client to build a unified applicant list.
+
+model ApplicationInvite {
+  id         String   @id @default(cuid())
+  propertyId String   @map("property_id")
+  email      String
+  sentAt     DateTime @default(now()) @map("sent_at")
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@unique([propertyId, email])
+  @@index([propertyId])
+  @@map("application_invites")
 }
 
 // GDPR: Check-in photos retained for tenancy duration + 3 months

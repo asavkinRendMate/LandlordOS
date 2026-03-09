@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { showErrorToast } from '@/lib/error-toast'
 
 export interface DocType {
   value: string
@@ -120,7 +121,11 @@ export default function DocumentUploadModal({
 
       const res = await fetch(uploadEndpoint, { method: 'POST', body: fd })
       updateFile(i, { progress: res.ok ? 'done' : 'error' })
-      if (!res.ok) anyFailed = true
+      if (!res.ok) {
+        // TODO: wire showErrorToast() to remaining API calls
+        showErrorToast({ message: `Failed to upload ${pf.file.name}`, context: 'document upload' })
+        anyFailed = true
+      }
     }
 
     setUploading(false)

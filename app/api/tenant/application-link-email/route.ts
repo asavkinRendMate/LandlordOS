@@ -40,6 +40,17 @@ export async function POST(req: Request) {
       }),
     })
 
+    // Persist invite so it survives page reload
+    try {
+      await prisma.applicationInvite.upsert({
+        where: { propertyId_email: { propertyId, email } },
+        create: { propertyId, email },
+        update: { sentAt: new Date() },
+      })
+    } catch (dbErr) {
+      console.error('[tenant/application-link-email] Failed to persist invite', dbErr)
+    }
+
     return NextResponse.json({ success: true })
   } catch (err) {
     console.error('[tenant/application-link-email POST]', err)

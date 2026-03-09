@@ -48,6 +48,9 @@ export default function AdminNotificationsPage() {
                 Data
               </Link>
               <span className="text-gray-900 font-medium">Notifications</span>
+              <Link href="/admin/screenings" className="text-gray-500 hover:text-gray-900">
+                Screenings
+              </Link>
             </nav>
           </div>
           <button

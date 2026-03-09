@@ -7,6 +7,7 @@ import DocumentUploadModal from '@/components/shared/DocumentUploadModal'
 import TenantDetailsForm, { type TenantFormData } from '@/components/shared/TenantDetailsForm'
 import { type RoomEntry, ROOM_TYPE_LABELS, QUICK_ADD_ROOMS } from '@/lib/room-utils'
 import { inputClass, selectClassCompact } from '@/lib/form-styles'
+import { showErrorToast } from '@/lib/error-toast'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -67,6 +68,12 @@ interface PropertyRoom {
   order: number
 }
 
+interface ApplicationInvite {
+  id: string
+  email: string
+  sentAt: string
+}
+
 interface Property {
   id: string
   name: string | null
@@ -82,6 +89,7 @@ interface Property {
   complianceDocs: ComplianceDoc[]
   tenancies: Tenancy[]
   rooms: PropertyRoom[]
+  applicationInvites: ApplicationInvite[]
 }
 
 interface Tenant {
@@ -1107,7 +1115,10 @@ function RoomsSection({ propertyId, rooms: initialRooms }: { propertyId: string;
         setRooms(json.data)
         setEditing(false)
       }
-    } catch { /* silent */ }
+    } catch {
+      // TODO: wire showErrorToast() to remaining API calls
+      showErrorToast({ context: 'saving rooms' })
+    }
     setSaving(false)
   }
 
@@ -1850,23 +1861,69 @@ function FinancialVerificationToggle({
   )
 }
 
-// ── Screening invite status config ───────────────────────────────────────────
+// ── Unified invite status config ─────────────────────────────────────────────
 
-interface SentInvite {
-  id: string
-  candidateName: string
-  candidateEmail: string
-  status: string
-  createdAt: string
-  requiresFinancialCheck: boolean
+type InviteStatus = 'invited' | 'applied' | 'analysing' | 'complete'
+
+interface MergedInvite {
+  inviteId: string
+  email: string
+  sentAt: string
+  status: InviteStatus
+  candidateName?: string
+  candidateId?: string
+  reportId?: string
 }
 
-const INVITE_STATUS_BADGE: Record<string, { label: string; cls: string }> = {
-  PENDING:   { label: 'Pending',   cls: 'bg-gray-100 text-gray-500' },
-  STARTED:   { label: 'Started',   cls: 'bg-blue-100 text-blue-700' },
-  COMPLETED: { label: 'Completed', cls: 'bg-green-100 text-green-700' },
-  PAID:      { label: 'Completed', cls: 'bg-green-100 text-green-700' },
-  EXPIRED:   { label: 'Expired',   cls: 'bg-red-100 text-red-600' },
+const UNIFIED_BADGE: Record<InviteStatus, { label: string; cls: string }> = {
+  invited:   { label: 'Invited',   cls: 'bg-gray-100 text-gray-500' },
+  applied:   { label: 'Applied',   cls: 'bg-blue-100 text-blue-700' },
+  analysing: { label: 'Analysing', cls: 'bg-blue-100 text-blue-700' },
+  complete:  { label: 'Complete',  cls: 'bg-green-100 text-green-700' },
+}
+
+function deriveInviteStatus(candidate: Tenant | undefined): InviteStatus {
+  if (!candidate) return 'invited'
+  const report = candidate.financialReports[0]
+  if (!report) return 'applied'
+  if (report.status === 'PROCESSING' || report.status === 'PENDING') return 'analysing'
+  return 'complete'
+}
+
+function buildMergedList(invites: ApplicationInvite[], candidates: Tenant[]): MergedInvite[] {
+  const candidateByEmail = new Map<string, Tenant>()
+  for (const c of candidates) candidateByEmail.set(c.email.toLowerCase(), c)
+
+  const merged: MergedInvite[] = invites.map((inv) => {
+    const candidate = candidateByEmail.get(inv.email.toLowerCase())
+    return {
+      inviteId: inv.id,
+      email: inv.email,
+      sentAt: inv.sentAt,
+      status: deriveInviteStatus(candidate),
+      candidateName: candidate?.name,
+      candidateId: candidate?.id,
+      reportId: candidate?.financialReports[0]?.id,
+    }
+  })
+
+  // Include candidates who applied via public link (no matching invite)
+  const invitedEmails = new Set(invites.map((i) => i.email.toLowerCase()))
+  for (const c of candidates) {
+    if (!invitedEmails.has(c.email.toLowerCase())) {
+      merged.push({
+        inviteId: `candidate-${c.id}`,
+        email: c.email,
+        sentAt: '',
+        status: deriveInviteStatus(c),
+        candidateName: c.name,
+        candidateId: c.id,
+        reportId: c.financialReports[0]?.id,
+      })
+    }
+  }
+
+  return merged
 }
 
 // ── Select tenant confirmation modal ────────────────────────────────────────
@@ -1878,14 +1935,14 @@ function SelectTenantModal({
   onClose,
   selecting,
 }: {
-  selectedInvite: { id: string; candidateName: string; candidateEmail: string }
-  otherInvites: SentInvite[]
+  selectedInvite: { candidateName?: string; email: string }
+  otherInvites: MergedInvite[]
   onConfirm: () => void
   onClose: () => void
   selecting: boolean
 }) {
   const rejectableInvites = otherInvites.filter((inv) =>
-    ['PENDING', 'STARTED', 'COMPLETED', 'PAID'].includes(inv.status)
+    ['applied', 'analysing', 'complete'].includes(inv.status)
   )
 
   return (
@@ -1911,8 +1968,8 @@ function SelectTenantModal({
               </svg>
               <p className="text-sm font-semibold text-green-800">Selected tenant</p>
             </div>
-            <p className="text-sm text-green-700 font-medium">{selectedInvite.candidateName}</p>
-            <p className="text-xs text-green-600">{selectedInvite.candidateEmail}</p>
+            <p className="text-sm text-green-700 font-medium">{selectedInvite.candidateName ?? selectedInvite.email}</p>
+            <p className="text-xs text-green-600">{selectedInvite.email}</p>
             <p className="text-xs text-green-600 mt-2">
               They&apos;ll receive an email with a link to the tenant portal.
             </p>
@@ -1931,8 +1988,8 @@ function SelectTenantModal({
               </div>
               <div className="space-y-1.5">
                 {rejectableInvites.map((inv) => (
-                  <div key={inv.id} className="flex items-center gap-2">
-                    <span className="text-xs text-amber-700">{inv.candidateName || inv.candidateEmail}</span>
+                  <div key={inv.inviteId} className="flex items-center gap-2">
+                    <span className="text-xs text-amber-700">{inv.candidateName ?? inv.email}</span>
                   </div>
                 ))}
               </div>
@@ -1950,7 +2007,7 @@ function SelectTenantModal({
             disabled={selecting}
             className="w-full bg-[#16a34a] hover:bg-[#15803d] disabled:opacity-50 text-white font-semibold rounded-xl py-3 text-sm transition-colors"
           >
-            {selecting ? 'Processing…' : `Confirm — select ${selectedInvite.candidateName}`}
+            {selecting ? 'Processing…' : `Confirm — select ${selectedInvite.candidateName ?? selectedInvite.email}`}
           </button>
           <button
             onClick={onClose}
@@ -1982,43 +2039,17 @@ function ApplicationsSection({
   const [requireFinancial, setRequireFinancial] = useState(property.requireFinancialVerification)
   const [showPreview, setShowPreview] = useState(false)
   const [sending, setSending] = useState(false)
-  const [sentInvites, setSentInvites] = useState<SentInvite[]>([])
-  const [invitesLoading, setInvitesLoading] = useState(true)
   const [resendingId, setResendingId] = useState<string | null>(null)
-  const [selectInvite, setSelectInvite] = useState<SentInvite | null>(null)
+  const [selectInvite, setSelectInvite] = useState<MergedInvite | null>(null)
   const [selecting, setSelecting] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  const address = [property.line1, property.city, property.postcode].filter(Boolean).join(', ')
   const validEmails = emails.filter((e) => EMAIL_RE.test(e))
   const hasValidEmails = validEmails.length > 0
 
-  // Load screening invites for this property
-  const loadInvites = useCallback(async () => {
-    try {
-      const res = await fetch('/api/screening/invites')
-      const json = await res.json()
-      if (json.data) {
-        // Filter invites by property address match
-        const filtered = (json.data as Array<{
-          id: string
-          candidateName: string
-          candidateEmail: string
-          propertyAddress: string
-          status: string
-          createdAt: string
-        }>).filter((inv) => inv.propertyAddress === address)
-        setSentInvites(filtered.map((inv) => ({
-          ...inv,
-          requiresFinancialCheck: true,
-        })))
-      }
-    } catch { /* silent */ }
-    setInvitesLoading(false)
-  }, [address])
-
-  useEffect(() => { loadInvites() }, [loadInvites])
+  // Build merged list from persisted invites + candidates
+  const mergedList = buildMergedList(property.applicationInvites ?? [], candidates)
 
   async function handleSendInvites() {
     setSending(true)
@@ -2034,19 +2065,6 @@ function ApplicationsSection({
     setSending(false)
     setShowPreview(false)
     if (allOk) {
-      // Optimistic update — append sent emails immediately
-      const now = new Date().toISOString()
-      setSentInvites((prev) => [
-        ...validEmails.map((email) => ({
-          id: `optimistic-${email}-${Date.now()}`,
-          candidateName: email.split('@')[0],
-          candidateEmail: email,
-          status: 'PENDING',
-          createdAt: now,
-          requiresFinancialCheck: requireFinancial,
-        })),
-        ...prev,
-      ])
       setEmails([''])
       onRefresh()
     }
@@ -2064,14 +2082,12 @@ function ApplicationsSection({
 
   async function handleDeleteInvite(id: string) {
     setDeletingId(id)
-    const prev = sentInvites
-    setSentInvites((cur) => cur.filter((inv) => inv.id !== id))
     setConfirmDeleteId(null)
     try {
-      const res = await fetch(`/api/screening/invites/${id}`, { method: 'DELETE' })
-      if (!res.ok) setSentInvites(prev)
+      const res = await fetch(`/api/application-invites/${id}`, { method: 'DELETE' })
+      if (res.ok) onRefresh()
     } catch {
-      setSentInvites(prev)
+      showErrorToast({ context: 'Deleting invite' })
     }
     setDeletingId(null)
   }
@@ -2087,7 +2103,7 @@ function ApplicationsSection({
       const res = await fetch('/api/screening/select-tenant', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ inviteId: selectInvite.id, propertyId: property.id }),
+        body: JSON.stringify({ inviteId: selectInvite.inviteId, propertyId: property.id }),
       })
       if (res.ok) {
         setSelectInvite(null)
@@ -2096,6 +2112,8 @@ function ApplicationsSection({
     } catch { /* silent */ }
     setSelecting(false)
   }
+
+  const address = [property.line1, property.city, property.postcode].filter(Boolean).join(', ')
 
   return (
     <div className="bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4 mb-5">
@@ -2137,34 +2155,34 @@ function ApplicationsSection({
         </button>
       </div>
 
-      {/* Sent invites list */}
-      {!invitesLoading && sentInvites.length > 0 && (
+      {/* Unified applicant list */}
+      {mergedList.length > 0 ? (
         <div className="mt-5 border-t border-gray-100 pt-4">
           <p className="text-xs text-[#9CA3AF] font-medium uppercase tracking-wide mb-2">
-            Sent invites ({sentInvites.length})
+            Applicants ({mergedList.length})
           </p>
           <div className="space-y-0">
-            {sentInvites.map((inv) => {
-              const badge = INVITE_STATUS_BADGE[inv.status] ?? INVITE_STATUS_BADGE.PENDING
-              const isConfirming = confirmDeleteId === inv.id
+            {mergedList.map((inv) => {
+              const badge = UNIFIED_BADGE[inv.status]
+              const isConfirming = confirmDeleteId === inv.inviteId
+              const isPersistedInvite = !inv.inviteId.startsWith('candidate-')
               return (
-                <div key={inv.id} className={`py-2.5 border-b border-gray-100 last:border-0 transition-opacity duration-200 ${deletingId === inv.id ? 'opacity-50' : ''}`}>
+                <div key={inv.inviteId} className={`py-2.5 border-b border-gray-100 last:border-0 transition-opacity duration-200 ${deletingId === inv.inviteId ? 'opacity-50' : ''}`}>
                   <div className="flex items-center justify-between">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm text-[#1A1A1A]">{inv.candidateEmail}</span>
-                        {inv.requiresFinancialCheck && (
-                          <span className="text-[10px] text-gray-400 bg-gray-50 border border-gray-100 rounded px-1.5 py-0.5">
-                            Financial check
-                          </span>
-                        )}
+                        <span className="text-sm text-[#1A1A1A] font-medium">{inv.candidateName ?? inv.email}</span>
+                        <span className={`text-[10px] font-medium rounded px-1.5 py-0.5 ${badge.cls}`}>
+                          {badge.label}
+                        </span>
                       </div>
                       <p className="text-xs text-[#9CA3AF] mt-0.5">
-                        Invited {formatDate(inv.createdAt)} · <span className={`font-medium ${badge.cls.includes('text-') ? '' : 'text-gray-500'}`}>{badge.label}</span>
+                        {inv.candidateName ? inv.email : null}
+                        {inv.sentAt ? `${inv.candidateName ? ' · ' : ''}Invited ${formatDate(inv.sentAt)}` : null}
                       </p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      {canSelectTenant && (inv.status === 'COMPLETED' || inv.status === 'PAID') && (
+                      {canSelectTenant && inv.status === 'complete' && inv.candidateId && (
                         <button
                           onClick={() => setSelectInvite(inv)}
                           className="text-xs text-[#16a34a] hover:text-[#15803d] font-medium transition-colors"
@@ -2172,29 +2190,47 @@ function ApplicationsSection({
                           Select as tenant
                         </button>
                       )}
-                      <button
-                        onClick={() => handleResend(inv.candidateEmail, inv.id)}
-                        disabled={resendingId === inv.id}
-                        className="shrink-0 text-xs text-gray-400 hover:text-[#16a34a] transition-colors disabled:opacity-50"
-                      >
-                        {resendingId === inv.id ? 'Sending…' : 'Resend'}
-                      </button>
-                      <button
-                        onClick={() => setConfirmDeleteId(isConfirming ? null : inv.id)}
-                        className="p-1 text-gray-300 hover:text-red-500 transition-colors rounded"
-                        title="Delete screening"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /><line x1="10" x2="10" y1="11" y2="17" /><line x1="14" x2="14" y1="11" y2="17" /></svg>
-                      </button>
+                      {inv.status === 'complete' && inv.reportId && (
+                        <Link
+                          href={`/screening/report/${inv.reportId}`}
+                          className="text-xs text-[#16a34a] hover:text-[#15803d] font-medium transition-colors"
+                        >
+                          View report
+                        </Link>
+                      )}
+                      {inv.status === 'invited' && (
+                        <button
+                          onClick={() => handleResend(inv.email, inv.inviteId)}
+                          disabled={resendingId === inv.inviteId}
+                          className="shrink-0 text-xs text-gray-400 hover:text-[#16a34a] transition-colors disabled:opacity-50"
+                        >
+                          {resendingId === inv.inviteId ? 'Sending…' : 'Resend'}
+                        </button>
+                      )}
+                      {isPersistedInvite && (
+                        <button
+                          onClick={() => setConfirmDeleteId(isConfirming ? null : inv.inviteId)}
+                          className="p-1 text-gray-300 hover:text-red-500 transition-colors rounded"
+                          title="Delete invite"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /><line x1="10" x2="10" y1="11" y2="17" /><line x1="14" x2="14" y1="11" y2="17" /></svg>
+                        </button>
+                      )}
                     </div>
                   </div>
                   {isConfirming && (
                     <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between">
-                      <p className="text-xs text-gray-500">Delete this screening? This cannot be undone.</p>
+                      <p className="text-xs text-gray-500">Remove this invite? This cannot be undone.</p>
                       <div className="flex items-center gap-2">
-                        <button onClick={() => handleDeleteInvite(inv.id)} className="text-xs font-medium text-red-600 hover:text-red-700 transition-colors">Delete</button>
+                        <button onClick={() => handleDeleteInvite(inv.inviteId)} className="text-xs font-medium text-red-600 hover:text-red-700 transition-colors">Delete</button>
                         <button onClick={() => setConfirmDeleteId(null)} className="text-xs font-medium text-gray-400 hover:text-gray-600 transition-colors">Cancel</button>
                       </div>
+                    </div>
+                  )}
+                  {inv.status === 'analysing' && (
+                    <div className="flex items-center gap-1.5 mt-1.5">
+                      <div className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                      <span className="text-xs text-blue-600">Analysing bank statements…</span>
                     </div>
                   )}
                 </div>
@@ -2202,35 +2238,9 @@ function ApplicationsSection({
             })}
           </div>
         </div>
-      )}
-
-      {/* Candidate list */}
-      {candidates.length > 0 ? (
-        <div className="space-y-3 mt-4 border-t border-gray-100 pt-4">
-          <p className="text-xs text-[#9CA3AF] font-medium mb-2">Received ({candidates.length})</p>
-          {candidates.map((c) => {
-            const report = c.financialReports[0] ?? null
-            return (
-              <div key={c.id} className="py-2.5 border-b border-gray-100 last:border-0">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-[#1A1A1A] text-sm font-medium">{c.name}</p>
-                    <p className="text-[#9CA3AF] text-xs">{c.email}</p>
-                  </div>
-                  <StatusBadge status={c.status} config={tenantStatusConfig} />
-                </div>
-                {report ? (
-                  <FinancialScoreBadge report={report} />
-                ) : (
-                  <p className="mt-1.5 text-xs text-[#9CA3AF] italic">No financial verification submitted</p>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      ) : sentInvites.length === 0 ? (
+      ) : (
         <p className="text-[#9CA3AF] text-sm italic mt-3">No applications yet</p>
-      ) : null}
+      )}
 
       {/* Invite preview modal */}
       {showPreview && (
@@ -2248,7 +2258,7 @@ function ApplicationsSection({
       {selectInvite && (
         <SelectTenantModal
           selectedInvite={selectInvite}
-          otherInvites={sentInvites.filter((inv) => inv.id !== selectInvite.id)}
+          otherInvites={mergedList.filter((inv) => inv.inviteId !== selectInvite.inviteId)}
           onConfirm={handleSelectTenant}
           onClose={() => setSelectInvite(null)}
           selecting={selecting}

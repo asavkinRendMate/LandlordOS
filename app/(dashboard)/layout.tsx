@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { DashboardShell } from '@/components/dashboard/shell'
 import NameModalGate from '@/components/dashboard/NameModalGate'
 import PostHogIdentify from '@/components/shared/PostHogIdentify'
+import CrispChat from '@/components/shared/CrispChat'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = createAuthClient()
@@ -38,6 +39,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       openMaintenanceCount={openMaintenanceCount}
     >
       <PostHogIdentify userId={user.id} />
+      <CrispChat user={{ email: user.email!, name: dbUser?.name, id: user.id }} role="landlord" />
       <NameModalGate needsName={needsName}>
         {children}
       </NameModalGate>

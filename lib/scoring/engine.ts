@@ -3,6 +3,7 @@ import { PDFDocument } from 'pdf-lib'
 import { prisma } from '@/lib/prisma'
 import { getSignedUrl } from '@/lib/storage'
 import { env } from '@/lib/env'
+import { ScreeningLogger } from '@/lib/scoring/logger'
 
 const BUCKET = 'bank-statements'
 const COMPRESS_THRESHOLD = 2 * 1024 * 1024 // 2 MB
@@ -34,7 +35,7 @@ function cleanSummary(summary: string): string {
 let cachedRulesCompact: string | null = null
 let cachedRuleMap: Map<string, { key: string; description: string; points: number; category: string }> | null = null
 
-async function getRulesCompact(): Promise<{
+async function getRulesCompact(log: ScreeningLogger): Promise<{
   rulesText: string
   ruleMap: Map<string, { key: string; description: string; points: number; category: string }>
 }> {
@@ -45,9 +46,8 @@ async function getRulesCompact(): Promise<{
   const rules = await prisma.scoringRule.findMany({ where: { isActive: true } })
   if (rules.length === 0) throw new Error('No active scoring rules found')
 
-  // Log rules loaded from DB
   const first3 = rules.slice(0, 3).map((r) => `${r.key}(${r.points >= 0 ? '+' : ''}${r.points})`)
-  console.log(`[scoring] Rules loaded: ${rules.length} rules, showing first 3: ${first3.join(', ')}`)
+  log.info('INIT', `Rules loaded: ${rules.length} rules, first 3: ${first3.join(', ')}`)
 
   // Build mandatory deduction/bonus format with descriptions
   const penalties = rules.filter((r) => r.points < 0)
@@ -210,16 +210,15 @@ async function splitPdfInHalf(buffer: Buffer): Promise<[Buffer, Buffer]> {
 
 // ── Prepare a PDF: compress if >2MB, split if still >2MB ─────────────────────
 
-async function preparePdf(buffer: Buffer): Promise<Buffer[]> {
+async function preparePdf(buffer: Buffer, log: ScreeningLogger): Promise<Buffer[]> {
   if (buffer.length <= COMPRESS_THRESHOLD) return [buffer]
 
   const compressed = await compressPdf(buffer)
-  console.log(`[scoring/engine] Compressed PDF from ${(buffer.length / 1024 / 1024).toFixed(1)}MB to ${(compressed.length / 1024 / 1024).toFixed(1)}MB`)
+  log.info('PDF', `Compressed PDF from ${(buffer.length / 1024 / 1024).toFixed(1)}MB to ${(compressed.length / 1024 / 1024).toFixed(1)}MB`)
 
   if (compressed.length <= COMPRESS_THRESHOLD) return [compressed]
 
-  // Still too large — split into halves
-  console.log(`[scoring/engine] PDF still ${(compressed.length / 1024 / 1024).toFixed(1)}MB after compression, splitting in half`)
+  log.info('PDF', `PDF still ${(compressed.length / 1024 / 1024).toFixed(1)}MB after compression, splitting in half`)
   const [first, second] = await splitPdfInHalf(compressed)
   return [first, second]
 }
@@ -230,8 +229,9 @@ async function verifyName(
   pdfBase64: string,
   applicantName: string,
   apiKey: string,
+  log: ScreeningLogger,
 ): Promise<NameVerificationResult> {
-  console.log(`[screening:ai] Name verification — applicantName="${applicantName}", PDF size=${(pdfBase64.length * 0.75 / 1024).toFixed(0)}KB`)
+  log.info('VERIFY', `Name verification — applicantName="${applicantName}", PDF size=${(pdfBase64.length * 0.75 / 1024).toFixed(0)}KB`)
   const verifySystem = 'You are analysing a bank statement. Respond ONLY with valid JSON.'
   const verifyUserText = `Extract the account holder name and statement period from this bank statement. Determine whether the name matches the applicant name "${applicantName}".
 
@@ -254,7 +254,7 @@ Rules:
 
   const vSysChars = verifySystem.length
   const vUserChars = verifyUserText.length
-  console.log(`[scoring/engine] Name verify prompt estimate — system: ${vSysChars} chars (~${Math.ceil(vSysChars / 4)} tokens), user: ${vUserChars} chars (~${Math.ceil(vUserChars / 4)} tokens), documents: 1, est total text tokens: ~${Math.ceil((vSysChars + vUserChars) / 4)}`)
+  log.info('VERIFY', `Prompt estimate — system: ${vSysChars} chars (~${Math.ceil(vSysChars / 4)} tokens), user: ${vUserChars} chars (~${Math.ceil(vUserChars / 4)} tokens)`)
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -295,8 +295,7 @@ Rules:
 
   if (!response.ok) {
     const text = await response.text()
-    console.error(`[screening:ai] Name verification API error ${response.status}: ${text.substring(0, 200)}`)
-    // 429 = rate limit — propagate as a specific error
+    log.error('VERIFY', `API error ${response.status}: ${text.substring(0, 200)}`)
     if (response.status === 429) {
       throw new RateLimitError(`Rate limited by Claude API: ${text}`)
     }
@@ -320,7 +319,7 @@ Rules:
     }
   }
   const parsed = JSON.parse(jsonStr) as NameVerificationResult
-  console.log(`[screening:ai] Name verification result — foundName="${parsed.foundName}", verification=${parsed.verification}, confidence=${parsed.confidence}, period=${parsed.periodStart}→${parsed.periodEnd}, reason="${parsed.reason}"`)
+  log.info('VERIFY', `Result — foundName="${parsed.foundName}", verification=${parsed.verification}, confidence=${parsed.confidence}, period=${parsed.periodStart}→${parsed.periodEnd}`, { reason: parsed.reason })
   return parsed
 }
 
@@ -389,12 +388,13 @@ async function synthesizeHalves(
   monthlyRentPence: number,
   rulesText: string,
   apiKey: string,
+  log: ScreeningLogger,
 ): Promise<ClaudeAnalysisResponse> {
   const rentPounds = (monthlyRentPence / 100).toFixed(2)
 
-  console.log(`[screening:ai] Synthesis call — merging two halves, rent=£${rentPounds}`)
-  console.log(`[screening:ai] Half A: income=£${resultA.monthlyIncome}, balance=£${resultA.averageBalance}, firedRules=[${resultA.firedRules.join(', ')}]`)
-  console.log(`[screening:ai] Half B: income=£${resultB.monthlyIncome}, balance=£${resultB.averageBalance}, firedRules=[${resultB.firedRules.join(', ')}]`)
+  log.info('ANALYSE', `Synthesis call — merging two halves, rent=£${rentPounds}`)
+  log.info('ANALYSE', `Half A: income=£${resultA.monthlyIncome}, balance=£${resultA.averageBalance}, firedRules=[${resultA.firedRules.join(', ')}]`)
+  log.info('ANALYSE', `Half B: income=£${resultB.monthlyIncome}, balance=£${resultB.averageBalance}, firedRules=[${resultB.firedRules.join(', ')}]`)
 
   const systemPrompt = 'You are a financial analyst. Merge two partial bank statement analyses into one combined result. Respond ONLY with valid JSON.'
 
@@ -433,7 +433,7 @@ Notes: De-duplicate firedRules. Average the averageBalance. Sum monthly income c
 
   if (!response.ok) {
     const text = await response.text()
-    console.error(`[screening:ai] Synthesis API error ${response.status}: ${text.substring(0, 200)}`)
+    log.error('ANALYSE', `Synthesis API error ${response.status}: ${text.substring(0, 200)}`)
     if (response.status === 429) throw new RateLimitError(`Rate limited by Claude API: ${text}`)
     throw new Error(`Claude API error ${response.status}: ${text}`)
   }
@@ -442,7 +442,7 @@ Notes: De-duplicate firedRules. Average the averageBalance. Sum monthly income c
   const textBlock = result.content.find((b) => b.type === 'text')
   if (!textBlock?.text) throw new Error('No text response from Claude for synthesis')
 
-  console.log(`[screening:ai] Synthesis raw response (first 500 chars): ${textBlock.text.substring(0, 500)}`)
+  log.info('ANALYSE', `Synthesis raw response (first 500 chars): ${textBlock.text.substring(0, 500)}`)
 
   let jsonStr = textBlock.text.trim()
   jsonStr = jsonStr.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
@@ -467,7 +467,7 @@ Notes: De-duplicate firedRules. Average the averageBalance. Sum monthly income c
     }))
   }
 
-  console.log(`[screening:ai] Synthesis result — income=£${parsed.monthlyIncome}, balance=£${parsed.averageBalance}, firedRules=[${parsed.firedRules.join(', ')}]`)
+  log.info('ANALYSE', `Synthesis result — income=£${parsed.monthlyIncome}, balance=£${parsed.averageBalance}, firedRules=[${parsed.firedRules.join(', ')}]`)
   return parsed
 }
 
@@ -478,6 +478,7 @@ async function callClaudeAnalysis(
   monthlyRentPence: number,
   rulesText: string,
   apiKey: string,
+  log: ScreeningLogger,
   declaredIncomePence?: number | null,
   declaredJointApplication?: boolean,
 ): Promise<ClaudeAnalysisResponse> {
@@ -570,22 +571,15 @@ You MUST fire exactly one. Do NOT fire RENT_ABOVE_40_PCT unless the ratio is act
 
 IMPORTANT: Your response must be valid JSON only. Do not include your scoring working, calculations, or chain of thought in the 'summary' field. The summary field must contain ONLY the human-readable assessment paragraph. Your working (Starting score, deductions, final) goes in the 'scoreBreakdown' field, NEVER in the summary field.`
 
-  // Log pre-AI details
   const systemChars = systemPrompt.length
   const userChars = userPrompt.length
   const systemTokens = Math.ceil(systemChars / 4)
   const userTokens = Math.ceil(userChars / 4)
-  console.log(`[screening:ai] ── SENDING TO CLAUDE API ──────────────`)
-  console.log(`[screening:ai] Model: claude-sonnet-4-20250514`)
-  console.log(`[screening:ai] Documents: ${pdfFiles.length} PDF(s): ${pdfFiles.map((f) => f.fileName).join(', ')}`)
-  console.log(`[screening:ai] Monthly rent: £${rentPounds}`)
-  if (declaredIncomePounds) {
-    console.log(`[screening:ai] Declared income: £${declaredIncomePounds}`)
-    const rentNum = parseFloat(rentPounds)
-    const incomeNum = parseFloat(declaredIncomePounds)
-    if (incomeNum > 0) console.log(`[screening:ai] Rent-to-declared-income ratio: ${(rentNum / incomeNum * 100).toFixed(1)}%`)
-  }
-  console.log(`[screening:ai] Prompt estimate — system: ${systemChars} chars (~${systemTokens} tokens), user: ${userChars} chars (~${userTokens} tokens), est total text tokens: ~${systemTokens + userTokens}`)
+  log.info('ANALYSE', `Sending to Claude API — model=claude-sonnet-4-20250514, docs=${pdfFiles.length}: ${pdfFiles.map((f) => f.fileName).join(', ')}, rent=£${rentPounds}`, {
+    systemTokens,
+    userTokens,
+    declaredIncome: declaredIncomePounds,
+  })
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -612,7 +606,7 @@ IMPORTANT: Your response must be valid JSON only. Do not include your scoring wo
 
   if (!response.ok) {
     const text = await response.text()
-    console.error(`[screening:ai] Analysis API error ${response.status}: ${text.substring(0, 300)}`)
+    log.error('ANALYSE', `API error ${response.status}: ${text.substring(0, 300)}`)
     if (response.status === 429) throw new RateLimitError(`Rate limited by Claude API: ${text}`)
     throw new Error(`Claude API error ${response.status}: ${text}`)
   }
@@ -623,16 +617,13 @@ IMPORTANT: Your response must be valid JSON only. Do not include your scoring wo
   }
 
   if (result.usage) {
-    console.log(`[screening:ai] API usage — input_tokens: ${result.usage.input_tokens}, output_tokens: ${result.usage.output_tokens}`)
+    log.info('ANALYSE', `API usage — input_tokens: ${result.usage.input_tokens}, output_tokens: ${result.usage.output_tokens}`)
   }
 
   const textBlock = result.content.find((b) => b.type === 'text')
   if (!textBlock?.text) throw new Error('No text response from Claude')
 
-  // Log complete raw response
-  console.log(`[screening:ai] ── RAW AI RESPONSE ──────────────────`)
-  console.log(`[screening:ai] ${textBlock.text}`)
-  console.log(`[screening:ai] ── END RAW RESPONSE ─────────────────`)
+  log.info('ANALYSE', `Raw AI response`, { raw: textBlock.text })
 
   // Extract JSON — Claude sometimes wraps it in markdown fences or adds prose before/after
   let jsonStr = textBlock.text.trim()
@@ -642,7 +633,7 @@ IMPORTANT: Your response must be valid JSON only. Do not include your scoring wo
 
   // If the result doesn't start with '{', find the first '{' and last '}'
   if (!jsonStr.startsWith('{')) {
-    console.log(`[screening:ai] Response didn't start with '{', extracting JSON from position ${jsonStr.indexOf('{')}`)
+    log.warn('ANALYSE', `Response didn't start with '{', extracting JSON from position ${jsonStr.indexOf('{')}`)
     const firstBrace = jsonStr.indexOf('{')
     const lastBrace = jsonStr.lastIndexOf('}')
     if (firstBrace !== -1 && lastBrace > firstBrace) {
@@ -664,27 +655,17 @@ IMPORTANT: Your response must be valid JSON only. Do not include your scoring wo
     }))
   }
 
-  // Log parsed response details
-  console.log(`[screening:ai] ── PARSED RESPONSE ──────────────────`)
-  console.log(`[screening:ai] monthlyIncome: £${parsed.monthlyIncome}`)
-  console.log(`[screening:ai] averageBalance: £${parsed.averageBalance}`)
-  console.log(`[screening:ai] rentToIncomeRatio: ${parsed.rentToIncomeRatio}`)
-  console.log(`[screening:ai] analysedMonths: ${parsed.analysedMonths}`)
-  console.log(`[screening:ai] confidence: ${parsed.confidence}`)
-  console.log(`[screening:ai] firedRules: [${parsed.firedRules.join(', ')}]`)
-  console.log(`[screening:ai] isJointApplication: ${parsed.isJointApplication ?? false}`)
-  if (parsed.warnings && parsed.warnings.length > 0) {
-    console.log(`[screening:ai] warnings: ${JSON.stringify(parsed.warnings)}`)
-  }
-  console.log(`[screening:ai] summary (first 150 chars): ${parsed.summary?.substring(0, 150)}`)
-  console.log(`[screening:ai] ── END PARSED ──────────────────────`)
+  log.info('ANALYSE', `Parsed response — income=£${parsed.monthlyIncome}, balance=£${parsed.averageBalance}, ratio=${parsed.rentToIncomeRatio}, months=${parsed.analysedMonths}, confidence=${parsed.confidence}`, {
+    firedRules: parsed.firedRules,
+    isJoint: parsed.isJointApplication ?? false,
+    warnings: parsed.warnings,
+  })
 
-  // Check for suspicious zero values
   if (parsed.monthlyIncome === 0) {
-    console.warn(`[screening:ai] ⚠️  monthlyIncome is 0 — type: ${typeof parsed.monthlyIncome}`)
+    log.warn('ANALYSE', `monthlyIncome is 0 — suspicious`)
   }
   if (parsed.averageBalance === 0) {
-    console.warn(`[screening:ai] ⚠️  averageBalance is 0 — type: ${typeof parsed.averageBalance}`)
+    log.warn('ANALYSE', `averageBalance is 0 — suspicious`)
   }
 
   return parsed
@@ -699,6 +680,7 @@ async function analyseSinglePdf(
   monthlyRentPence: number,
   rulesText: string,
   apiKey: string,
+  log: ScreeningLogger,
   declaredIncomePence?: number | null,
   declaredJointApplication?: boolean,
 ): Promise<ClaudeAnalysisResponse> {
@@ -708,19 +690,20 @@ async function analyseSinglePdf(
       monthlyRentPence,
       rulesText,
       apiKey,
+      log,
       declaredIncomePence,
       declaredJointApplication,
     )
   }
 
-  // Two halves — analyse each then synthesize
-  console.log(`[scoring/engine] Analysing ${fileName} in two halves, then synthesizing`)
+  log.info('ANALYSE', `Analysing ${fileName} in two halves, then synthesizing`)
   const [resultA, resultB] = await Promise.all([
     callClaudeAnalysis(
       [{ base64: buffers[0].toString('base64'), fileName: `${fileName} (part 1)`, ownershipNote }],
       monthlyRentPence,
       rulesText,
       apiKey,
+      log,
       declaredIncomePence,
       declaredJointApplication,
     ),
@@ -729,20 +712,20 @@ async function analyseSinglePdf(
       monthlyRentPence,
       rulesText,
       apiKey,
+      log,
       declaredIncomePence,
       declaredJointApplication,
     ),
   ])
 
-  return synthesizeHalves(resultA, resultB, monthlyRentPence, rulesText, apiKey)
+  return synthesizeHalves(resultA, resultB, monthlyRentPence, rulesText, apiKey, log)
 }
 
 // ── Main engine function ───────────────────────────────────────────────────────
 
 export async function analyzeStatement(reportId: string): Promise<void> {
-  console.log(`[screening] ─────────────────────────────────────────`)
-  console.log(`[screening] START: reportId=${reportId}`)
-  console.log(`[screening] ─────────────────────────────────────────`)
+  const log = new ScreeningLogger(reportId)
+  log.info('INIT', `Pipeline started — reportId=${reportId}`)
   const pipelineStartTime = Date.now()
 
   // 1. Fetch report
@@ -758,12 +741,12 @@ export async function analyzeStatement(reportId: string): Promise<void> {
     && !Array.isArray(report.jointApplicants)
     && (report.jointApplicants as Record<string, unknown>).declaredByApplicant === true
 
-  console.log(`[screening] Report loaded — inviteId=${report.inviteId ?? 'none'}, applicantName="${report.applicantName}", reportType=${report.reportType}`)
-  console.log(`[screening] monthlyRentPence=${report.monthlyRentPence}, declaredIncomePence=${report.declaredIncomePence}`)
-  console.log(`[screening] Declared joint application: ${declaredJointApplication}`)
-  if (report.invite) {
-    console.log(`[screening] Invite context — candidateEmail="${report.invite.candidateEmail}", candidateName="${report.invite.candidateName}", landlord="${report.invite.landlord.email}"`)
-  }
+  log.info('INIT', `Report loaded — inviteId=${report.inviteId ?? 'none'}, applicantName="${report.applicantName}", reportType=${report.reportType}`, {
+    monthlyRentPence: report.monthlyRentPence,
+    declaredIncomePence: report.declaredIncomePence,
+    declaredJoint: declaredJointApplication,
+    inviteEmail: report.invite?.candidateEmail,
+  })
 
   const statementFiles = report.statementFiles as StatementFile[] | null
   if (!statementFiles || statementFiles.length === 0) {
@@ -776,17 +759,17 @@ export async function analyzeStatement(reportId: string): Promise<void> {
     throw new Error('All statement files have been removed')
   }
 
-  console.log(`[screening:pdf] Files received: ${activeFiles.length} (${statementFiles.length} total, ${statementFiles.length - activeFiles.length} removed)`)
-  for (const f of activeFiles) {
-    console.log(`[screening:pdf] File ${f.index}: ${f.fileName} ${(f.fileSize / 1024).toFixed(0)}KB`)
-  }
+  log.info('PDF', `Files received: ${activeFiles.length} (${statementFiles.length} total, ${statementFiles.length - activeFiles.length} removed)`, {
+    files: activeFiles.map((f) => ({ index: f.index, name: f.fileName, sizeKB: Math.round(f.fileSize / 1024) })),
+  })
 
   // 2. Mark as processing
   await prisma.financialReport.update({
     where: { id: reportId },
     data: { status: 'PROCESSING' },
   })
-  console.log(`[screening:db] Status → PROCESSING`)
+  log.info('INIT', `Status → PROCESSING`)
+  await log.flush()
 
   try {
     // 3. Fetch active config and rules
@@ -795,7 +778,7 @@ export async function analyzeStatement(reportId: string): Promise<void> {
     cachedRuleMap = null
     const [config, { rulesText, ruleMap }] = await Promise.all([
       prisma.scoringConfig.findFirst({ where: { isActive: true } }),
-      getRulesCompact(),
+      getRulesCompact(log),
     ])
     if (!config) throw new Error('No active ScoringConfig found')
 
@@ -803,33 +786,34 @@ export async function analyzeStatement(reportId: string): Promise<void> {
     if (!apiKey) throw new Error('ANTHROPIC_API_KEY is not configured')
 
     // 4. Download all PDFs and prepare (compress/split)
-    console.log(`[screening:pdf] Downloading ${activeFiles.length} PDF(s) from storage...`)
+    log.info('PDF', `Downloading ${activeFiles.length} PDF(s) from storage...`)
     const pdfDataList: Array<{ buffers: Buffer[]; file: StatementFile }> = []
     for (const file of activeFiles) {
       const rawBuffer = await downloadPdfBuffer(file.storagePath)
-      console.log(`[screening:pdf] Downloaded ${file.fileName}: ${(rawBuffer.length / 1024).toFixed(0)}KB raw`)
-      const prepared = await preparePdf(rawBuffer)
+      log.info('PDF', `Downloaded ${file.fileName}: ${(rawBuffer.length / 1024).toFixed(0)}KB raw`)
+      const prepared = await preparePdf(rawBuffer, log)
       if (prepared.length > 1) {
-        console.log(`[screening:pdf] ${file.fileName} was split into ${prepared.length} parts: ${prepared.map((b, i) => `part${i + 1}=${(b.length / 1024).toFixed(0)}KB`).join(', ')}`)
+        log.info('PDF', `${file.fileName} split into ${prepared.length} parts: ${prepared.map((b, i) => `part${i + 1}=${(b.length / 1024).toFixed(0)}KB`).join(', ')}`)
       }
       pdfDataList.push({ buffers: prepared, file })
     }
-    console.log(`[screening:pdf] All PDFs prepared — total parts: ${pdfDataList.reduce((s, p) => s + p.buffers.length, 0)}`)
+    log.info('PDF', `All PDFs prepared — total parts: ${pdfDataList.reduce((s, p) => s + p.buffers.length, 0)}`)
+    await log.flush()
 
     // 5. Name verification + period extraction (if applicantName provided)
     const applicantName = report.applicantName
     const filePeriodsMap = new Map<number, { periodStart: string | null; periodEnd: string | null }>()
 
     if (applicantName) {
-      console.log(`[screening:ai] Starting name verification for ${pdfDataList.length} file(s), applicant="${applicantName}"`)
+      log.info('VERIFY', `Starting name verification for ${pdfDataList.length} file(s), applicant="${applicantName}"`)
       for (const pdfData of pdfDataList) {
         try {
-          console.log(`[screening:ai] Verifying name for file ${pdfData.file.index}: ${pdfData.file.fileName}`)
-          // Use the first buffer for name verification (even if split)
+          log.info('VERIFY', `Verifying name for file ${pdfData.file.index}: ${pdfData.file.fileName}`)
           const verifyResult = await verifyName(
             pdfData.buffers[0].toString('base64'),
             applicantName,
             apiKey,
+            log,
           )
 
           // Update the file entry in statementFiles
@@ -851,7 +835,7 @@ export async function analyzeStatement(reportId: string): Promise<void> {
           if (err instanceof RateLimitError) {
             throw err
           }
-          console.error(`[scoring/engine] Name verification failed for ${pdfData.file.fileName}:`, err)
+          log.error('VERIFY', `Name verification failed for ${pdfData.file.fileName}: ${err instanceof Error ? err.message : String(err)}`)
           const fileIdx = statementFiles.findIndex((f) => f.index === pdfData.file.index)
           if (fileIdx >= 0) {
             statementFiles[fileIdx].verificationStatus = 'UNCERTAIN'
@@ -922,20 +906,20 @@ export async function analyzeStatement(reportId: string): Promise<void> {
       person.coverageDays = coverageDays
       person.coverageStatus = coverageStatus
       validationResults.push(person)
-      console.log(`[screening:pdf] Person "${person.name}" — isApplicant=${person.isApplicant}, files=[${person.fileIndices.join(',')}], period=${person.periodStart}→${person.periodEnd}, coverage=${coverageDays ?? '?'} days, status=${coverageStatus}`)
+      log.info('VALIDATE', `Person "${person.name}" — isApplicant=${person.isApplicant}, files=[${person.fileIndices.join(',')}], period=${person.periodStart}→${person.periodEnd}, coverage=${coverageDays ?? '?'} days, status=${coverageStatus}`)
     }
 
     // Check if primary applicant fails validation
     const primaryPerson = validationResults.find((p) => p.isApplicant)
     if (primaryPerson && primaryPerson.coverageStatus !== 'PASS' && primaryPerson.coverageStatus !== 'UNKNOWN') {
-      console.warn(`[screening:pdf] ⚠️  Primary applicant coverage check FAILED: ${primaryPerson.coverageStatus}`)
+      log.warn('VALIDATE', `Primary applicant coverage check FAILED: ${primaryPerson.coverageStatus}`)
       const coverageMsg = primaryPerson.coverageStatus === 'WARN_SHORT'
         ? 'Your bank statements cover less than 2 months. Please upload statements covering at least the last 3 months.'
         : primaryPerson.coverageStatus === 'WARN_OLD'
           ? 'Your bank statements are more than 6 months old. Please upload recent statements from the last 3-6 months.'
           : 'Your bank statements are too short and too old. Please upload recent statements covering at least the last 3 months.'
 
-      console.log(`[screening:db] Saving FAILED status — coverage validation failed: ${coverageMsg}`)
+      log.error('VALIDATE', `Saving FAILED status — coverage validation failed: ${coverageMsg}`)
       await prisma.financialReport.update({
         where: { id: reportId },
         data: {
@@ -946,9 +930,8 @@ export async function analyzeStatement(reportId: string): Promise<void> {
         },
       })
       const elapsed = ((Date.now() - pipelineStartTime) / 1000).toFixed(1)
-      console.log(`[screening] ─────────────────────────────────────────`)
-      console.log(`[screening] FAILED: coverage validation (${elapsed}s)`)
-      console.log(`[screening] ─────────────────────────────────────────`)
+      log.info('COMPLETE', `FAILED: coverage validation (${elapsed}s)`)
+      await log.flush()
       return
     }
 
@@ -995,11 +978,11 @@ export async function analyzeStatement(reportId: string): Promise<void> {
     // 8. Get monthly rent (in pence): report field first, then tenancy lookup, then 0
     const monthlyRentPence = await (async () => {
       if (report.monthlyRentPence) {
-        console.log(`[screening:score] Monthly rent from report: £${(report.monthlyRentPence / 100).toFixed(2)} (${report.monthlyRentPence}p)`)
+        log.info('SCORE', `Monthly rent from report: £${(report.monthlyRentPence / 100).toFixed(2)} (${report.monthlyRentPence}p)`)
         return report.monthlyRentPence
       }
       if (!report.propertyId) {
-        console.warn(`[screening:score] ⚠️  No rent available — no monthlyRentPence and no propertyId`)
+        log.warn('SCORE', `No rent available — no monthlyRentPence and no propertyId`)
         return 0
       }
       const tenancy = await prisma.tenancy.findFirst({
@@ -1007,7 +990,7 @@ export async function analyzeStatement(reportId: string): Promise<void> {
         orderBy: { createdAt: 'desc' },
       })
       const rent = tenancy?.monthlyRent ?? 0
-      console.log(`[screening:score] Monthly rent from tenancy lookup: £${(rent / 100).toFixed(2)} (${rent}p)`)
+      log.info('SCORE', `Monthly rent from tenancy lookup: £${(rent / 100).toFixed(2)} (${rent}p)`)
       return rent
     })()
 
@@ -1016,7 +999,8 @@ export async function analyzeStatement(reportId: string): Promise<void> {
 
     // Check if any single file was split
     const hasSplitFiles = pdfDataList.some((pd) => pd.buffers.length > 1)
-    console.log(`[screening:ai] Analysis strategy: hasSplitFiles=${hasSplitFiles}, fileCount=${pdfDataList.length}, mode=${hasSplitFiles && pdfDataList.length === 1 ? 'split-synthesis' : 'single-call'}`)
+    log.info('ANALYSE', `Strategy: hasSplitFiles=${hasSplitFiles}, fileCount=${pdfDataList.length}, mode=${hasSplitFiles && pdfDataList.length === 1 ? 'split-synthesis' : 'single-call'}`)
+    await log.flush()
 
     if (hasSplitFiles && pdfDataList.length === 1) {
       // Single file that was split — use synthesis approach
@@ -1036,6 +1020,7 @@ export async function analyzeStatement(reportId: string): Promise<void> {
         monthlyRentPence,
         rulesText,
         apiKey,
+        log,
         report.declaredIncomePence,
         declaredJointApplication,
       )
@@ -1046,6 +1031,7 @@ export async function analyzeStatement(reportId: string): Promise<void> {
         monthlyRentPence,
         rulesText,
         apiKey,
+        log,
         report.declaredIncomePence,
         declaredJointApplication,
       )
@@ -1057,7 +1043,7 @@ export async function analyzeStatement(reportId: string): Promise<void> {
       analysis.monthlyIncome === 0 &&
       analysis.averageBalance === 0
     ) {
-      console.warn(`[scoring] SUSPICIOUS: Claude returned 0 income/balance despite analysedMonths=${analysis.analysedMonths}. Retrying once.`)
+      log.warn('ANALYSE', `SUSPICIOUS: Claude returned 0 income/balance despite analysedMonths=${analysis.analysedMonths}. Retrying once.`)
       try {
         let retryAnalysis: ClaudeAnalysisResponse
         if (hasSplitFiles && pdfDataList.length === 1) {
@@ -1066,18 +1052,18 @@ export async function analyzeStatement(reportId: string): Promise<void> {
           let ownershipNote = 'Ownership not verified'
           if (f.verificationStatus === 'VERIFIED') ownershipNote = `Verified as belonging to ${applicantName ?? 'applicant'}`
           else if (f.verificationStatus === 'UNVERIFIED' && f.detectedName) ownershipNote = `Name on statement: ${f.detectedName}`
-          retryAnalysis = await analyseSinglePdf(pd.buffers, f.fileName, ownershipNote, monthlyRentPence, rulesText, apiKey, report.declaredIncomePence, declaredJointApplication)
+          retryAnalysis = await analyseSinglePdf(pd.buffers, f.fileName, ownershipNote, monthlyRentPence, rulesText, apiKey, log, report.declaredIncomePence, declaredJointApplication)
         } else {
-          retryAnalysis = await callClaudeAnalysis(pdfFilesForAnalysis, monthlyRentPence, rulesText, apiKey, report.declaredIncomePence, declaredJointApplication)
+          retryAnalysis = await callClaudeAnalysis(pdfFilesForAnalysis, monthlyRentPence, rulesText, apiKey, log, report.declaredIncomePence, declaredJointApplication)
         }
         if (retryAnalysis.monthlyIncome > 0 || retryAnalysis.averageBalance > 0) {
-          console.log(`[scoring] Retry succeeded: monthlyIncome=${retryAnalysis.monthlyIncome}, averageBalance=${retryAnalysis.averageBalance}`)
+          log.info('ANALYSE', `Retry succeeded: monthlyIncome=${retryAnalysis.monthlyIncome}, averageBalance=${retryAnalysis.averageBalance}`)
           analysis = retryAnalysis
         } else {
-          console.warn(`[scoring] Retry also returned 0 income/balance. Proceeding with original values.`)
+          log.warn('ANALYSE', `Retry also returned 0 income/balance. Proceeding with original values.`)
         }
       } catch (retryErr) {
-        console.error(`[scoring] Retry failed:`, retryErr)
+        log.error('ANALYSE', `Retry failed: ${retryErr instanceof Error ? retryErr.message : String(retryErr)}`)
         // Proceed with original analysis
       }
     }
@@ -1091,26 +1077,23 @@ export async function analyzeStatement(reportId: string): Promise<void> {
       if (combinedIncome === 0 && analysis.monthlyIncome > 0) {
         combinedIncome = analysis.monthlyIncome
       }
-      console.log(`[screening:score] Joint application: YES`)
-      console.log(`[screening:score] Income breakdown: ${analysis.incomeBreakdown.map((p) => `${p.name}=£${p.monthlyIncome}`).join(', ')}`)
-      console.log(`[screening:score] Combined household income: £${combinedIncome}`)
+      log.info('SCORE', `Joint application: YES — breakdown: ${analysis.incomeBreakdown.map((p) => `${p.name}=£${p.monthlyIncome}`).join(', ')}, combined=£${combinedIncome}`)
     } else if (isJoint) {
-      console.log(`[screening:score] Joint application: YES (no incomeBreakdown, using monthlyIncome=£${analysis.monthlyIncome})`)
+      log.info('SCORE', `Joint application: YES (no incomeBreakdown, using monthlyIncome=£${analysis.monthlyIncome})`)
     } else {
-      console.log(`[screening:score] Joint application: NO`)
-      console.log(`[screening:score] Monthly income: £${analysis.monthlyIncome}`)
+      log.info('SCORE', `Single applicant — monthly income: £${analysis.monthlyIncome}`)
     }
 
     // Compute the server-side rent-to-income ratio using combined income
     const rentPounds = monthlyRentPence / 100
     const serverRentToIncome = combinedIncome > 0 ? rentPounds / combinedIncome : 0
-    console.log(`[screening:score] Rent-to-income (server-side): £${rentPounds} / £${combinedIncome} = ${(serverRentToIncome * 100).toFixed(1)}%`)
+    log.info('SCORE', `Rent-to-income (server-side): £${rentPounds} / £${combinedIncome} = ${(serverRentToIncome * 100).toFixed(1)}%`)
 
     // 10a. Apply gambling deduplication
     const deduplicatedFiredKeys = deduplicateStackingRules(analysis.firedRules)
     const removedByDedup = analysis.firedRules.filter((k) => !deduplicatedFiredKeys.includes(k))
     if (removedByDedup.length > 0) {
-      console.log(`[screening:score] Deduplication removed: [${removedByDedup.join(', ')}]`)
+      log.info('SCORE', `Deduplication removed: [${removedByDedup.join(', ')}]`)
     }
 
     // 10b. Server-side validation of threshold-based rules
@@ -1136,7 +1119,7 @@ export async function analyzeStatement(reportId: string): Promise<void> {
         if (!isCorrectBand) {
           const reason = `ratio is ${(serverRentToIncome * 100).toFixed(1)}%, does not match band`
           skippedRules.push({ key, reason })
-          console.warn(`[screening:score] ⚠️  SKIPPING ${key} — ${reason} (AI fired incorrectly)`)
+          log.warn('SCORE', `SKIPPING ${key} — ${reason} (AI fired incorrectly)`)
           return false
         }
       }
@@ -1149,18 +1132,18 @@ export async function analyzeStatement(reportId: string): Promise<void> {
           // Combined income explains declared amount — no discrepancy
           const reason = `joint combined income £${combinedIncome.toFixed(0)} is ${(incomeRatio * 100).toFixed(0)}% of declared £${declaredPounds.toFixed(0)}`
           skippedRules.push({ key, reason })
-          console.warn(`[screening:score] ⚠️  SKIPPING ${key} — ${reason} (joint income explains declared)`)
+          log.warn('SCORE', `SKIPPING ${key} — ${reason} (joint income explains declared)`)
           return false
         } else if (key === 'INCOME_MAJOR_DISCREPANCY' && incomeRatio >= 0.50) {
           // Not major — may still be significant or slight
           const reason = `joint combined income ratio is ${(incomeRatio * 100).toFixed(0)}%, not < 50%`
           skippedRules.push({ key, reason })
-          console.warn(`[screening:score] ⚠️  SKIPPING ${key} — ${reason}`)
+          log.warn('SCORE', `SKIPPING ${key} — ${reason}`)
           return false
         } else if (key === 'INCOME_SIGNIFICANT_DISCREPANCY' && incomeRatio >= 0.70) {
           const reason = `joint combined income ratio is ${(incomeRatio * 100).toFixed(0)}%, not < 70%`
           skippedRules.push({ key, reason })
-          console.warn(`[screening:score] ⚠️  SKIPPING ${key} — ${reason}`)
+          log.warn('SCORE', `SKIPPING ${key} — ${reason}`)
           return false
         }
       }
@@ -1174,20 +1157,19 @@ export async function analyzeStatement(reportId: string): Promise<void> {
       // Find the correct band and add it
       const correctBand = Object.entries(rentBandRules).find(([, check]) => check(serverRentToIncome))
       if (correctBand) {
-        console.log(`[screening:score] Adding correct rent band: ${correctBand[0]} (ratio=${(serverRentToIncome * 100).toFixed(1)}%)`)
+        log.info('SCORE', `Adding correct rent band: ${correctBand[0]} (ratio=${(serverRentToIncome * 100).toFixed(1)}%)`)
         validatedFiredKeys.push(correctBand[0])
       }
     }
 
-    console.log(`[screening:score] Rules validated server-side: ${validatedFiredKeys.length} passed, ${skippedRules.length} skipped (AI error)`)
-    if (skippedRules.length > 0) {
-      console.log(`[screening:score] Skipped rules: ${skippedRules.map((s) => `${s.key} (${s.reason})`).join(', ')}`)
-    }
+    log.info('SCORE', `Rules validated server-side: ${validatedFiredKeys.length} passed, ${skippedRules.length} skipped (AI error)`, {
+      skipped: skippedRules.length > 0 ? skippedRules : undefined,
+    })
 
     // 11. Match fired rule keys to DB records
     const unknownKeys = validatedFiredKeys.filter((key) => !ruleMap.has(key))
     if (unknownKeys.length > 0) {
-      console.warn(`[screening:score] ⚠️  Unknown rule keys from AI (not in DB): [${unknownKeys.join(', ')}]`)
+      log.warn('SCORE', `Unknown rule keys from AI (not in DB): [${unknownKeys.join(', ')}]`)
     }
 
     const appliedRuleRecords = validatedFiredKeys
@@ -1198,55 +1180,52 @@ export async function analyzeStatement(reportId: string): Promise<void> {
       })
 
     // 12. Calculate score starting at 100
-    console.log(`[screening:score] ── SCORE CALCULATION ────────────────`)
-    console.log(`[screening:score] Starting score: 100`)
+    log.info('SCORE', `Score calculation starting at 100`)
     let runningScore = 100
     for (const r of appliedRuleRecords) {
       runningScore += r.points
-      console.log(`[screening:score] Rule: ${r.key} (${r.category}) → ${r.points >= 0 ? '+' : ''}${r.points} = ${runningScore}`)
+      log.info('SCORE', `Rule: ${r.key} (${r.category}) → ${r.points >= 0 ? '+' : ''}${r.points} = ${runningScore}`)
     }
 
     let totalScore = Math.min(100, Math.max(0, runningScore))
     if (totalScore !== runningScore) {
-      console.log(`[screening:score] Clamped ${runningScore} → ${totalScore} (0-100 range)`)
+      log.info('SCORE', `Clamped ${runningScore} → ${totalScore} (0-100 range)`)
     }
-    console.log(`[screening:score] Score after rules: ${totalScore} (${appliedRuleRecords.length} rules applied)`)
+    log.info('SCORE', `Score after rules: ${totalScore} (${appliedRuleRecords.length} rules applied)`)
 
     // Special warning for zero score
     if (totalScore === 0) {
-      console.warn(`[screening:score] ⚠️  SCORE IS 0 — investigating...`)
-      console.warn(`[screening:score] Applied rules: ${JSON.stringify(appliedRuleRecords.map((r) => ({ key: r.key, points: r.points })))}`)
-      console.warn(`[screening:score] Raw firedRules from AI: [${analysis.firedRules.join(', ')}]`)
-      console.warn(`[screening:score] After dedup: [${deduplicatedFiredKeys.join(', ')}]`)
-      console.warn(`[screening:score] After validation: [${validatedFiredKeys.join(', ')}]`)
+      log.warn('SCORE', `SCORE IS 0 — investigating`, {
+        appliedRules: appliedRuleRecords.map((r) => ({ key: r.key, points: r.points })),
+        rawFiredRules: analysis.firedRules,
+        afterDedup: deduplicatedFiredKeys,
+        afterValidation: validatedFiredKeys,
+      })
     }
 
     // 12a. Server-side sanity checks — safety net for when Claude misses penalties
-    console.log(`[screening:score] ── SANITY CHECKS ───────────────────`)
-    // Check income discrepancy — use combined income for joint applications
+    log.info('SCORE', `Running sanity checks`)
     if (report.declaredIncomePence && combinedIncome > 0) {
       const declaredPounds = report.declaredIncomePence / 100
       const ratio = combinedIncome / declaredPounds
-      console.log(`[screening:score] Income check: combined £${combinedIncome.toFixed(0)} vs declared £${declaredPounds.toFixed(0)} = ${(ratio * 100).toFixed(0)}%`)
+      log.info('SCORE', `Income check: combined £${combinedIncome.toFixed(0)} vs declared £${declaredPounds.toFixed(0)} = ${(ratio * 100).toFixed(0)}%`)
 
       if (ratio < 0.5 && totalScore > 60) {
-        console.warn(`[screening:score] SANITY CHECK FAILED: income ratio ${(ratio * 100).toFixed(0)}% but score=${totalScore}. Capping at 60.`)
+        log.warn('SCORE', `SANITY CHECK: income ratio ${(ratio * 100).toFixed(0)}% but score=${totalScore}. Capping at 60.`)
         totalScore = 60
       } else if (ratio < 0.7 && totalScore > 75) {
-        console.warn(`[screening:score] SANITY CHECK: income ratio ${(ratio * 100).toFixed(0)}% but score=${totalScore}. Capping at 75.`)
+        log.warn('SCORE', `SANITY CHECK: income ratio ${(ratio * 100).toFixed(0)}% but score=${totalScore}. Capping at 75.`)
         totalScore = 75
       }
     }
 
-    // Check statement coverage
     if (primaryPerson && primaryPerson.coverageDays !== null && primaryPerson.coverageDays < 90 && totalScore > 85) {
-      console.warn(`[screening:score] SANITY CHECK: statement coverage only ${primaryPerson.coverageDays} days but score=${totalScore}. Capping at 85.`)
+      log.warn('SCORE', `SANITY CHECK: statement coverage only ${primaryPerson.coverageDays} days but score=${totalScore}. Capping at 85.`)
       totalScore = 85
     }
 
-    // Check rent-to-income — use server-computed ratio (already based on combined income)
     if (serverRentToIncome > 0.4 && totalScore > 70) {
-      console.warn(`[screening:score] SANITY CHECK: rent-to-income ${(serverRentToIncome * 100).toFixed(0)}% but score=${totalScore}. Capping at 70.`)
+      log.warn('SCORE', `SANITY CHECK: rent-to-income ${(serverRentToIncome * 100).toFixed(0)}% but score=${totalScore}. Capping at 70.`)
       totalScore = 70
     }
 
@@ -1258,9 +1237,7 @@ export async function analyzeStatement(reportId: string): Promise<void> {
 
     // 14. Determine grade
     const grade = scoreToGrade(totalScore)
-    console.log(`[screening:score] Final score: ${totalScore}, Grade: ${grade}`)
-    console.log(`[screening:score] Breakdown by category: ${JSON.stringify(breakdown)}`)
-    console.log(`[screening:score] ── END SCORE CALCULATION ────────────`)
+    log.info('SCORE', `Final score: ${totalScore}, Grade: ${grade}`, { breakdown })
 
     // 15. Build verification warning text
     const unverifiedFiles = statementFiles.filter(
@@ -1294,15 +1271,9 @@ export async function analyzeStatement(reportId: string): Promise<void> {
     )
 
     // 18. Save all results
-    console.log(`[screening:db] Saving report...`)
-    console.log(`[screening:db] reportId=${reportId}`)
-    console.log(`[screening:db] totalScore=${totalScore}, grade=${grade}`)
-    console.log(`[screening:db] isLocked=${report.isLocked}`)
-    console.log(`[screening:db] hasUnverifiedFiles=${hasUnverifiedFiles}`)
-    console.log(`[screening:db] appliedRules count=${appliedRuleRecords.length}`)
-    if (verificationWarning) {
-      console.log(`[screening:db] verificationWarning: ${verificationWarning}`)
-    }
+    log.info('SAVE', `Saving report — totalScore=${totalScore}, grade=${grade}, rules=${appliedRuleRecords.length}, hasUnverified=${hasUnverifiedFiles}`, {
+      verificationWarning,
+    })
 
     await prisma.financialReport.update({
       where: { id: reportId },
@@ -1323,12 +1294,12 @@ export async function analyzeStatement(reportId: string): Promise<void> {
         validationResults: validationResults as unknown as Prisma.InputJsonValue,
       },
     })
-    console.log(`[screening:db] Report saved successfully — status=COMPLETED`)
+    log.info('SAVE', `Report saved — status=COMPLETED`)
 
     // 19. If this report came from an invite, update invite status and notify landlord
     if (report.inviteId && report.invite) {
       try {
-        console.log(`[screening:db] Updating invite ${report.inviteId} → COMPLETED`)
+        log.info('SAVE', `Updating invite ${report.inviteId} → COMPLETED`)
         await prisma.screeningInvite.update({
           where: { id: report.inviteId },
           data: { status: 'COMPLETED', updatedAt: new Date() },
@@ -1339,7 +1310,7 @@ export async function analyzeStatement(reportId: string): Promise<void> {
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://letsorted.co.uk'
         const reportUrl = `${appUrl}/screening/report/${report.inviteId}`
 
-        console.log(`[screening:db] Sending landlord notification to ${report.invite.landlord.email}`)
+        log.info('SAVE', `Sending landlord notification to ${report.invite.landlord.email}`)
         await sendEmail({
           to: report.invite.landlord.email,
           subject: `${report.invite.candidateName} completed their financial check`,
@@ -1350,28 +1321,21 @@ export async function analyzeStatement(reportId: string): Promise<void> {
             reportUrl,
           }),
         })
-        console.log(`[screening:db] Landlord notification sent`)
+        log.info('SAVE', `Landlord notification sent`)
       } catch (notifyErr) {
-        console.error(`[screening] ❌ Failed to notify landlord for invite ${report.inviteId}:`, notifyErr)
+        log.error('SAVE', `Failed to notify landlord for invite ${report.inviteId}: ${notifyErr instanceof Error ? notifyErr.message : String(notifyErr)}`)
         // Don't fail the report — notification is best-effort
       }
     }
 
     const elapsed = ((Date.now() - pipelineStartTime) / 1000).toFixed(1)
-    console.log(`[screening] ─────────────────────────────────────────`)
-    console.log(`[screening] COMPLETE: score=${totalScore} grade=${grade} (${elapsed}s)`)
-    console.log(`[screening] reportId=${reportId} inviteId=${report.inviteId ?? 'none'}`)
-    console.log(`[screening] ─────────────────────────────────────────`)
+    log.info('COMPLETE', `COMPLETE: score=${totalScore} grade=${grade} (${elapsed}s)`)
+    await log.flush()
   } catch (err) {
     const elapsed = ((Date.now() - pipelineStartTime) / 1000).toFixed(1)
-    console.error(`[screening] ❌ FATAL ERROR (after ${elapsed}s):`)
-    console.error(`[screening] reportId=${reportId}`)
-    if (err instanceof Error) {
-      console.error(`[screening] Message: ${err.message}`)
-      console.error(`[screening] Stack: ${err.stack}`)
-    } else {
-      console.error(`[screening] Error:`, err)
-    }
+    log.error('ERROR', `FATAL ERROR (after ${elapsed}s): ${err instanceof Error ? err.message : String(err)}`, {
+      stack: err instanceof Error ? err.stack : undefined,
+    })
 
     // Determine failure reason
     let failureReason = 'Something went wrong during analysis. Please try again.'
@@ -1379,7 +1343,7 @@ export async function analyzeStatement(reportId: string): Promise<void> {
       failureReason = 'Our analysis service is currently at capacity. Please wait a few minutes and try again.'
     }
 
-    console.log(`[screening:db] Saving FAILED status — reason: ${failureReason}`)
+    log.error('ERROR', `Saving FAILED status — reason: ${failureReason}`)
     await prisma.financialReport.update({
       where: { id: reportId },
       data: {
@@ -1388,6 +1352,6 @@ export async function analyzeStatement(reportId: string): Promise<void> {
         statementFiles: statementFiles as unknown as Prisma.InputJsonValue,
       },
     })
-    // Don't re-throw — the error is recorded in the DB
+    await log.flush()
   }
 }

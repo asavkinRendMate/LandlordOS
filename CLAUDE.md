@@ -36,6 +36,9 @@
 │   │   ├── admin/
 │   │   │   ├── login/page.tsx
 │   │   │   ├── notifications/page.tsx
+│   │   │   ├── screenings/
+│   │   │   │   ├── [id]/page.tsx
+│   │   │   │   └── page.tsx
 │   │   │   └── page.tsx
 │   │   └── layout.tsx
 │   ├── (auth)/
@@ -95,6 +98,12 @@
 │   │   │   ├── auth/route.ts
 │   │   │   ├── properties/
 │   │   │   │   ├── [id]/route.ts
+│   │   │   │   └── route.ts
+│   │   │   ├── screenings/
+│   │   │   │   ├── [id]/
+│   │   │   │   │   ├── files/route.ts
+│   │   │   │   │   ├── logs/route.ts
+│   │   │   │   │   └── route.ts
 │   │   │   │   └── route.ts
 │   │   │   └── users/
 │   │   │       ├── [id]/route.ts
@@ -212,7 +221,8 @@
 │   │   └── registry.ts
 │   ├── scoring/
 │   │   ├── engine.ts
-│   │   └── index.ts
+│   │   ├── index.ts
+│   │   └── logger.ts
 │   ├── supabase/
 │   │   ├── auth.ts
 │   │   ├── client.ts
@@ -459,6 +469,20 @@ model FinancialReport {
 }
 
 // ── Screening Invites ─────────────────────────────────────────────────────────
+// ── Screening Logs ──────────────────────────────────────────────────────────
+
+model ScreeningLog {
+  id                String          @id @default(cuid())
+  screeningReportId String          @map("screening_report_id")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  stage             String          // INIT, PDF, VERIFY, VALIDATE, ANALYSE, SCORE, SAVE, COMPLETE, ERROR
+  level             String          // INFO, WARN, ERROR
+  message           String
+  data              Json?
+  screeningReport   FinancialReport @relation(fields: [screeningReportId], references: [id], onDelete: Cascade)
+  @@map("screening_logs")
+}
+
 enum ScreeningInviteStatus { PENDING STARTED COMPLETED PAID EXPIRED }
 
 model ScreeningInvite {
@@ -589,6 +613,7 @@ model MaintenancePhoto { /* full schema */ }
 model ScoringRule { /* full schema */ }
 model ScoringConfig { /* full schema */ }
 model ComplianceAlertLog { /* dedup log for cron compliance/deposit alerts */ } // Updated: 2026-03-09 — compliance alert cron job
+model ApplicationInvite { /* property-level invite tracking, merged with Tenant CANDIDATE for unified applicant list */ } // Updated: 2026-03-09 — persist invites, unified applicant list
 ```
 
 ---
@@ -598,7 +623,7 @@ model ComplianceAlertLog { /* dedup log for cron compliance/deposit alerts */ } 
 | Feature | Status | Notes |
 |---|---|---|
 | Property management | LIVE | CRUD, compliance docs, document management |
-| Tenant pipeline | LIVE | Apply → Candidate → Invited → Tenant lifecycle |
+| Tenant pipeline | LIVE | Apply → Candidate → Invited → Tenant lifecycle. ApplicationInvite persists emailed invites; merged with CANDIDATE tenants for unified applicant list on property page // Updated: 2026-03-09 |
 | Tenant portal | LIVE | Auth-protected, docs, rent, maintenance, check-in inspection |
 | Document management | LIVE | 14 types, drag-drop upload, signed URLs |
 | Rent tracking | LIVE | Auto-generate payments, manual mark received |
@@ -607,7 +632,7 @@ model ComplianceAlertLog { /* dedup log for cron compliance/deposit alerts */ } 
 | Financial screening (invite flow) | BETA | Landlord invites → candidate uploads → AI analysis |
 | Financial screening (credit packs) | BETA | Buy packs, upload directly (legacy flow) |
 | Screening report unlock | MOCK | isLocked=false (MOCK_PAID, no real Stripe yet) |
-| Admin panel | LIVE | Cookie-based auth, user/property CRUD |
+| Admin panel | LIVE | Cookie-based auth, user/property CRUD, screenings management (bulk delete, file download, debug logs viewer) // Updated: 2026-03-09 — screening debug logs |
 | Onboarding wizard | LIVE | 5-step first-run for new landlords (property → rooms → occupancy → tenant → done) |
 | Name capture modal | LIVE | Undismissable modal for landlords with no name set |
 | Settings page | LIVE | Display name edit |
@@ -623,6 +648,7 @@ model ComplianceAlertLog { /* dedup log for cron compliance/deposit alerts */ } 
 
 ### Overview
 `lib/scoring/engine.ts` — AI-powered bank statement analysis via Claude API (direct `fetch` to `https://api.anthropic.com/v1/messages`). Model: `claude-sonnet-4-20250514`.
+`lib/scoring/logger.ts` — `ScreeningLogger` class: buffers log entries (stage/level/message/data) per report, flushes to `screening_logs` table, also writes to console for Vercel logs. Stages: INIT, PDF, VERIFY, VALIDATE, ANALYSE, SCORE, SAVE, COMPLETE, ERROR. // Updated: 2026-03-09 — screening debug logs
 
 ### Flow
 1. Upload 1–5 PDF bank statements → create `FinancialReport` (PENDING)
@@ -946,6 +972,7 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
 - **Tenancy ↔ Tenant:** Tenancy = rental agreement; Tenant = person. Linked via `tenantId` FK. Never add contact fields to Tenancy.
 - **Screening invite expiry:** 7 days from createdAt, lazily updated to EXPIRED on access
 - **Backward compat:** Reports with `screeningUsageId` (credit-pack flow) are treated as unlocked even though `isLocked` defaults true
+- **Application invites:** `ApplicationInvite` table persists emailed invites (via `/api/tenant/application-link-email`). On the property page, invites are merged with `Tenant` CANDIDATE records by email to build a unified applicant list with statuses: invited → applied → analysing → complete. Delete via `/api/application-invites/[id]`. // Updated: 2026-03-09 — persist invites, unified applicant list
 - **Check-in photo retention:** GDPR — check-in photos retained for tenancy duration + 3 months, then eligible for deletion
 - **Tenant check-in photos:** tenant must select condition (GOOD/MINOR_ISSUE/DAMAGE) before upload — no default; optional comment (max 500 chars). Dispute flow accepts optional reason text, included in landlord notification email.
 - **Check-in report page** (`/check-in/[token]`): auth-aware header — logo links to tenant/landlord dashboard if authenticated, homepage if not; "Sign in" link for unauthenticated users; "Back to my dashboard" link for authenticated tenants // Updated: 2026-03-09 — check-in page logo + navigation

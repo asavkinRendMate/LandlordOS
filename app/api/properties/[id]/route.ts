@@ -14,6 +14,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       include: {
         complianceDocs: true,
         rooms: { orderBy: { order: 'asc' } },
+        applicationInvites: { orderBy: { sentAt: 'desc' } },
         tenancies: {
           where: { status: { not: 'ENDED' } },
           orderBy: { createdAt: 'desc' },

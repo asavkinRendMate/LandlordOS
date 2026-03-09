@@ -2,6 +2,9 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'next/navigation'
+import Image from 'next/image'
+import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
 import { compressImage } from '@/lib/image-utils'
 
 interface Photo {
@@ -60,6 +63,10 @@ export default function TenantCheckInReview() {
   const [confirmed, setConfirmed] = useState(false)
   const [uploading, setUploading] = useState(false)
 
+  // Auth state for header navigation
+  const [authUser, setAuthUser] = useState<{ email: string } | null>(null)
+  const [authChecked, setAuthChecked] = useState(false)
+
   // Staged photo upload state
   const [staged, setStaged] = useState<StagedFile | null>(null)
   const [stagedCondition, setStagedCondition] = useState<string | null>(null)
@@ -68,6 +75,14 @@ export default function TenantCheckInReview() {
   // Dispute form state
   const [showDisputeForm, setShowDisputeForm] = useState(false)
   const [disputeReason, setDisputeReason] = useState('')
+
+  // Check auth on mount
+  useEffect(() => {
+    createClient().auth.getUser().then(({ data }) => {
+      setAuthUser(data.user ? { email: data.user.email ?? '' } : null)
+      setAuthChecked(true)
+    })
+  }, [])
 
   const fetchReport = useCallback(async () => {
     try {
@@ -189,14 +204,37 @@ export default function TenantCheckInReview() {
     roomGroups.get(key)!.photos.push(photo)
   }
 
+  // Determine dashboard link based on whether user is the tenant on this report
+  const isTenant = authUser && report.tenant && authUser.email.toLowerCase() === report.tenant.email.toLowerCase()
+  const dashboardHref = authUser ? (isTenant ? '/tenant/dashboard' : '/dashboard') : '/'
+
   return (
     <div className="min-h-screen bg-[#F7F8F6]">
+      {/* Navigation header */}
+      <header className="bg-white border-b border-gray-200 px-4 h-14 flex items-center justify-between">
+        <Link href={dashboardHref}>
+          <Image src="/logo.svg" alt="LetSorted" width={110} height={37} />
+        </Link>
+        {authChecked && !authUser && (
+          <Link href="/login" className="text-sm text-green-600 hover:text-green-700 font-medium transition-colors">
+            Sign in
+          </Link>
+        )}
+      </header>
+
       <div className="max-w-2xl mx-auto px-4 py-8">
-        {/* Header */}
+        {/* Back link for authenticated tenants */}
+        {authUser && isTenant && (
+          <Link href="/tenant/dashboard" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 transition-colors mb-5">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Back to my dashboard
+          </Link>
+        )}
+
+        {/* Report header */}
         <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-2 mb-3">
-            <span className="text-[#2D6A4F] font-bold text-lg">LetSorted</span>
-          </div>
           <h1 className="text-[#1A1A1A] text-2xl font-bold mb-2">Check-in Report</h1>
           <p className="text-[#6B7280]">{address}</p>
           <p className="text-[#9CA3AF] text-sm mt-1">
