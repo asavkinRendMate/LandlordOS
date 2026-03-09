@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
+import { ClipboardCheck, Landmark, RotateCcw } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: 'Tenancy Renewal — Start Again Stress-Free',
@@ -44,17 +45,75 @@ export default function TenancyRenewalPage() {
       </section>
 
       <section className="py-20 px-6">
-        <div className="max-w-[1280px] mx-auto">
-          <div
-            className="rounded-xl aspect-video max-w-4xl mx-auto flex items-center justify-center"
-            style={{
-              background: 'linear-gradient(135deg, #E8F0EB 0%, #D4E6D9 100%)',
-              border: '1px solid rgba(45,106,79,0.1)',
-            }}
-          >
-            <span className="text-lg text-[#16a34a]/40 font-medium">
-              [ Detailed feature content coming soon ]
-            </span>
+        <div className="max-w-3xl mx-auto">
+          <h2 className="text-2xl font-bold text-gray-900 mb-10">How it works</h2>
+
+          <div className="space-y-10">
+            <div className="flex gap-5">
+              <div className="flex flex-col items-center">
+                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                  <ClipboardCheck className="w-5 h-5 text-green-600" />
+                </div>
+                <div className="w-px flex-1 bg-gray-200 mt-3" />
+              </div>
+              <div className="pb-2">
+                <p className="text-xs font-bold text-green-600 uppercase tracking-wide mb-1">Step 1</p>
+                <h3 className="font-semibold text-gray-900 text-lg mb-2">
+                  Run the check-out inspection
+                  <span className="ml-2 inline-block text-[10px] font-semibold uppercase tracking-wider text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full align-middle">
+                    Coming soon
+                  </span>
+                </h3>
+                <p className="text-gray-500 leading-relaxed">
+                  Compare the property&apos;s current condition against the original check-in report.
+                  Photo-by-photo, room-by-room — any new damage is flagged automatically, giving you
+                  a clear basis for deposit deductions.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-5">
+              <div className="flex flex-col items-center">
+                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                  <Landmark className="w-5 h-5 text-green-600" />
+                </div>
+                <div className="w-px flex-1 bg-gray-200 mt-3" />
+              </div>
+              <div className="pb-2">
+                <p className="text-xs font-bold text-green-600 uppercase tracking-wide mb-1">Step 2</p>
+                <h3 className="font-semibold text-gray-900 text-lg mb-2">Handle the deposit</h3>
+                <p className="text-gray-500 leading-relaxed">
+                  LetSorted shows you the deposit amount, protection scheme, and reference number in
+                  one place. If deductions are needed, the check-out evidence is already prepared and
+                  timestamped.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-5">
+              <div className="flex flex-col items-center">
+                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                  <RotateCcw className="w-5 h-5 text-green-600" />
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-bold text-green-600 uppercase tracking-wide mb-1">Step 3</p>
+                <h3 className="font-semibold text-gray-900 text-lg mb-2">One click back to vacant</h3>
+                <p className="text-gray-500 leading-relaxed">
+                  End the tenancy and reset the property to vacant. Open applications for the next
+                  tenant and the whole cycle starts again — screening, move-in, and management, all
+                  in one place.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-16 border border-gray-200 rounded-xl p-6 bg-gray-50">
+            <p className="text-gray-600 leading-relaxed">
+              Most deposit disputes come down to evidence. A timestamped check-in and check-out
+              report, signed off by both parties, is your strongest defence. LetSorted creates both
+              automatically.
+            </p>
           </div>
         </div>
       </section>

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
+import { Bell, PoundSterling, Wrench, Droplets } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: 'Property Management — Stay on Top Effortlessly',
@@ -44,17 +45,84 @@ export default function PropertyManagementPage() {
       </section>
 
       <section className="py-20 px-6">
-        <div className="max-w-[1280px] mx-auto">
-          <div
-            className="rounded-xl aspect-video max-w-4xl mx-auto flex items-center justify-center"
-            style={{
-              background: 'linear-gradient(135deg, #E8F0EB 0%, #D4E6D9 100%)',
-              border: '1px solid rgba(45,106,79,0.1)',
-            }}
-          >
-            <span className="text-lg text-[#16a34a]/40 font-medium">
-              [ Detailed feature content coming soon ]
-            </span>
+        <div className="max-w-3xl mx-auto">
+          <h2 className="text-2xl font-bold text-gray-900 mb-10">How it works</h2>
+
+          <div className="space-y-10">
+            <div className="flex gap-5">
+              <div className="flex flex-col items-center">
+                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                  <Bell className="w-5 h-5 text-green-600" />
+                </div>
+                <div className="w-px flex-1 bg-gray-200 mt-3" />
+              </div>
+              <div className="pb-2">
+                <p className="text-xs font-bold text-green-600 uppercase tracking-wide mb-1">Step 1</p>
+                <h3 className="font-semibold text-gray-900 text-lg mb-2">Document expiry alerts</h3>
+                <p className="text-gray-500 leading-relaxed">
+                  Gas Safety, EICR, EPC and Right to Rent checks have expiry dates. LetSorted tracks
+                  them all and emails you before they lapse — before you become non-compliant.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-5">
+              <div className="flex flex-col items-center">
+                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                  <PoundSterling className="w-5 h-5 text-green-600" />
+                </div>
+                <div className="w-px flex-1 bg-gray-200 mt-3" />
+              </div>
+              <div className="pb-2">
+                <p className="text-xs font-bold text-green-600 uppercase tracking-wide mb-1">Step 2</p>
+                <h3 className="font-semibold text-gray-900 text-lg mb-2">Rent tracking</h3>
+                <p className="text-gray-500 leading-relaxed">
+                  Mark payments received, flag late payments, and see the full payment history at a
+                  glance. Partial payments are supported.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-5">
+              <div className="flex flex-col items-center">
+                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                  <Wrench className="w-5 h-5 text-green-600" />
+                </div>
+                <div className="w-px flex-1 bg-gray-200 mt-3" />
+              </div>
+              <div className="pb-2">
+                <p className="text-xs font-bold text-green-600 uppercase tracking-wide mb-1">Step 3</p>
+                <h3 className="font-semibold text-gray-900 text-lg mb-2">Maintenance requests</h3>
+                <p className="text-gray-500 leading-relaxed">
+                  Tenants submit issues with photos through their portal. You see priority, status,
+                  and a full audit trail of every update. Every interaction is logged with timestamps
+                  — useful if a dispute ever reaches a tribunal.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-5">
+              <div className="flex flex-col items-center">
+                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                  <Droplets className="w-5 h-5 text-green-600" />
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-bold text-green-600 uppercase tracking-wide mb-1">Step 4</p>
+                <h3 className="font-semibold text-gray-900 text-lg mb-2">Awaab&apos;s Law compliance</h3>
+                <p className="text-gray-500 leading-relaxed">
+                  Damp and mould reports automatically trigger a 24-hour response timer, keeping you
+                  compliant with the new private rental rules effective from 2026.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-16 border border-gray-200 rounded-xl p-6 bg-gray-50">
+            <p className="text-gray-600 leading-relaxed">
+              The Renters&apos; Rights Act 2025 introduces 15 new offences with fines up to
+              &pound;40,000. LetSorted keeps the paper trail that proves you acted — and acted in time.
+            </p>
           </div>
         </div>
       </section>
