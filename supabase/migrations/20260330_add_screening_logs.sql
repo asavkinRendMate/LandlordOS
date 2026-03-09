@@ -1,7 +1,7 @@
 -- Screening debug logs — persisted per financial report
 CREATE TABLE screening_logs (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-  screening_report_id TEXT NOT NULL REFERENCES financial_reports(id) ON DELETE CASCADE,
+  screening_report_id UUID NOT NULL REFERENCES financial_reports(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   stage TEXT NOT NULL,
   level TEXT NOT NULL,
@@ -23,7 +23,7 @@ CREATE POLICY "Landlord can read screening logs for own reports"
       SELECT 1 FROM financial_reports fr
       JOIN properties p ON fr.property_id = p.id
       WHERE fr.id = screening_logs.screening_report_id
-        AND p.user_id = auth.uid()
+        AND p.user_id = auth.uid()::text
     )
   );
 
