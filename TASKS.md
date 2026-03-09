@@ -1,408 +1,229 @@
-# TASKS.md — Sprint Plan
+# TASKS.md — Product Backlog
 
-10-week build plan. Each sprint = 2 weeks. Tasks are ordered by dependency — complete in sequence within each sprint.
+Current product state and outstanding work. Updated March 2026.
 
-Status: `[ ]` todo · `[x]` done · `[-]` in progress · `[~]` skipped/deferred
-
----
-
-## Sprint 1 — Foundation & Compliance (Weeks 1–2)
-
-**Goal:** Working auth, property management, compliance tab with AI date extraction.
-
-### Marketing & Waitlist (completed outside original sprint plan)
-- [x] Landing page at `/` — hero, pain points, how it works, features, pricing, waitlist form
-- [x] Waitlist API (`POST /api/waitlist`) — stores email + property count
-- [x] OS Places postcode lookup (`/api/address`) — used in property forms
-- [x] `lib/os-places.ts` — address lookup helper
-
-### Setup
-- [x] Initialise Next.js 14 project with TypeScript strict mode
-- [x] Configure Tailwind CSS + install shadcn/ui
-- [x] Set up Supabase project (get DATABASE_URL, DIRECT_URL, keys)
-- [x] Configure Prisma with `schema.prisma` (full schema from CLAUDE.md)
-- [x] Run first migration: `npx prisma migrate dev --name init`
-- [x] Set up environment variables (.env.local with all keys from CLAUDE.md)
-- [x] Configure Resend for transactional email
-- [x] Deploy skeleton to Vercel, confirm DB connection works
-
-### Auth
-- [x] Configure Supabase Auth with magic link (email only, no social)
-- [x] Create `middleware.ts` to protect `/dashboard` and `/tenant/dashboard` routes
-- [x] Build `/login` page — email input → "Check your email" state
-- [x] Handle magic link callback (`/auth/callback`)
-- [x] Create `lib/supabase/server.ts`, `lib/supabase/client.ts`, `lib/supabase/auth.ts`
-- [x] Test: full login flow end to end
-
-### Dashboard Shell
-- [x] Create dashboard layout (`app/(dashboard)/layout.tsx`) with sidebar nav
-- [x] Sidebar links: Overview, Settings (+ "My Rental" context switcher for dual-role users)
-- [x] Dashboard overview page — redirects to onboarding if no properties, property cards otherwise
-- [x] User session accessible throughout dashboard
-
-### Property Management
-- [x] "Add property" form — postcode lookup (OS Places API) + address, type, optional nickname
-- [x] On create: seed 4 blank ComplianceDoc records for the property
-- [x] Property cards on dashboard with status badge and compliance strip
-- [x] Property detail page — compliance & docs section, tenant section, applications section
-- [x] Tenant card on property detail: clickable → tenant detail page, 4 doc status dots, dynamic border colour
-- [ ] "Edit property" — address fields only
-
-### Compliance Tab
-- [x] Display 4 compliance status cards (Gas Safety, EPC, EICR, How to Rent) — status derived from PropertyDocument uploads
-- [x] File upload via drag-and-drop modal — document type dropdown, expiry date for Gas/EPC/EICR, multi-file batch
-- [x] Expiry date input in upload modal (shown conditionally per document type)
-- [~] "How to Rent Guide" — implemented as a document type (no separate checkbox/version field)
-- [x] Status badges on compliance cards: Valid · Expiring soon · Expired · Not uploaded
-- [x] Dashboard alert bar: surface items expiring within 30 days (reads from legacy ComplianceDoc model)
-
-### AI Date Extraction
-- [ ] Create `lib/anthropic.ts` with Claude client
-- [ ] Create `lib/prompts/extract-dates.ts` with system prompt
-- [ ] Build `/api/ai/extract-dates` route — accepts file, returns `{ expiryDate, issuedDate }`
-- [ ] Wire up to compliance upload: after upload, auto-call extraction, pre-fill date fields
-- [ ] Show "AI extracted — please verify" UI indicator
-
-### Tenant Invite & Onboarding (completed outside original sprint plan)
-- [x] Tenant model with CANDIDATE / INVITED / TENANT / FORMER_TENANT statuses
-- [x] `inviteToken` (UUID) as public-facing URL token (never exposes DB id)
-- [x] "Send invite email" button on property detail — emails tenant join link
-- [x] `/tenant/join/[token]` page — confirm name/phone, read-only email and property
-- [x] On confirm: status → TENANT, `confirmedAt` set, magic link emailed via Supabase Auth
-- [x] Tenant dashboard at `/tenant/dashboard` (auth-protected, magic link sign-in)
-- [x] Context switcher in landlord dashboard sidebar: "My Rental" shown if user is also a TENANT
-
-### Tenant Document Management (completed outside original sprint plan)
-- [x] `TenantDocument` model — 9 types, Supabase Storage (`tenant-documents` bucket)
-- [x] `POST /api/tenant-documents/upload` — multipart, `{tenantId}` extra field
-- [x] `GET /api/tenant-documents?tenantId=` — list documents for a tenant
-- [x] `GET /api/tenant-documents/[id]` — signed URL (60-min expiry)
-- [x] `DELETE /api/tenant-documents/[id]` — remove from storage + DB
-- [x] `PATCH /api/tenants/[id]` — update tenant name/phone
-- [x] Tenant detail page `/dashboard/properties/[id]/tenant/[tenantId]` — R2R status, inline edit, required docs (6), other docs (3)
-- [x] Tenant self-upload on tenant portal (`/tenant/dashboard`) — "My Documents" section with `DocumentUploadModal`
-- [x] Shared `DocumentUploadModal` component (`components/shared/DocumentUploadModal.tsx`) — reused for property docs and tenant docs
-
-### Rent Payment Model (completed outside original sprint plan)
-- [x] `RentPayment` model with `PaymentStatus` enum (PENDING/EXPECTED/RECEIVED/LATE/PARTIAL)
-- [x] `lib/payments.ts` — `generateUpcomingPayments` (3 months, idempotent) + `updatePaymentStatuses`
-- [x] `supabase/migrations/20260309_rent_payments.sql` migration applied
+Status: `[x]` done · `[-]` partially done / verify · `[ ]` todo · `[~]` deferred
 
 ---
 
-## Sprint 2 — Tenant Pipeline (Weeks 3–4)
+## ✅ Completed — Core Platform
 
-**Goal:** Full applicant flow from application link to landlord decision.
-
-### Application Link
-- [x] Application link shown on property detail page: `[domain]/apply/[propertyId]`
-- [x] Copy-to-clipboard button
-- [x] "Send by email" inline form (emails the link via Resend)
-- [ ] "Open applications" button explicitly sets Property status → APPLICATION_OPEN
-
-### Application Form (Public — No Auth)
-- [x] Build `/apply/[propertyId]` page — validate propertyId, show property address
-- [x] Form fields: name, email, phone, current address, employment status, income, message
-- [ ] File uploads: ID doc, income proof, reference letter (optional)
-- [x] On submit: Tenant record created with status CANDIDATE
-- [ ] Confirmation email to applicant + notification email to landlord
-- [x] Thank you / confirmation screen after submit
-
-### Application Dashboard
-- [x] "Applications" section on property detail — shows all CANDIDATE tenants
-- [x] List applicants: name, email, status badge
-- [ ] Per-applicant detail view: all fields + uploaded documents
-- [ ] Action buttons: "Shortlist" / "Reject" (current: only "Send invite email")
-- [ ] Rejection: update status, send rejection email template
-
-### AI Screening (Paid — £15)
-- [ ] Stripe Payment Intent for £15 Screening Pack
-- [ ] `/api/ai/screen-applicant` route — reads uploaded docs, calls Claude
-- [ ] `lib/prompts/screen-applicant.ts` — prompt for income verification, affordability, document quality
-- [ ] Parse Claude response into structured `{ summary, score, flags }`
-- [ ] Store `aiSummary` + `aiScore` on Application record
-- [ ] Display formatted AI summary in applicant detail view
-- [ ] Score badge: 🟢 GREEN · 🟡 AMBER · 🔴 RED
-
-### Accept & Reject Flow
-- [ ] "Accept" button — modal: confirm selection, warn others will be rejected
-- [ ] On accept: Application status → ACCEPTED, property status → OFFER_ACCEPTED
-- [ ] All other applications → REJECTED with auto-email
-- [ ] Begin move-in flow (deposit step)
+- [x] Next.js 14 App Router, TypeScript strict mode, Tailwind + shadcn/ui
+- [x] Supabase project, Prisma schema, migrations workflow (supabase db push, not prisma migrate)
+- [x] Environment variables via `lib/env.ts` (Zod v4 validated)
+- [x] Vercel deployment
+- [x] OTP Auth (6-digit code) — replaced magic link; `lib/supabase/otp.ts`, `OTPInput` component
+- [x] Auth middleware protecting `/dashboard` and `/tenant/dashboard`
+- [x] Dashboard layout with sidebar nav
+- [x] Name capture modal (undismissable if no name set)
+- [x] Settings page — display name edit
+- [x] Admin panel — cookie-based auth, user/property CRUD, notifications registry
+- [x] Row Level Security on all 15+ tables
+- [x] Closed beta access gate (hardcoded code modal on landing page)
+- [x] OS Places postcode lookup (`/api/address`, `lib/os-places.ts`)
+- [x] 30 DB indexes across 17 models (migration `20260326_add_performance_indexes.sql`)
+- [x] `update-docs` script — regenerates CLAUDE.md + SPEC.md via Claude API
+- [x] Protected Notes section in CLAUDE.md survives doc regeneration
 
 ---
 
-## Sprint 3 — Move-In & Documents (Weeks 5–6)
+## ✅ Completed — Property Management
 
-**Goal:** Deposit tracking, APT contract generation, e-signature, inventory report.
-
-### Deposit Tracking
-- [ ] Deposit section in move-in flow: enter amount, select scheme (DPS / MyDeposits / TDS)
-- [ ] Generate PDF instructions for the selected scheme
-- [ ] "Mark as protected" checkbox + reference number field
-- [ ] Save `depositAmount`, `depositScheme`, `depositRef`, `depositProtected` to Tenancy
-- [ ] Alert if not protected after 28 days (shown in compliance section)
-
-### APT Contract (Paid — £10)
-- [ ] Store APT template as HTML/Markdown in `/lib/templates/apt-contract.ts`
-- [ ] Stripe Payment Intent for £10
-- [ ] Contract generation endpoint: fill template with Tenancy + User data
-- [ ] Generate PDF using `pdf-lib` or `puppeteer`
-- [ ] Upload PDF to Supabase Storage, save URL to Tenancy
-- [ ] Send signing emails to both parties with unique signing tokens
-
-### E-Signature Flow
-- [ ] Create SigningToken model (or extend Tenancy): `landlordToken`, `tenantToken`, `landlordSignedAt`, `tenantSignedAt`
-- [ ] Signing page `/sign/[token]` — show contract PDF, "I agree" button
-- [ ] On sign: record timestamp + IP address, update signed status
-- [ ] When both signed: update Tenancy `contractUrl`, send confirmation emails
-- [ ] Dashboard shows contract status: Pending / Landlord signed / Fully signed
-
-### Inventory Report (Paid — £5)
-- [ ] Stripe Payment Intent for £5
-- [ ] Initiate inventory: send email to both parties with upload link `/inventory/[token]`
-- [ ] Inventory upload page: room selector + photo upload + comment per photo
-- [ ] Photos stored in Supabase Storage with timestamp metadata
-- [ ] Both parties submit → PDF Inventory Report generated
-- [ ] Both receive PDF via email, shown confirmation button
-- [ ] Both confirm → Tenancy status → ACTIVE, Property status → ACTIVE
-
-### Documents Tab
-- [x] General document storage for property (PropertyDocument model, Supabase Storage)
-- [x] Upload any file with document type selection (14 types) via drag-and-drop modal
-- [x] List view with file name, type, size, date, expiry badge, download link (signed URL)
-- [x] Delete document (with confirmation)
-- [x] Tenant acknowledgment: tenant can mark documents as reviewed; landlord sees ack status
+- [x] Add/view/manage properties — address, type, bedrooms, status
+- [x] Property rooms model (`PropertyRoom`) — RoomType enum, name, floor, order
+- [x] Onboarding wizard — 5 steps: Address → Rooms → Occupancy → Tenant → Done
+- [x] Rooms auto-suggested from property type, drag-to-reorder, rename
+- [x] Compliance cards (Gas/EPC/EICR/How to Rent) — status badges with dot indicators
+- [x] Property documents — 14 types, drag-drop upload, expiry tracking, signed URLs, delete
+- [x] Compliance cron — daily 9am UTC, 30d/7d/expired alerts + deposit protection reminders
+- [-] Edit property (address fields) — verify if live
 
 ---
 
-## Sprint 4 — Active Tenancy & Termination (Weeks 7–8)
+## ✅ Completed — Tenant Pipeline
 
-**Goal:** Rent tracker, tenant portal, maintenance tickets, Section 8, dispute pack.
-
-### Rent Tracker UI
-- [ ] Rent tab on property detail: monthly list showing due date, amount, status
-- [ ] "Mark as received" button per month — sets `paidAt`, status → RECEIVED
-- [ ] Partial payment: enter amount received, status → PARTIAL, remainder carried
-- [ ] Dashboard property card: red badge if any payment LATE
-- [ ] Call `generateUpcomingPayments` on tenancy creation / activation
-
-### Rent Reminder Emails
-- [ ] Cron job: daily check at 08:00 UK time
-- [ ] Send reminder email to tenant 3 days before due date
-- [ ] Send alert to landlord if unpaid on due date
-- [ ] Send escalation email to landlord after 7 days overdue
-
-### Tenant Portal (auth-required, already live at `/tenant/dashboard` — extend with:)
-- [x] Read-only rent payment history view (status per month)
-- [x] Maintenance request form: title, description, priority
-- [x] Submitted requests show status (Open / In Progress / Resolved)
-- [ ] "Give notice" button with explanation of 2-month minimum
-
-### Maintenance Tickets
-- [x] `MaintenanceRequest` model with priority (LOW/MEDIUM/HIGH/URGENT) and status (OPEN/IN_PROGRESS/RESOLVED)
-- [x] `MaintenanceStatusHistory` model — immutable audit trail for all status changes
-- [x] `MaintenancePhoto` model — photo uploads with `maintenance-photos` Supabase Storage bucket
-- [x] Maintenance request created from tenant portal submission (POST /api/maintenance)
-- [ ] Landlord notification email on submission
-- [x] `/dashboard/maintenance` — list all requests with status filter tabs and priority sort
-- [x] `/dashboard/maintenance/[id]` — detail page: description, photos, status dropdown, timeline
-- [x] Photo upload and deletion (landlord + tenant), max 20 per request, 10 MB limit
-- [ ] **Awaab's Law:** category field, DAMP_MOULD → `respondBy = createdAt + 24h`, countdown timer
-- [ ] Status change → notification email to tenant
-- [x] All status changes logged with timestamp and actor (MaintenanceStatusHistory)
-
-### Section 13 — Rent Increase
-- [ ] "Raise rent" button in Tenancy section
-- [ ] Check: last increase date — block if <12 months ago with explanation
-- [ ] Input: new monthly rent amount
-- [ ] Generate Section 13 Notice PDF
-- [ ] Send to tenant via email
-- [ ] Log: `rentIncreaseDate`, `newRentAmount`, effective date (rent + 2 months)
-- [ ] Rent tracker updates from effective date
-
-### Tenant Notice (Tenant-Initiated)
-- [ ] "Give notice" in tenant portal → date picker
-- [ ] Enforce minimum 2-month notice (earliest selectable date = today + 2 months)
-- [ ] On submit: Property status → NOTICE_GIVEN, landlord notified
-- [ ] Auto-checklist shown to landlord: inspection, deposit, PRS Database, How to Rent
-
-### Section 8 Notice (Landlord-Initiated)
-- [ ] "Serve notice" button in dashboard
-- [ ] Ground selector: Ground 8/10/11 (arrears), Ground 1 (moving in), Ground 2 (sale), Ground 7A/14 (ASB)
-- [ ] For each ground: show required evidence list + notice period
-- [ ] Generate Section 8 Notice PDF with selected ground
-- [ ] Log: ground, date served
-
-### Check-Out Inspection
-- [ ] Initiate from property detail (when status = NOTICE_GIVEN)
-- [ ] Same photo upload flow as inventory
-- [ ] Side-by-side photo comparison: move-in vs check-out per room
-- [ ] Landlord decision: Full return / Partial deduction / Full deduction
-- [ ] Deduction amount field + reason field
-- [ ] System generates deposit return instructions for selected scheme
-- [ ] On complete: Tenancy status → ENDED, Property status → VACANT
-
-### Dispute Pack (Paid — £29)
-- [ ] Stripe Payment Intent for £29
-- [ ] `/api/generate-dispute-pack` endpoint
-- [ ] Collect: all tickets, rent history, signed documents, inventory photos, notices, event log
-- [ ] Generate multi-section PDF
-- [ ] Include: Tribunal letter template, Ombudsman letter template
-- [ ] Upload to storage, send download link via email
-- [ ] Available on any active or ended tenancy
+- [x] Public application form `/apply/[propertyId]`
+- [x] Tenant status pipeline: CANDIDATE → INVITED → TENANT → FORMER_TENANT
+- [x] Multi-email invite UI (up to 10 emails, cost counter, `InvitePreviewModal`)
+- [x] Pending invites list with status badges
+- [x] Tenant join flow `/tenant/join/[token]`
+- [x] Select Tenant — confirmation modal, winner email, rejection emails to all others, Property → ACTIVE
+- [x] Tenant portal link — copyable + send by email on property detail
 
 ---
 
-## Sprint 5 — Payments, Alerts & Polish (Weeks 9–10)
+## ✅ Completed — AI Financial Screening
 
-**Goal:** Full Stripe integration, compliance cron, daily alerts, QA and launch prep.
-
-### Stripe Subscription
-- [ ] Stripe Products/Prices: Free tier (1 property), Pro (£10/mo per property)
-- [ ] When landlord adds 2nd property → Stripe checkout for subscription
-- [ ] Subscription quantity updates automatically as properties added/removed
-- [ ] Stripe webhook handler: `customer.subscription.updated`, `invoice.payment_failed`
-- [ ] Block dashboard features if subscription lapsed (show upgrade prompt)
-- [ ] Stripe Customer Portal link in Settings
-
-### Stripe One-Time Payments
-- [ ] Payment Intent for each paid event (Screening, Contract, Inventory, Dispute Pack)
-- [ ] Payment success → unlock feature, store `Payment` record
-- [ ] Failed payment → error state with retry option
-- [ ] Stripe webhook: `payment_intent.succeeded`
-
-### Compliance Cron Job
-- [ ] `/api/cron/alerts` endpoint protected with `CRON_SECRET`
-- [ ] Vercel Cron: run daily at 08:00 UK time
-- [ ] Query: compliance docs expiring in 30, 14, 7 days → email per landlord (digest)
-- [ ] Query: deposit unprotected after 28 days → urgent email
-- [ ] Query: Awaab's Law tickets approaching 24h → immediate email
-- [ ] Query: rent overdue today → email to landlord
-
-### Settings Page
-- [ ] Profile: name, email (read-only)
-- [ ] Billing: Stripe Customer Portal link
-- [ ] Notification preferences (email toggles)
-- [ ] Danger zone: delete account (with confirmation)
-
-### QA & Polish
-- [ ] Mobile responsiveness audit — all pages work on iOS/Android browser
-- [ ] Empty states: every list has a helpful empty state
-- [ ] Error states: every form has error handling
-- [ ] Loading states: Suspense boundaries on all data-fetching components
-- [ ] Email templates: preview and test all 14 templates
-- [ ] End-to-end test: full landlord journey (register → add property → find tenant → active tenancy → termination)
-- [ ] End-to-end test: applicant journey (apply → screening → accept → portal → ticket → notice)
-- [ ] Security review: confirm no sensitive data exposed, all routes protected
-
-### Launch Prep
-- [ ] Set up custom domain on Vercel
-- [ ] Configure Resend with custom sending domain
-- [ ] Set up Stripe in live mode (not test)
-- [ ] Set production environment variables
-- [ ] Enable Vercel Analytics
-- [ ] Create `/privacy` and `/terms` pages (basic)
-- [ ] Test magic link flow in production
-- [ ] Soft launch: invite waitlist signups
+- [x] Screening invite flow (primary): invite → candidate uploads → AI analysis → landlord unlocks
+- [x] Joint application toggle — income summed as household
+- [x] AI scoring engine — 32 rules, 6 categories, score 0–100 (Sonnet)
+- [x] Name verification per file (Haiku — cost optimisation)
+- [x] Period validation (≥60 days coverage, ≤6 months old)
+- [x] Server-side RENT_ABOVE_40_PCT + other threshold validations
+- [x] Director's Loan exclusion from debt calculation
+- [x] Gambling + income discrepancy deduplication (highest penalty only)
+- [x] PDF compression + split (pdf-lib), JSON extraction safety
+- [x] `cleanSummary()` strips chain-of-thought before DB save
+- [x] Candidate view — neutral "reliability score" only
+- [x] Public verification pages `/verify/[token]`
+- [x] Report unlock (MOCK_PAID — Stripe not yet integrated)
+- [x] Credit pack flow (legacy, still functional)
+- [x] Seed script: `npx tsx prisma/seed-scoring.ts`
 
 ---
 
+## ✅ Completed — Documents, Rent, Maintenance
+
+- [x] Property documents (14 types) + tenant documents (9 types)
+- [x] Document acknowledgment — tenant marks as reviewed
+- [x] Shared `DocumentUploadModal` — reused across property + tenant docs
+- [x] Rent payment model (PENDING/EXPECTED/RECEIVED/LATE/PARTIAL)
+- [x] Auto-generate 3 months payments on page load (idempotent)
+- [x] Auto-status updates, manual mark-received with partial support
+- [x] Rent reminders cron — daily 8am UTC
+- [x] Maintenance requests (OPEN/IN_PROGRESS/RESOLVED), immutable audit trail
+- [x] Maintenance photos — landlord + tenant, `maintenance-photos` bucket
+- [x] Awaab's Law — DAMP_MOULD sets `respondBy + 24h`, 4h email reminder cron
+- [x] Tenant portal — maintenance submission with photos
+
 ---
 
-## Near-Term Backlog (identified during build, not yet sprint-scheduled)
+## ✅ Completed — Check-in Reports
 
-### GoCardless Direct Debit
-- [ ] GoCardless API integration (`lib/gocardless.ts`)
-- [ ] Tenant authorises mandate via GoCardless redirect flow
-- [ ] Auto-collect rent on `paymentDay` each month
-- [ ] Webhook handler: payment collected → update `RentPayment` status → RECEIVED
-- [ ] Webhook handler: payment failed → status → LATE, email to landlord
-- [ ] Display mandate status on tenant detail page
+- [x] `CheckInReport` model (DRAFT/PENDING/IN_REVIEW/AGREED/DISPUTED)
+- [x] `CheckInPhoto` model with uploadedBy, condition, caption, takenAt
+- [x] Landlord creates report — room-by-room photos + condition tags
+- [x] Token-based tenant review page `/tenant/check-in/[token]` (no portal login needed)
+- [x] Tenant photo upload with condition + comment
+- [x] Dual confirmation — PDF only generated when both parties confirmed
+- [x] PDF generation — cover + rooms + ALL photos from both parties, attributed
+- [x] DISPUTED state — all photos included regardless
+- [x] Move-in document email — PDF + Gas Safety + EPC sent on AGREED
 
-### Right to Rent Expiry Alerts
-- [ ] Add to daily cron: query TenantDocuments where type=RIGHT_TO_RENT and expiry ≤30 days
-- [ ] Email to landlord: "R2R for [Tenant Name] expires in [N] days — [Property Address]"
-- [ ] Show red badge on tenant card when R2R is expired/missing
+---
 
-### Compliance Expiry Email Alerts (cron)
-- [ ] `/api/cron/alerts` endpoint protected with `CRON_SECRET`
-- [ ] Vercel Cron: run daily at 08:00 UK time
-- [ ] Query: compliance docs (Gas Safety, EPC, EICR) expiring in 30, 14, 7 days → digest email per landlord
-- [ ] Query: deposit unprotected after 28 days → urgent email
+## ✅ Completed — Tenant Portal, SEO, Analytics
 
-### AI Financial Scoring Engine — IMPLEMENTED
-- [x] `ScoringRule` model (30 rules across 6 categories: AFFORDABILITY, STABILITY, DEBT, GAMBLING, LIQUIDITY, POSITIVE)
-- [x] `ScoringConfig` model (versioned config, one active at a time)
-- [x] `FinancialReport` model (PENDING → PROCESSING → COMPLETED/FAILED)
-- [x] `lib/scoring/engine.ts` — Claude API (claude-sonnet-4-20250514) analyses bank statement PDFs
-- [x] `POST /api/scoring/upload` — upload bank statement PDF, trigger background analysis
-- [x] `GET /api/scoring/[reportId]` — poll report status and results
-- [x] `POST /api/scoring/[reportId]` — re-trigger analysis (admin use)
-- [x] `/verify/[token]` — public financial report verification page
-- [x] `/passport` — Financial Passport landing page (pre-launch email capture)
-- [x] `prisma/seed-scoring.ts` — seeds 30 rules + ScoringConfig v1
-- [x] Property has `requireFinancialVerification` flag
-- [x] Property detail page shows scoring results inline per tenant (grade, score, summary)
-- [ ] PDF report generation from FinancialReport data
-- [ ] Stripe Payment Intent for scoring (currently free)
+- [x] Tenant portal — documents, maintenance, rent history, check-in review, onboarding checklist
+- [x] Dynamic sitemap, robots.ts, JSON-LD, OG image
+- [x] Guides/Blog (MDX), article generator script (`npm run generate-article`)
+- [x] Marketing feature pages, RRA page, privacy/terms/cookies
+- [x] Google Analytics + Microsoft Clarity + Facebook Pixel (consent-gated)
+- [x] vanilla-cookieconsent (necessary/analytics/marketing)
+- [x] Sentry (client + server + edge), PostHog (EU, consent-gated)
+- [x] Crisp live chat (marketing pages only)
 
-### Bank Statement AI Auto-Match (Rent Tracker)
-- [ ] Claude extracts transactions, identifies rent credits matching `monthlyRent` amount
-- [ ] Return structured `{ matchedPayments: [{ date, amount, reference }] }`
-- [ ] UI: "Auto-match" button in rent tracker reconciles parsed results with RentPayment records
+---
 
-### Maintenance Requests (Tenant Portal) — IMPLEMENTED
-- [x] `MaintenanceRequest` model: propertyId, tenantId, title, description, priority, status
-- [x] `MaintenanceStatusHistory` + `MaintenancePhoto` models
-- [x] Ticket submission form in tenant portal
-- [ ] Landlord notification email on submission
-- [x] Maintenance tab on dashboard: list all tickets with status/date/priority filter
-- [x] Ticket detail: full description, photos, status dropdown, status timeline
-- [ ] **Awaab's Law:** add category field, if DAMP_MOULD → `respondBy = createdAt + 24h`, countdown timer
-- [ ] Landlord comment/note field on ticket detail (currently only status-change notes)
+## 🔴 Next Priority — Stripe Integration
 
-### Settings Page
-- [ ] `/dashboard/settings` — profile name (editable), email (read-only, from Supabase Auth)
-- [ ] Billing section: Stripe Customer Portal link (manage subscription, payment method)
-- [ ] Notification preferences (email toggle per event type)
-- [ ] Danger zone: delete account (requires typing "DELETE", cascades all data)
+Biggest blocker for monetisation. Everything is currently mock.
 
-### Stripe Subscription Billing
-- [ ] Stripe Products/Prices: Free (1 property), Pro (£10/mo per property)
-- [ ] When 2nd property added → Stripe Checkout for subscription
+- [ ] Stripe Products/Prices: Free (1 property), Pro (£9.99/mo per additional)
+- [ ] 2nd property added → Stripe Checkout for subscription
 - [ ] Subscription quantity updates as properties added/removed
 - [ ] Webhook: `customer.subscription.updated`, `invoice.payment_failed`
-- [ ] Block dashboard features if subscription lapsed → upgrade prompt
+- [ ] Block features if subscription lapsed → upgrade prompt
 - [ ] Stripe Customer Portal link in Settings
-
-### Closed Beta Access — IMPLEMENTED
-- [x] "Closed Beta" button on landing page navbar (secondary, left of "Join the waitlist")
-- [x] Modal: access code input (type=password), shake animation on wrong code, redirect to /login on correct
-- [x] Hardcoded code `4577`, stored in sessionStorage — soft friction only, not real security
-
-### Row Level Security (RLS) — IMPLEMENTED
-- [x] RLS enabled on all tables (15/15 tables secured)
-- [x] First batch (20260305–20260309): users, properties, tenancies, compliance_docs, waitlist, tenants, property_documents, document_acknowledgments, rent_payments
-- [x] Second batch (20260315): maintenance_requests, maintenance_photos, maintenance_status_history, tenant_documents, financial_reports, scoring_configs, scoring_rules
-- [x] Landlord access via `properties.user_id = auth.uid()::text`
-- [x] Tenant access via `tenants.user_id = auth.uid()::text`
-- [x] scoring_configs/scoring_rules: authenticated read-only (managed via DB)
-
-### Making Tax Digital (MTD) — Landlord Income
-- [ ] Track income (RentPayment RECEIVED) and expenses per property
-- [ ] Expense log: category (repairs, insurance, agent fees, other), amount, date, receipt upload
-- [ ] Quarterly income/expense summary exportable as CSV
-- [ ] HMRC MTD API integration (Phase 2 — post-MVP): submit quarterly updates directly
+- [ ] Payment Intent for screening unlock (£9.99 first / £1.49 additional / £11.99 standalone)
+- [ ] Replace MOCK_PAID throughout
+- [ ] `Payment` record on successful charge
+- [ ] Webhook: `payment_intent.succeeded`
+- [ ] Test mode E2E → switch to live keys
 
 ---
 
-## Deferred (Post-MVP)
+## 🟡 High Priority Backlog
 
-- [ ] WhatsApp notifications via Twilio
-- [ ] Open Banking / bank feed integration
+### GDPR — Check-in Photo Deletion Cron
+- [ ] `/api/cron/gdpr-cleanup` — find tenancies ended >3 months ago
+- [ ] Delete check-in photos from bucket for those reports
+- [ ] Log `photosDeletedAt` on CheckInReport
+- [ ] Schedule weekly in Vercel Cron
+
+### Screening PDF Report
+- [ ] Generate PDF from FinancialReport (score, grade, breakdown, summary)
+- [ ] Store in `documents` bucket, save `pdfUrl` on FinancialReport
+- [ ] Include in move-in document email
+
+### Section 13 — Rent Increase
+- [ ] "Raise rent" button — block if last increase <12 months
+- [ ] Generate Section 13 Notice PDF → email to tenant
+- [ ] Log effective date (rent + 2 months), update rent tracker from that date
+
+### APT Contract Generation
+- [ ] APT template in `lib/templates/apt-contract.ts`
+- [ ] Generate PDF with tenancy + user data (pdf-lib)
+- [ ] Signing flow — unique tokens, `/sign/[token]` page
+- [ ] Both signed → confirmation emails + `contractUrl` saved
+- [ ] Connect to Stripe (£10) once Stripe integrated
+
+### Tenant Notice (Tenant-Initiated)
+- [ ] "Give notice" in portal → date picker (min today + 2 months)
+- [ ] Property → NOTICE_GIVEN, landlord notified
+
+### Section 8 Notice
+- [ ] Ground selector (8/10/11, 1, 2, 7A/14)
+- [ ] Per ground: evidence list + notice period shown
+- [ ] Generate Section 8 Notice PDF, log ground + date
+
+---
+
+## 🟢 Medium Priority Backlog
+
+### Check-Out Inspection
+- [ ] Initiate from property detail when NOTICE_GIVEN
+- [ ] Room-by-room photos (reuse check-in components)
+- [ ] Side-by-side comparison: check-in vs check-out per room
+- [ ] Landlord decision: full return / partial / full deduction
+- [ ] On complete: Tenancy → ENDED, Property → VACANT
+
+### Dispute Evidence Pack (£29)
+- [ ] Multi-section PDF: tickets, rent history, docs, photos, notices, event log
+- [ ] Tribunal + Ombudsman letter templates included
+- [ ] Connect to Stripe once integrated
+
+### AI Date Extraction (Compliance Docs)
+- [ ] On upload, call Claude to extract issuedDate + expiryDate from PDF
+- [ ] Pre-fill date fields, show "AI extracted — please verify"
+
+### Right to Rent Expiry Alerts
+- [ ] Add to compliance cron: R2R docs expiring ≤30 days
+- [ ] Email landlord, red badge on tenant card
+
+### Settings — Billing + Notifications
+- [ ] Billing section: Stripe Customer Portal link
+- [ ] Notification preferences (email toggles per event)
+- [ ] Danger zone: delete account (type "DELETE", cascade)
+
+---
+
+## 🔵 Lower Priority / Future
+
+### GoCardless Direct Debit
+- [ ] Tenant authorises mandate via redirect
+- [ ] Auto-collect on `paymentDay`, webhook → RECEIVED/LATE
+
+### Bank Statement Auto-Match
+- [ ] Claude extracts transactions, "Auto-match" reconciles with RentPayment records
+
+### Making Tax Digital
+- [ ] Expense log per property, quarterly CSV export
+- [ ] HMRC MTD API (post-MVP)
+
+### Financial Passport (Tenant-Facing)
+- [ ] Currently email capture only at `/passport`
+- [ ] Full flow: tenant uploads → portable verification token → share with any landlord
+
+---
+
+## ⏸ Deferred Post-MVP
+
+- [ ] WhatsApp notifications (Twilio)
+- [ ] Open Banking / bank feed
 - [ ] Native mobile app (React Native)
 - [ ] Contractor portal
 - [ ] Multi-user / team accounts
 - [ ] Bulk document import
-- [ ] Property performance reporting / analytics
+- [ ] Property performance analytics
+- [ ] CCJ check via Trust Online API

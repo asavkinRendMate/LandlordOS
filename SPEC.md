@@ -4,11 +4,11 @@
 
 **LetSorted** (letsorted.co.uk) — Simple property management for UK self-managing landlords.
 
-**Target:** 1–5 property landlords managing independently (1.4M in UK). Currently using spreadsheets, folders, and WhatsApp.
+**Target:** 1–5 property landlords managing independently (~1.4M in UK). Currently using spreadsheets, folders, and WhatsApp.
 
-**Core Value:** Complete tenant lifecycle management — applications, documents, rent tracking, maintenance, and RRA 2025 compliance in one clean interface.
+**Core Value:** Complete tenant lifecycle management — applications, AI screening, documents, rent tracking, maintenance, check-in evidence reports, and RRA 2025 compliance in one clean interface.
 
-**Positioning:** Only product combining landlord compliance + tenant onboarding + tenant portal designed specifically for small-portfolio self-managers (not lettings agents).
+**Positioning:** Only product combining landlord compliance + AI financial screening + dual-confirmation check-in evidence system + tenant portal designed specifically for small-portfolio self-managers (not lettings agents).
 
 ---
 
@@ -16,17 +16,33 @@
 
 ### Subscription
 - **1 property: FREE forever** (acquisition)
-- **2+ properties: £10/month per property**
+- **2+ properties: £9.99/month per additional property**
 
-### Pay-Per-Use Features
+### Screening — Invite Flow (primary)
+| Scenario | Price |
+|----------|-------|
+| First screening per tenancy cycle (subscriber) | £9.99 |
+| Each additional candidate (same property cycle) | £1.49 |
+| Standalone (no subscription) | £11.99 |
+
+### Pay-Per-Use (future)
 | Feature | Price | Status |
-|---------|-------|---------|
-| AI Financial Scoring | £15 | LIVE |
+|---------|-------|--------|
 | APT Contract Generation | £10 | NOT STARTED |
 | Inventory Report PDF | £5 | NOT STARTED |
 | Dispute Evidence Pack | £29 | NOT STARTED |
 
-**Payment:** Stripe (subscriptions via Billing Portal, one-time via Payment Intents)
+**Payment: Stripe NOT YET INTEGRATED.** All purchases use MOCK_PAID flow via `lib/payment-service.ts`.
+
+---
+
+## Auth
+
+- **Method:** Supabase Auth — **6-digit OTP code** (not magic link)
+- No passwords, no social login
+- OTP sent by email, 45s resend cooldown, `lib/supabase/otp.ts`
+- OTP handling in `(auth)/login/page.tsx` (landlords) and `(tenant)/passport/page.tsx` (tenants)
+- **Why not magic link:** corporate email security (Outlook/Google) pre-clicks links, invalidating tokens before user sees them
 
 ---
 
@@ -35,76 +51,108 @@
 ### Core Platform
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Magic Link Auth (Supabase) | LIVE | Email-based, no passwords |
-| Demo Login Buttons | LIVE | Landlord + tenant demo access, env-var gated (`NEXT_PUBLIC_DEMO_*_PASSWORD`) |
-| Property Management | LIVE | Address, type, bedrooms (synced picker), rooms, status tracking |
-| Multi-tenant Dashboard | LIVE | Landlord + tenant context switching |
-| Document Storage | LIVE | Supabase Storage, signed URLs |
-| Admin Panel | LIVE | User/property management, notifications registry |
+| OTP Auth (Supabase) | LIVE | 6-digit code |
+| Demo Login Buttons | LIVE | Env-var gated |
+| Property Management | LIVE | Address, type, bedrooms, status |
+| Property Rooms Setup | LIVE | Wizard Step 2; used by check-in reports |
+| Onboarding Wizard | LIVE | 5 steps: Address → Rooms → Occupancy → Tenant → Done |
+| Name Capture Modal | LIVE | Undismissable on first login if no name |
+| Settings Page | LIVE | Display name edit |
+| Admin Panel | LIVE | Cookie-based auth, user/property CRUD, notifications registry |
 
 ### Tenant Pipeline
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Public Application Form | LIVE | `/apply/[propertyId]` |
-| Tenant Invitation System | LIVE | Email invites + join tokens |
-| Tenant Status Pipeline | LIVE | CANDIDATE → INVITED → TENANT |
-| Tenant Onboarding | LIVE | `/tenant/join/[token]` flow |
-| AI Screening Integration | PRE-LAUNCH | Stripe payment not connected |
+| Multi-email Invite UI | LIVE | Up to 10 emails, cost counter, preview modal |
+| Tenant Status Pipeline | LIVE | CANDIDATE → INVITED → TENANT → FORMER_TENANT |
+| Tenant Onboarding | LIVE | `/tenant/join/[token]` |
+| Select Tenant Flow | LIVE | Winner email + rejections to others, Property → ACTIVE |
+| Tenant Portal Dashboard | LIVE | Document access, maintenance, rent view |
+
+### AI Financial Screening
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Screening Invite Flow | LIVE | Primary flow — invite → upload → AI → unlock |
+| Joint Application | LIVE | Income summed as household |
+| AI Scoring Engine | LIVE | 32 rules, 6 categories, 0–100 score (Sonnet) |
+| Name Verification | LIVE | Per-file Claude Haiku call |
+| Period Validation | LIVE | ≥60 days coverage, ≤6 months old |
+| Server-side Validation | LIVE | RENT_ABOVE_40_PCT + threshold rules |
+| Director's Loan Exclusion | LIVE | Excluded from debt calc |
+| Deduplication | LIVE | Gambling + income discrepancy (highest penalty only) |
+| Report Unlock | MOCK | MOCK_PAID — no real Stripe |
+| Verification Pages | LIVE | Public `/verify/[token]` |
+| Candidate View | LIVE | Neutral reliability score, no grade/"/100" |
+| Credit Pack Flow | LIVE | Still functional, invite flow is primary |
 
 ### Document Management
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Property Documents | LIVE | 14 types, expiry tracking |
+| Property Documents | LIVE | 14 types, expiry tracking, drag-drop |
 | Tenant Documents | LIVE | 9 types, upload by both parties |
-| Document Acknowledgment | LIVE | Tenant "mark as reviewed" |
+| Document Acknowledgment | LIVE | Tenant marks as reviewed |
 | Compliance Dashboard | LIVE | Gas/EPC/EICR/H2R status cards |
-| AI Date Extraction | NOT STARTED | Claude extraction from PDFs |
 
 ### Financial Management
 | Feature | Status | Notes |
 |---------|--------|-------|
-| AI Financial Scoring | LIVE | Bank statement analysis |
-| Scoring Verification | LIVE | Public `/verify/[token]` pages |
 | Rent Payment Tracking | LIVE | Manual landlord entry |
-| Payment Status Pipeline | LIVE | PENDING → EXPECTED → RECEIVED/LATE |
-| GoCardless Integration | NOT STARTED | Auto-collect rent |
+| Payment Status Pipeline | LIVE | PENDING → EXPECTED → RECEIVED/LATE/PARTIAL |
+| Auto-generate Payments | LIVE | Next 3 months on page load (idempotent) |
+| Stripe Subscriptions | NOT STARTED | Mock flow in place |
+| GoCardless | NOT STARTED | — |
 
 ### Maintenance
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Maintenance Requests | LIVE | Tenant submission, landlord management |
-| Photo Upload System | LIVE | Both parties can attach photos |
-| Priority Management | LIVE | LOW/MEDIUM/HIGH/URGENT |
-| Status Tracking | LIVE | OPEN → IN_PROGRESS → RESOLVED |
-| Awaab's Law Timer | LIVE | 24h damp/mould response, 4h email reminder cron (every 15min) |
+| Maintenance Requests | LIVE | Tenant submission + landlord management |
+| Photo Upload | LIVE | Both parties, resize/compress |
+| Priority + Status | LIVE | URGENT/HIGH/MEDIUM/LOW, immutable audit trail |
+| Awaab's Law Timer | LIVE | DAMP_MOULD → respondBy + 24h, 4h cron reminder |
 
-### Tenancy Management
+### Check-in Reports
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Deposit Tracking | LIVE | Amount, scheme, protection status |
-| Check-in Reports | LIVE | Room-by-room photo system |
-| Contract Generation | NOT STARTED | APT template + e-signatures |
-| Section 13 Notices | NOT STARTED | Rent increase workflow |
-| Section 8 Notices | NOT STARTED | Possession grounds system |
-
-### Tenant Portal
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Document Access | LIVE | View/acknowledge property docs |
-| Document Upload | LIVE | Upload own ID/income docs |
-| Maintenance Submission | LIVE | Create requests with photos |
-| Rent Payment View | LIVE | Read-only payment history |
-| Check-in Inspection | LIVE | View/confirm/dispute check-in reports, photo upload with condition + comment |
-| Notice Period | NOT STARTED | Tenant-initiated termination |
+| Report Creation | LIVE | Room-by-room photos, condition tags, captions |
+| Tenant Review Page | LIVE | Token-based, no portal login needed |
+| Tenant Photo Upload | LIVE | Condition + comment per photo |
+| Dual Confirmation | LIVE | Both must confirm before PDF generated |
+| PDF Generation | LIVE | All photos from both parties, attributed |
+| DISPUTED Status | LIVE | All photos included regardless |
+| Move-in Email | LIVE | PDF + Gas Safety + EPC on AGREED |
+| Status Machine | LIVE | DRAFT → PENDING → IN_REVIEW → AGREED/DISPUTED |
+| GDPR Retention | NOTED | Deletion cron not yet built |
 
 ### Notifications & Alerts
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Email Templates | LIVE | Resend integration, 20 templates |
-| Notifications Registry | LIVE | `lib/notifications/registry.ts` — 28 notifications, admin panel at `/admin/notifications` |
-| Compliance Alerts | LIVE | Daily cron (9am UTC) — 30d/7d/expired doc warnings + deposit protection reminders |
-| Maintenance Notifications | LIVE | New request, tenant confirmation, status updates (landlord + tenant), Awaab's Law 4h reminder |
-| Rent Reminders | LIVE | Daily cron (8am UTC) — 5-day reminder, due-today, overdue (daily up to 7 days) |
+| Email Templates | LIVE | 9 templates in `lib/email-templates/index.ts` |
+| Notifications Registry | LIVE | Admin panel at `/admin/notifications` |
+| Compliance Alerts Cron | LIVE | Daily 9am UTC |
+| Maintenance Notifications | LIVE | New, status updates, Awaab's 4h reminder |
+| Rent Reminders Cron | LIVE | Daily 8am UTC |
+| Check-in Notifications | LIVE | Review request, response, PDF to both |
+
+### Marketing & SEO
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Sitemap + Robots | LIVE | Dynamic |
+| JSON-LD + OG Image | LIVE | — |
+| Guides/Blog | LIVE | MDX, `/guides/[slug]` |
+| Article Generator | LIVE | `scripts/generate-article.ts` |
+| Feature Pages | LIVE | 5 marketing feature pages |
+| Renters' Rights Act Page | LIVE | `/renters-rights-act` with Crisp chat |
+
+### Analytics & Monitoring
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Google Analytics | LIVE | Consent-gated |
+| Microsoft Clarity | LIVE | Consent-gated |
+| Facebook Pixel | LIVE | Consent-gated |
+| Cookie Consent | LIVE | vanilla-cookieconsent |
+| Sentry | LIVE | Client + server + edge |
+| PostHog | LIVE | EU residency, consent-gated |
 
 ---
 
@@ -112,33 +160,45 @@
 
 ### Landlord Onboarding
 ```
-Email → Magic Link → Name + Property Count → Dashboard
+Email → 6-digit OTP → Name Modal → Dashboard
 ↓
-Add Property → Address + Type + Bedrooms → Configure Rooms → Compliance Checklist Created
+Wizard: Address + Type → Rooms → Occupancy → Tenant → Done
 ↓
-Upload Documents → Gas/EPC/EICR/H2R → Status Cards Update
+Upload Compliance Docs → Status Cards Update
 ```
 
-### Tenant Lifecycle
+### Screening Flow (Primary)
 ```
-VACANT Property → Generate Application Link → Share with Prospects
+Property page → Invite Applicants → Enter emails + rent
 ↓
-Applicant Completes `/apply/[propertyId]` → Status: CANDIDATE
+Candidates receive invitation → /screening/apply/[token]
 ↓
-Landlord Reviews → Send Invite → Status: INVITED → Email Sent
+Upload bank statements → AI processing (name verify + analysis)
 ↓
-Tenant Clicks `/tenant/join/[token]` → Confirms Details → Status: TENANT
+Report locked → landlord pays to unlock (MOCK_PAID)
 ↓
-Tenant Portal Access → Upload Documents → Maintenance Requests
+Select Tenant → winner email + rejections → Property ACTIVE
 ```
 
-### Screening Flow
+### Check-in Report Flow
 ```
-Bank Statement Upload → AI Analysis (Claude) → Score 0-100 + Grade
+Property ACTIVE → Create Check-in Report → Room setup required
 ↓
-Verification Token Generated → Public `/verify/[token]` Page
+Landlord: Room-by-room photos + conditions → Send to Tenant
 ↓
-Landlord Decision → Accept/Reject → Move-in Process
+Tenant: /check-in/[token] → Review + add own photos → Confirm
+↓
+Landlord confirms → Status AGREED → PDF generated
+→ PDF (all photos) + Gas Safety + EPC emailed to both
+```
+
+### Tenant Journey
+```
+Application → CANDIDATE status → Landlord screening
+↓
+Selected → INVITED → Join link → TENANT status
+↓
+Portal access: Documents, maintenance, rent, check-in
 ```
 
 ---
@@ -146,44 +206,66 @@ Landlord Decision → Accept/Reject → Move-in Process
 ## Technical Architecture
 
 ### Stack
-- **Framework:** Next.js 14 (App Router)
-- **Database:** PostgreSQL (Supabase)
-- **ORM:** Prisma
-- **Auth:** Supabase Auth (magic links)
-- **Storage:** Supabase Storage (documents, photos)
-- **Email:** Resend
-- **Payments:** Stripe
-- **AI:** Anthropic Claude (financial analysis)
-- **Styling:** Tailwind CSS
-- **Deployment:** Vercel
+| Layer | Technology |
+|-------|-----------|
+| Framework | Next.js 14.2.35 (App Router) |
+| Language | TypeScript (strict mode) |
+| Database | PostgreSQL via Supabase |
+| ORM | Prisma 5.22 |
+| Auth | Supabase Auth (OTP — 6-digit code) |
+| Storage | Supabase Storage (5 private buckets) |
+| Email | Resend (`lib/resend.ts`, console fallback in dev) |
+| Payments | Stripe (NOT INTEGRATED — mock via `lib/payment-service.ts`) |
+| AI | Claude Sonnet (analysis), Claude Haiku (name verify) |
+| Live Chat | Crisp |
+| Hosting | Vercel |
+| Styling | Tailwind CSS + shadcn/ui |
+| Validation | Zod v4 |
+| PDF | pdf-lib |
 
-### Hosting & Infrastructure
-- **Frontend:** Vercel
-- **Database:** Supabase (managed PostgreSQL)
-- **File Storage:** Supabase Storage
-- **CDN:** Vercel Edge Network
-- **Environment:** Production + Preview branches
+### Database Schema
+- **Users:** Supabase auth.users mirror with Stripe + subscription fields
+- **Properties:** Type, status, rooms, compliance docs
+- **Tenants:** Status pipeline, confirmation tokens, onboarding state
+- **Tenancies:** Rent, deposit, payment tracking
+- **Maintenance:** Awaab's Law timers, photo upload, status audit
+- **Screening:** Invites, reports, AI scores, package credits
+- **Check-in:** Room photos, dual confirmation, PDF generation
 
-### Authentication & Authorization
-- **Method:** Supabase Auth magic links (passwordless)
-- **Session:** HTTP-only cookies via `@supabase/ssr`
-- **RLS:** Row Level Security on all tables
-- **Multi-role:** Single user can be both landlord and tenant
+Key migrations in `supabase/migrations/` — 30 files from core schema to screening logs.
 
-### Storage Strategy
-| Bucket | Path Pattern | Access |
-|--------|-------------|--------|
-| `property-documents` | `/{propertyId}/{docId}/{filename}` | Private (signed URLs) |
-| `tenant-documents` | `/{propertyId}/{tenantId}/{docId}/{filename}` | Private (signed URLs) |
-| `maintenance-photos` | `/{requestId}/{role}/{photoId}-{filename}` | Private (signed URLs) |
-| `bank-statements` | `/{reportId}/{filename}` | Private (scoring only) |
-| `check-in-photos` | `/{reportId}/{roomId}/{photoId}` | Private (signed URLs) |
+### Storage Buckets
+| Bucket | Path Pattern | Contents |
+|--------|-------------|----------|
+| `documents` | `/{userId}/{propertyId}/{docId}/{filename}` | Property docs + check-in PDFs |
+| `tenant-documents` | `/{propertyId}/{tenantId}/{docId}/{filename}` | Tenant docs |
+| `maintenance-photos` | `/{requestId}/{role}/{photoId}-{filename}` | Maintenance photos |
+| `bank-statements` | `/{reportId}/{filename}` | Screening PDFs |
+| `check-in-photos` | `/{propertyId}/{reportId}/{roomId}/{photoId}-{filename}` | Check-in photos |
 
-### Payment Architecture
-- **Subscriptions:** Stripe Billing Portal
-- **One-time:** Payment Intents
-- **Webhook:** `/api/webhooks/stripe` (subscription events)
-- **Customer:** 1:1 mapping with User via `stripeCustomerId`
+All URLs signed with 60-minute expiry.
+
+### AI Models
+| Model | Used For | Location |
+|-------|---------|----------|
+| `claude-3-5-sonnet-20241022` | Financial analysis, scoring | `lib/scoring/engine.ts` |
+| `claude-3-5-haiku-20241022` | Name verification | Per-file validation |
+
+### Key Components
+| Component | Path | Purpose |
+|-----------|------|---------|
+| `ScreeningReportDisplay` | `components/shared/` | Unified report UI (landlord + candidate) |
+| `ScoringProgressScreen` | `components/shared/` | AI processing progress |
+| `DocumentUploadModal` | `components/shared/` | Drag-drop file upload |
+| `TenantDetailsForm` | `components/shared/` | Tenant info collection |
+| `PaymentSetupModal` | `components/shared/` | Mock Stripe card setup |
+
+### Cron Jobs
+| Endpoint | Schedule | Purpose |
+|----------|----------|---------|
+| `/api/cron/compliance` | Daily 9am UTC | Gas/EPC/deposit alerts |
+| `/api/cron/rent-reminders` | Daily 8am UTC | Overdue payment notifications |
+| `/api/cron/awaabs` | Every 15 min | Damp/mould 4h reminders |
 
 ---
 
@@ -191,40 +273,60 @@ Landlord Decision → Accept/Reject → Move-in Process
 
 ### Renters' Rights Act 2025
 - **Effective:** 1 May 2026
-- **Section 21 Abolition:** All notices must use Section 8 grounds with evidence
-- **Periodic Tenancies:** All ASTs convert to Assured Periodic Tenancies
-- **Rent Increases:** Maximum once per year via Section 13 Notice
-- **New Offences:** 15 new offences, fines up to £40,000
+- **Key Changes:**
+  - Section 21 abolished — possession via Section 8 grounds only
+  - All ASTs convert to APT (Assured Periodic Tenancy)
+  - Rent increases: once per year via Section 13 Notice only
+  - 15 new offences, fines up to £40,000
+- **Marketing:** Dedicated `/renters-rights-act` page with Crisp chat
 
-### Deposit Protection
-- **Schemes:** DPS, MyDeposits, TDS integration
-- **Timeline:** 30-day protection deadline enforced
-- **Alerts:** Automated warnings for unprotected deposits
+### Awaab's Law
+- **DAMP_MOULD** category in maintenance sets `respondBy = createdAt + 24h`
+- Cron reminder 4h before deadline (`/api/cron/awaabs`)
+- Auto-escalation via email notifications
 
-### Awaab's Law (Private Rentals)
-- **Scope:** Damp and mould complaints
-- **Response Time:** 24 hours maximum
-- **Implementation Status:** LIVE — `respondBy` auto-set on DAMP_MOULD requests, 4h email reminder via cron (`/api/cron/awaabs`, every 15min)
-- **Compliance:** Maintenance `category` field triggers Awaab's Law timer when set to `DAMP_MOULD`
+### GDPR
+- Check-in photos retained tenancy duration + 3 months (deletion cron pending)
+- All files encrypted at rest, signed URLs with 60-min expiry
+- PostHog EU residency, Supabase UUID only (no PII)
+- Cookie consent via vanilla-cookieconsent
 
-### Document Requirements
-- **Gas Safety:** Annual certificate mandatory
-- **EPC:** Valid certificate required
-- **EICR:** Every 5 years
-- **How to Rent:** Latest government guide
-- **Right to Rent:** Tenant verification mandatory
+---
 
-### Data Protection (GDPR)
-- **Retention:** Check-in photos deleted 3 months post-tenancy
-- **Storage:** All files encrypted at rest (Supabase)
-- **Access:** Signed URLs with 60-minute expiry
-- **Audit:** Full access logging via Supabase
-- **Cookie consent:** `vanilla-cookieconsent` with necessary / analytics / marketing categories
-  - Sentry error tracking runs always (legitimate interest)
-  - PostHog session recording + pageviews only after analytics consent accepted
-  - PostHog uses EU data residency (`eu.i.posthog.com`)
+## Business Rules
 
-### Monitoring & Analytics
-- **Error tracking:** Sentry (`@sentry/nextjs`) — client + server + edge, 10% trace sampling in production
-- **Product analytics:** PostHog (`posthog-js`) — pageviews, session recording (consent-gated)
-- **User identification:** PostHog `identify()` with Supabase UUID only (no PII) in dashboard layout
+### Pricing
+- Free tier: 1 property forever
+- 2+ properties: £9.99/month per additional property
+- Screening: £9.99 first per cycle, £1.49 additional candidates
+
+### Tenancy
+- All contracts generated as APT (never AST — abolished May 2026)
+- Rent increases: once per year via Section 13 only
+- Deposit protection: 30-day deadline with alerts
+- Tenant notice: minimum 2 months
+
+### Screening
+- Invite expiry: 7 days (lazily updated to EXPIRED)
+- Backward compatibility: credit-pack reports (`screeningUsageId`) treated as unlocked
+- Candidate view: never show grades or "/100" scores
+
+### Check-in Reports
+- PDF generated only when BOTH confirmations set
+- ALL photos included (landlord + tenant) — no selective inclusion
+- Status flow: DRAFT → PENDING → IN_REVIEW → AGREED/DISPUTED
+
+---
+
+## What NOT to Do
+
+- **Never use magic link auth** — OTP only (magic links get pre-clicked by corporate scanners)
+- **Never store passwords** — OTP-based auth only
+- **Never generate legal text from scratch** — AI fills pre-approved templates only
+- **Never expose Supabase service role key** to browser
+- **Never store monetary amounts as floats** — always pence integers
+- **Never skip input validation** on API routes
+- **Never show grade labels or "/100"** to screening candidates
+- **Never create new photo upload components** — extend existing patterns via props
+- **Never generate check-in PDF** unless both confirmations are set
+- **Never use `prisma.$executeRaw`** without parameterised queries
