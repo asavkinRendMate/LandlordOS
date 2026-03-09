@@ -1434,6 +1434,7 @@ function gradeStyle(grade: string | null): { bg: string; text: string; border: s
   return { bg: 'bg-red-100', text: 'text-red-700', border: 'border-red-200' }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function FinancialScoreBadge({ report }: { report: FinancialReport }) {
   const [expanded, setExpanded] = useState(false)
   const [showWarning, setShowWarning] = useState(!!report.hasUnverifiedFiles)
