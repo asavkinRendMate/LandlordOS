@@ -47,25 +47,13 @@ interface StatementFile {
   removedByApplicant?: boolean
 }
 
-interface PersonValidation {
-  name: string
-  isApplicant: boolean
-  fileIndices: number[]
-  periodStart: string | null
-  periodEnd: string | null
-  coverageDays: number | null
-  coverageStatus: 'PASS' | 'WARN_SHORT' | 'WARN_OLD' | 'WARN_BOTH' | 'UNKNOWN'
-}
-
 interface ScoringResult {
   status: string
   totalScore: number | null
   grade: string | null
-  aiSummary: string | null
   hasUnverifiedFiles?: boolean
   statementFiles?: StatementFile[]
   applicantName?: string | null
-  validationResults?: PersonValidation[] | null
   failureReason?: string | null
 }
 
@@ -86,40 +74,12 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>
 
-// ── Grade colour helper ────────────────────────────────────────────────────────
-
-function gradeColour(grade: string | null) {
-  if (!grade) return 'text-gray-600 bg-gray-50 border-gray-200'
-  if (grade === 'Excellent' || grade === 'Good') return 'text-green-700 bg-green-50 border-green-200'
-  if (grade === 'Fair') return 'text-amber-700 bg-amber-50 border-amber-200'
-  if (grade === 'Poor') return 'text-orange-700 bg-orange-50 border-orange-200'
-  return 'text-red-700 bg-red-50 border-red-200'
-}
-
 // ── File size formatter ────────────────────────────────────────────────────────
 
 function fmtBytes(b: number) {
   if (b < 1024) return `${b} B`
   if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`
   return `${(b / 1024 / 1024).toFixed(1)} MB`
-}
-
-// ── Coverage status helpers ─────────────────────────────────────────────────
-
-function coverageLabel(status: PersonValidation['coverageStatus']) {
-  switch (status) {
-    case 'PASS': return 'Sufficient coverage'
-    case 'WARN_SHORT': return 'Less than 2 months of data'
-    case 'WARN_OLD': return 'Statements older than 6 months'
-    case 'WARN_BOTH': return 'Too short and too old'
-    case 'UNKNOWN': return 'Coverage unknown'
-  }
-}
-
-function coverageColour(status: PersonValidation['coverageStatus']) {
-  if (status === 'PASS') return 'bg-green-50 text-green-700 border-green-200'
-  if (status === 'UNKNOWN') return 'bg-gray-50 text-gray-500 border-gray-200'
-  return 'bg-amber-50 text-amber-700 border-amber-200'
 }
 
 const MAX_FILES = 5
@@ -563,47 +523,9 @@ export default function ApplyPage() {
             </svg>
           </div>
           <h1 className="text-gray-900 font-bold text-xl mb-2">Application received</h1>
-          {scoring?.status === 'COMPLETED' && scoring.totalScore !== null ? (
-            <div className="mt-4 text-left">
-              <div className={`rounded-xl border px-5 py-4 mb-3 ${gradeColour(scoring.grade)}`}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-bold text-2xl">{scoring.totalScore}/100</span>
-                  <span className="font-semibold text-sm">{scoring.grade}</span>
-                </div>
-                {scoring.aiSummary && (
-                  <p className="text-sm mt-2 leading-relaxed">{scoring.aiSummary}</p>
-                )}
-              </div>
-
-              {/* Coverage summary panel */}
-              {scoring.validationResults && scoring.validationResults.length > 0 && (
-                <div className="rounded-xl border border-gray-200 p-4 mb-3">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Statement coverage</p>
-                  <div className="space-y-2">
-                    {scoring.validationResults.map((person, i) => (
-                      <div key={i} className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-sm text-gray-700 truncate">{person.name}</span>
-                          {person.isApplicant && (
-                            <span className="text-xs bg-green-50 text-green-600 rounded-full px-1.5 py-0.5 shrink-0">You</span>
-                          )}
-                        </div>
-                        <span className={`text-xs font-medium rounded-full px-2 py-0.5 border shrink-0 ${coverageColour(person.coverageStatus)}`}>
-                          {coverageLabel(person.coverageStatus)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <p className="text-gray-500 text-xs text-center">Your landlord will review your application shortly.</p>
-            </div>
-          ) : (
-            <p className="text-gray-500 text-sm">
-              Thanks for applying for <strong>{fullAddress}</strong>. The landlord will be in touch if your application is successful.
-            </p>
-          )}
+          <p className="text-gray-500 text-sm">
+            Thanks for applying for <strong>{fullAddress}</strong>. Your landlord will review your application and be in touch shortly.
+          </p>
         </div>
       </div>
     )

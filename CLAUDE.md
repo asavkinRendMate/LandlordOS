@@ -175,6 +175,8 @@
 │   │   ├── user/profile/route.ts
 │   │   └── waitlist/route.ts
 │   ├── auth/callback/route.ts
+│   ├── error.tsx
+│   ├── global-error.tsx
 │   ├── globals.css
 │   ├── layout.tsx
 │   └── robots.ts
@@ -196,6 +198,9 @@
 │       ├── ScoringProgressScreen.tsx
 │       ├── ScreeningReportDisplay.tsx
 │       └── TenantDetailsForm.tsx
+├── components/
+│   └── ui/
+│       └── sonner.tsx
 ├── lib/
 │   ├── email-templates/
 │   │   ├── base.ts
@@ -216,6 +221,8 @@
 │   ├── admin-auth.ts
 │   ├── check-in-pdf.ts
 │   ├── check-in-storage.ts
+│   ├── crisp-support.ts
+│   ├── error-toast.ts
 │   ├── env.ts
 │   ├── form-styles.ts
 │   ├── guides.ts
@@ -604,7 +611,7 @@ model ComplianceAlertLog { /* dedup log for cron compliance/deposit alerts */ } 
 | Onboarding wizard | LIVE | 5-step first-run for new landlords (property → rooms → occupancy → tenant → done) |
 | Name capture modal | LIVE | Undismissable modal for landlords with no name set |
 | Settings page | LIVE | Display name edit |
-| Check-in reports | BETA | Property rooms, photo capture, tenant/landlord sign-off, tenant dashboard section // Updated: 2026-03-09 — tenant check-in photo condition + dispute fix |
+| Check-in reports | BETA | Property rooms, photo capture, tenant/landlord sign-off, tenant dashboard section, auth-aware header on check-in page // Updated: 2026-03-09 — check-in page logo + navigation |
 | Financial Passport | PRE-LAUNCH | Email capture landing page only |
 | Live chat (Crisp) | LIVE | Marketing pages only |
 | Demo login | LIVE | Landlord + tenant demo buttons on login page, env-var gated |
@@ -815,6 +822,16 @@ This is a security requirement, not optional.
   - EU data residency (`eu.i.posthog.com`); session recording only after `analytics` cookie consent
 - `PostHogIdentify.tsx` — calls `posthog.identify(userId)` with Supabase UUID only (no PII)
 
+### Error Handling & Support // Updated: 2026-03-09 — error boundaries + Crisp support
+- **Error boundaries:** `app/error.tsx` (route-level, within layout) and `app/global-error.tsx` (fatal, replaces entire page)
+  - Both capture to Sentry, show branded UI with error reference ID, "Refresh page" + "Talk to Support" buttons
+  - `global-error.tsx` is self-contained (inline styles, Crisp script injection) — no imports from `lib/`
+- **Error toasts:** `lib/error-toast.ts` — `showErrorToast()` shows a sonner toast with error reference and "Talk to Support" action
+  - Uses `sonner` (installed via shadcn) — `<Toaster />` rendered in `app/layout.tsx`
+- **Crisp support helper:** `lib/crisp-support.ts` — `openCrispWithError(errorId)` opens Crisp with pre-filled error context, `generateErrorId()` creates unique error references
+- **Crisp availability:** marketing pages (via marketing layout), tenant pages (via tenant layout), dashboard pages (via dashboard layout)
+- **Wiring pattern:** replace `catch { /* silent */ }` with `catch { showErrorToast({ context: '...' }) }` — add `// TODO: wire showErrorToast() to remaining API calls` comment
+
 ### Supabase Storage
 - `lib/storage.ts` — general helpers (uploadFile, getSignedUrl, deleteFile), optional `bucket` param (defaults to `'documents'`)
 - `lib/maintenance-storage.ts` — dedicated helpers for maintenance photos
@@ -931,6 +948,7 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
 - **Backward compat:** Reports with `screeningUsageId` (credit-pack flow) are treated as unlocked even though `isLocked` defaults true
 - **Check-in photo retention:** GDPR — check-in photos retained for tenancy duration + 3 months, then eligible for deletion
 - **Tenant check-in photos:** tenant must select condition (GOOD/MINOR_ISSUE/DAMAGE) before upload — no default; optional comment (max 500 chars). Dispute flow accepts optional reason text, included in landlord notification email.
+- **Check-in report page** (`/check-in/[token]`): auth-aware header — logo links to tenant/landlord dashboard if authenticated, homepage if not; "Sign in" link for unauthenticated users; "Back to my dashboard" link for authenticated tenants // Updated: 2026-03-09 — check-in page logo + navigation
 
 ---
 
@@ -943,7 +961,7 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
 - Never skip input validation on API routes
 - Never use `prisma.$executeRaw` without parameterized queries
 - Never add tenantName/tenantEmail/tenantPhone to Tenancy — use the Tenant relation
-- Never show grade labels or "/100" score to candidates — only show neutral reliability messaging
+- Never show grade labels, "/100" score, AI summary, or coverage details to candidates — only show neutral reliability messaging. This applies to BOTH single and joint applications — no score, grade, or summary ever shown to applicant // Updated: 2026-03-09 — fix joint application exposes screening details to applicant
 - Never expose raw AI output to users — always parse, validate, and clean with `cleanSummary()`
 - Never create a new Supabase table without immediately enabling RLS and writing policies in the same migration file — pattern: see `supabase/migrations/20260327_add_rls_policies.sql` // Updated: 2026-03-09 — RLS policy requirements
 - Never leave a table with UNRESTRICTED badge in Supabase dashboard — all tables must show globe icon (RLS enabled)
