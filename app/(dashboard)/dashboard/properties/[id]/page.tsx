@@ -44,6 +44,7 @@ interface PersonValidation {
 
 interface FinancialReport {
   id: string
+  inviteId: string | null
   status: string
   totalScore: number | null
   grade: string | null
@@ -2189,6 +2190,14 @@ function ApplicationsSection({
                       </p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
+                      {inv.status === 'complete' && inv.reportId && (
+                        <Link
+                          href={`/screening/report/${inv.reportId}`}
+                          className="px-3 py-1.5 text-xs font-medium text-[#16a34a] bg-white border border-[#16a34a] rounded-md hover:bg-[#f0fdf4] transition-colors"
+                        >
+                          View report
+                        </Link>
+                      )}
                       {canSelectTenant && inv.status === 'complete' && inv.candidateId && (
                         <button
                           onClick={() => setSelectInvite(inv)}
