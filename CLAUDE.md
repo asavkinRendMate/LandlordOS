@@ -736,6 +736,28 @@ npx tsc --noEmit         # TypeScript check
 
 ---
 
+## Supabase RLS Rules
+
+Every new table MUST include in its migration file: // Updated: 2026-03-09 — RLS always required for new tables
+
+1. **Enable RLS:**
+   ```sql
+   ALTER TABLE table_name ENABLE ROW LEVEL SECURITY;
+   ```
+
+2. **Add at minimum these policies:**
+   - Landlord/owner SELECT: `WHERE user_id = auth.uid()` (or via FK join to a table with `user_id`)
+   - Landlord/owner INSERT/UPDATE/DELETE: same condition
+   - Tenant SELECT (where applicable): via tenancy/property FK chain
+
+3. **Reference examples:** check existing migrations for `check_in_reports`, `property_rooms` as the pattern to follow.
+
+4. **After migration:** verify table shows globe icon (not UNRESTRICTED) in Supabase Table Editor.
+
+This is a security requirement, not optional.
+
+---
+
 ## Code Conventions
 
 ### General
@@ -758,6 +780,7 @@ npx tsc --noEmit         # TypeScript check
 - Form field styles in `lib/form-styles.ts` — `inputClass`, `selectClass` (full-width), `selectClassCompact` (fixed-width for flex rows). All `<select>` elements use `appearance-none` + `.select-chevron` CSS class for consistent custom arrow. Never define inline select/input styles per-page — import from form-styles.
 - Room type dropdowns: options sorted alphabetically via `ROOM_TYPE_LABELS` object order in `lib/room-utils.ts`
 - Property detail RoomsSection: bedroom picker (1–6) is two-way synced with room list — picker highlights based on BEDROOM-type room count; clicking picker adds/removes bedroom rows; manually adding/removing bedroom rooms updates picker highlight
+- All inputs must have `font-size >= 16px` on mobile to prevent iOS Safari auto-zoom on focus (global rule in `globals.css`) // Updated: 2026-03-09 — prevent iOS input zoom
 
 ### Shared Components
 - `DocumentUploadModal.tsx` — reusable drag-and-drop upload modal
@@ -899,6 +922,8 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
 - Never add tenantName/tenantEmail/tenantPhone to Tenancy — use the Tenant relation
 - Never show grade labels or "/100" score to candidates — only show neutral reliability messaging
 - Never expose raw AI output to users — always parse, validate, and clean with `cleanSummary()`
+- Never create a new Supabase table without immediately enabling RLS and writing policies in the same migration file
+- Never leave a table with UNRESTRICTED badge in Supabase dashboard — this means RLS is disabled and any authenticated user can read/write all rows
 
 ---
 
