@@ -43,6 +43,14 @@ const CONDITIONS = [
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 const MAX_SIZE = 10 * 1024 * 1024
 
+interface StagedFile {
+  roomKey: string
+  roomId: string | null
+  roomName: string
+  file: File
+  preview: string
+}
+
 export default function TenantCheckInReview() {
   const { token } = useParams<{ token: string }>()
   const [report, setReport] = useState<Report | null>(null)
@@ -50,7 +58,16 @@ export default function TenantCheckInReview() {
   const [error, setError] = useState<string | null>(null)
   const [confirming, setConfirming] = useState(false)
   const [confirmed, setConfirmed] = useState(false)
-  const [uploadingRoom, setUploadingRoom] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
+
+  // Staged photo upload state
+  const [staged, setStaged] = useState<StagedFile | null>(null)
+  const [stagedCondition, setStagedCondition] = useState<string | null>(null)
+  const [stagedComment, setStagedComment] = useState('')
+
+  // Dispute form state
+  const [showDisputeForm, setShowDisputeForm] = useState(false)
+  const [disputeReason, setDisputeReason] = useState('')
 
   const fetchReport = useCallback(async () => {
     try {
@@ -69,35 +86,55 @@ export default function TenantCheckInReview() {
 
   useEffect(() => { fetchReport() }, [fetchReport])
 
-  async function handleUpload(files: FileList, roomId: string | null, roomName: string) {
-    setUploadingRoom(roomId ?? roomName)
-    for (const rawFile of Array.from(files)) {
-      if (!ALLOWED_TYPES.includes(rawFile.type) || rawFile.size > MAX_SIZE) continue
-      const file = await compressImage(rawFile)
+  function stageFile(file: File, roomId: string | null, roomName: string) {
+    if (!ALLOWED_TYPES.includes(file.type) || file.size > MAX_SIZE) return
+    const preview = URL.createObjectURL(file)
+    setStaged({ roomKey: roomId ?? roomName, roomId, roomName, file, preview })
+    setStagedCondition(null)
+    setStagedComment('')
+  }
+
+  function cancelStaged() {
+    if (staged) URL.revokeObjectURL(staged.preview)
+    setStaged(null)
+    setStagedCondition(null)
+    setStagedComment('')
+  }
+
+  async function uploadStaged() {
+    if (!staged || !stagedCondition) return
+    setUploading(true)
+    try {
+      const file = await compressImage(staged.file)
       const formData = new FormData()
       formData.append('file', file)
-      if (roomId) formData.append('roomId', roomId)
-      formData.append('roomName', roomName)
-      formData.append('condition', 'GOOD')
+      if (staged.roomId) formData.append('roomId', staged.roomId)
+      formData.append('roomName', staged.roomName)
+      formData.append('condition', stagedCondition)
+      if (stagedComment.trim()) formData.append('caption', stagedComment.trim())
 
       await fetch(`/api/check-in/token/${token}/photos`, {
         method: 'POST',
         body: formData,
       })
-    }
-    await fetchReport()
-    setUploadingRoom(null)
+      cancelStaged()
+      await fetchReport()
+    } catch { /* silent */ }
+    setUploading(false)
   }
 
   async function handleConfirm() {
     setConfirming(true)
     try {
-      await fetch(`/api/check-in/token/${token}/confirm`, {
+      const res = await fetch(`/api/check-in/token/${token}/confirm`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'confirm' }),
       })
-      setConfirmed(true)
+      const json = await res.json()
+      if (res.ok && json.data) {
+        setConfirmed(true)
+      }
       await fetchReport()
     } catch { /* silent */ }
     setConfirming(false)
@@ -106,11 +143,15 @@ export default function TenantCheckInReview() {
   async function handleDispute() {
     setConfirming(true)
     try {
-      await fetch(`/api/check-in/token/${token}/confirm`, {
+      const res = await fetch(`/api/check-in/token/${token}/confirm`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'dispute' }),
+        body: JSON.stringify({ action: 'dispute', note: disputeReason.trim() || undefined }),
       })
+      if (res.ok) {
+        setShowDisputeForm(false)
+        setDisputeReason('')
+      }
       await fetchReport()
     } catch { /* silent */ }
     setConfirming(false)
@@ -185,64 +226,142 @@ export default function TenantCheckInReview() {
         )}
 
         {/* Photos by room */}
-        {Array.from(roomGroups.values()).map((group) => (
-          <div key={group.roomId ?? group.roomName} className="bg-white border border-gray-100 rounded-xl p-4 mb-4">
-            <h2 className="text-[#1A1A1A] font-semibold mb-3">{group.roomName}</h2>
+        {Array.from(roomGroups.values()).map((group) => {
+          const roomKey = group.roomId ?? group.roomName
+          const isStagedForThisRoom = staged?.roomKey === roomKey
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
-              {group.photos.map((photo) => (
-                <div key={photo.id} className="relative">
-                  {photo.signedUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={photo.signedUrl}
-                      alt={photo.caption ?? photo.roomName}
-                      className="w-full h-28 object-cover rounded-lg"
-                    />
-                  ) : (
-                    <div className="w-full h-28 bg-gray-100 rounded-lg" />
-                  )}
-                  <div className="absolute top-1.5 left-1.5 flex gap-1">
-                    {CONDITIONS.map((c) =>
-                      photo.condition === c.value ? (
-                        <span key={c.value} className={`text-[10px] px-1.5 py-0.5 rounded border ${c.cls}`}>{c.label}</span>
-                      ) : null,
+          return (
+            <div key={roomKey} className="bg-white border border-gray-100 rounded-xl p-4 mb-4">
+              <h2 className="text-[#1A1A1A] font-semibold mb-3">{group.roomName}</h2>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
+                {group.photos.map((photo) => (
+                  <div key={photo.id}>
+                    <div className="relative">
+                      {photo.signedUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={photo.signedUrl}
+                          alt={photo.caption ?? photo.roomName}
+                          className="w-full h-28 object-cover rounded-lg"
+                        />
+                      ) : (
+                        <div className="w-full h-28 bg-gray-100 rounded-lg" />
+                      )}
+                      <div className="absolute top-1.5 left-1.5 flex gap-1">
+                        {CONDITIONS.map((c) =>
+                          photo.condition === c.value ? (
+                            <span key={c.value} className={`text-[10px] px-1.5 py-0.5 rounded border ${c.cls}`}>{c.label}</span>
+                          ) : null,
+                        )}
+                      </div>
+                      <div className="absolute top-1.5 right-1.5">
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                          photo.uploadedBy === 'LANDLORD' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'
+                        }`}>
+                          {photo.uploadedBy === 'LANDLORD' ? 'Landlord' : 'Tenant'}
+                        </span>
+                      </div>
+                    </div>
+                    {photo.caption && (
+                      <p className="text-xs text-[#6B7280] mt-1">{photo.caption}</p>
                     )}
                   </div>
-                  <div className="absolute top-1.5 right-1.5">
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded ${
-                      photo.uploadedBy === 'LANDLORD' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'
-                    }`}>
-                      {photo.uploadedBy === 'LANDLORD' ? 'Landlord' : 'Tenant'}
-                    </span>
-                  </div>
-                  {photo.caption && (
-                    <p className="text-xs text-[#6B7280] mt-1 truncate">{photo.caption}</p>
-                  )}
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
 
-            {/* Tenant upload area */}
-            {!isAgreed && !confirmed && (
-              <label className="block border border-dashed border-gray-200 rounded-lg p-3 text-center cursor-pointer hover:border-[#16a34a]/40 transition-colors">
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  multiple
-                  className="hidden"
-                  onChange={(e) => e.target.files && handleUpload(e.target.files, group.roomId, group.roomName)}
-                  disabled={uploadingRoom === (group.roomId ?? group.roomName)}
-                />
-                {uploadingRoom === (group.roomId ?? group.roomName) ? (
-                  <span className="text-sm text-[#6B7280]">Uploading…</span>
-                ) : (
-                  <span className="text-sm text-[#6B7280]">+ Add your photos</span>
-                )}
-              </label>
-            )}
-          </div>
-        ))}
+              {/* Tenant upload area */}
+              {!isAgreed && !confirmed && !isDisputed && (
+                <>
+                  {isStagedForThisRoom ? (
+                    <div className="border border-gray-200 rounded-lg p-4 space-y-3">
+                      {/* Preview */}
+                      <div className="flex items-start gap-3">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={staged.preview}
+                          alt="Preview"
+                          className="w-20 h-20 object-cover rounded-lg shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-[#374151] font-medium truncate">{staged.file.name}</p>
+                          <p className="text-xs text-[#9CA3AF]">{(staged.file.size / 1024).toFixed(0)} KB</p>
+                        </div>
+                      </div>
+
+                      {/* Condition selector */}
+                      <div>
+                        <p className="text-sm text-[#374151] font-medium mb-2">Condition <span className="text-red-500">*</span></p>
+                        <div className="flex flex-wrap gap-2">
+                          {CONDITIONS.map((c) => (
+                            <button
+                              key={c.value}
+                              type="button"
+                              onClick={() => setStagedCondition(c.value)}
+                              className={`text-sm px-3 py-1.5 rounded-lg border transition-all ${
+                                stagedCondition === c.value
+                                  ? c.cls + ' font-medium'
+                                  : 'border-gray-200 text-[#6B7280] hover:border-gray-300'
+                              }`}
+                            >
+                              {c.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Comment field */}
+                      <div>
+                        <p className="text-sm text-[#374151] font-medium mb-1.5">Comment <span className="text-[#9CA3AF] font-normal">(optional)</span></p>
+                        <input
+                          type="text"
+                          value={stagedComment}
+                          onChange={(e) => setStagedComment(e.target.value.slice(0, 500))}
+                          placeholder="Describe what you can see in this photo..."
+                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-[#374151] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500"
+                          maxLength={500}
+                        />
+                        <p className="text-[10px] text-[#9CA3AF] mt-1 text-right">{stagedComment.length}/500</p>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex gap-2">
+                        <button
+                          onClick={uploadStaged}
+                          disabled={!stagedCondition || uploading}
+                          className="flex-1 bg-[#16a34a] hover:bg-[#15803d] disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg py-2 transition-colors"
+                        >
+                          {uploading ? 'Uploading…' : 'Upload photo'}
+                        </button>
+                        <button
+                          onClick={cancelStaged}
+                          disabled={uploading}
+                          className="px-4 py-2 text-sm text-[#6B7280] hover:text-[#374151] border border-gray-200 hover:border-gray-300 rounded-lg transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <label className="block border border-dashed border-gray-200 rounded-lg p-3 text-center cursor-pointer hover:border-[#16a34a]/40 transition-colors">
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file) stageFile(file, group.roomId, group.roomName)
+                          e.target.value = ''
+                        }}
+                      />
+                      <span className="text-sm text-[#6B7280]">+ Add your photos</span>
+                    </label>
+                  )}
+                </>
+              )}
+            </div>
+          )
+        })}
 
         {report.photos.length === 0 && (
           <div className="bg-white border border-gray-100 rounded-xl p-8 mb-4 text-center">
@@ -258,15 +377,45 @@ export default function TenantCheckInReview() {
               disabled={confirming}
               className="w-full bg-[#16a34a] hover:bg-[#15803d] disabled:opacity-50 text-white font-semibold rounded-xl py-3 text-sm transition-colors"
             >
-              {confirming ? 'Confirming…' : 'I confirm this report is accurate'}
+              {confirming && !showDisputeForm ? 'Confirming…' : 'I confirm this report is accurate'}
             </button>
-            <button
-              onClick={handleDispute}
-              disabled={confirming}
-              className="w-full bg-white border border-gray-200 hover:bg-gray-50 text-[#374151] font-medium rounded-xl py-3 text-sm transition-colors"
-            >
-              I have concerns about this report
-            </button>
+
+            {!showDisputeForm ? (
+              <button
+                onClick={() => setShowDisputeForm(true)}
+                disabled={confirming}
+                className="w-full bg-white border border-gray-200 hover:bg-gray-50 text-[#374151] font-medium rounded-xl py-3 text-sm transition-colors"
+              >
+                I have concerns about this report
+              </button>
+            ) : (
+              <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
+                <p className="text-sm text-[#374151] font-medium">What are your concerns?</p>
+                <textarea
+                  value={disputeReason}
+                  onChange={(e) => setDisputeReason(e.target.value)}
+                  placeholder="Please describe your concerns..."
+                  rows={3}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-[#374151] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-400 resize-none"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleDispute}
+                    disabled={confirming}
+                    className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-sm font-semibold rounded-lg py-2 transition-colors"
+                  >
+                    {confirming ? 'Submitting…' : 'Submit concerns'}
+                  </button>
+                  <button
+                    onClick={() => { setShowDisputeForm(false); setDisputeReason('') }}
+                    disabled={confirming}
+                    className="px-4 py-2 text-sm text-[#6B7280] hover:text-[#374151] border border-gray-200 hover:border-gray-300 rounded-lg transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

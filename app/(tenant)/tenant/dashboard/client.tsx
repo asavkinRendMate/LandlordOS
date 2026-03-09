@@ -11,9 +11,18 @@ import { selectClass } from '@/lib/form-styles'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+interface CheckInReportData {
+  id: string
+  status: string
+  token: string
+  tenantConfirmedAt: string | null
+  hasPdf: boolean
+}
+
 interface Props {
   tenant: { id: string; name: string; email: string; status: string; onboardingState: Record<string, boolean> | null }
   property: { id: string; address: string; landlordName: string; landlordEmail: string }
+  checkInReport: CheckInReportData | null
 }
 
 interface TenantDocument {
@@ -656,6 +665,85 @@ function MyDocumentsSection({ tenantId }: { tenantId: string }) {
   )
 }
 
+// ── Check-in Inspection section ───────────────────────────────────────────────
+
+function CheckInInspectionSection({ report }: { report: CheckInReportData }) {
+  const isPending = report.status === 'PENDING' || report.status === 'IN_REVIEW'
+  const isDisputed = report.status === 'DISPUTED'
+  const isAgreed = report.status === 'AGREED'
+
+  const indicatorCls = isAgreed
+    ? 'bg-green-400'
+    : isDisputed
+    ? 'bg-red-400'
+    : 'bg-amber-400'
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 p-5">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center text-green-600">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+          </svg>
+        </div>
+        <h2 className="text-gray-900 font-semibold">Check-in Inspection</h2>
+      </div>
+
+      <div className="flex items-start gap-3 p-4 rounded-xl border border-gray-100 bg-gray-50">
+        <div className={`w-2.5 h-2.5 rounded-full mt-1 shrink-0 ${indicatorCls}`} />
+        <div className="flex-1 min-w-0">
+          {isPending && (
+            <>
+              <p className="text-gray-900 text-sm font-medium">Review your check-in report</p>
+              <p className="text-gray-500 text-sm mt-1">
+                Your landlord has completed the check-in inspection. Please review the photos and confirm the condition of the property.
+              </p>
+              <Link
+                href={`/check-in/${report.token}`}
+                className="inline-flex items-center gap-1.5 mt-3 px-4 py-2 bg-green-600 hover:bg-green-500 text-white text-sm font-semibold rounded-xl transition-colors"
+              >
+                Review &amp; confirm
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </Link>
+            </>
+          )}
+
+          {isDisputed && (
+            <>
+              <p className="text-gray-900 text-sm font-medium">Check-in report disputed</p>
+              <p className="text-gray-500 text-sm mt-1">
+                You&apos;ve raised a dispute on this report. Your landlord will be in touch.
+              </p>
+            </>
+          )}
+
+          {isAgreed && (
+            <>
+              <p className="text-gray-900 text-sm font-medium">Check-in report confirmed</p>
+              <p className="text-gray-500 text-sm mt-1">
+                You confirmed the check-in report on {formatDate(report.tenantConfirmedAt!)}.
+              </p>
+              {report.hasPdf && (
+                <Link
+                  href={`/check-in/${report.token}`}
+                  className="inline-flex items-center gap-1.5 mt-3 text-sm text-green-600 hover:text-green-700 font-medium transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  View report
+                </Link>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Maintenance request types ─────────────────────────────────────────────────
 
 interface TenantMaintenanceRequest {
@@ -1200,7 +1288,7 @@ function PhotoLightbox({ src, onClose }: { src: string; onClose: () => void }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function TenantDashboardClient({ tenant, property }: Props) {
+export default function TenantDashboardClient({ tenant, property, checkInReport }: Props) {
   // Identify tenant to Crisp (widget loaded by tenant layout)
   useEffect(() => {
     if (typeof window === 'undefined' || !window.$crisp) return
@@ -1300,6 +1388,9 @@ export default function TenantDashboardClient({ tenant, property }: Props) {
 
           {/* My Documents */}
           <MyDocumentsSection tenantId={tenant.id} />
+
+          {/* Check-in Inspection */}
+          {checkInReport && <CheckInInspectionSection report={checkInReport} />}
 
           {/* Rent payments */}
           <TenantPaymentsSection propertyId={property.id} />

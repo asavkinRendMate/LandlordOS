@@ -35,6 +35,7 @@
 │   ├── (admin)/
 │   │   ├── admin/
 │   │   │   ├── login/page.tsx
+│   │   │   ├── notifications/page.tsx
 │   │   │   └── page.tsx
 │   │   └── layout.tsx
 │   ├── (auth)/
@@ -98,6 +99,10 @@
 │   │   │   └── users/
 │   │   │       ├── [id]/route.ts
 │   │   │       └── route.ts
+│   │   ├── cron/
+│   │   │   ├── awaabs/route.ts
+│   │   │   ├── compliance/route.ts
+│   │   │   └── rent-reminders/route.ts
 │   │   ├── check-in/
 │   │   │   ├── [reportId]/
 │   │   │   │   ├── photos/
@@ -195,6 +200,11 @@
 │   ├── email-templates/
 │   │   ├── base.ts
 │   │   └── index.ts
+│   ├── notifications/
+│   │   ├── cron-awaabs.ts
+│   │   ├── cron-compliance.ts
+│   │   ├── cron-rent-reminders.ts
+│   │   └── registry.ts
 │   ├── scoring/
 │   │   ├── engine.ts
 │   │   └── index.ts
@@ -571,6 +581,7 @@ model MaintenanceStatusHistory { /* full schema */ }
 model MaintenancePhoto { /* full schema */ }
 model ScoringRule { /* full schema */ }
 model ScoringConfig { /* full schema */ }
+model ComplianceAlertLog { /* dedup log for cron compliance/deposit alerts */ } // Updated: 2026-03-09 — compliance alert cron job
 ```
 
 ---
@@ -581,7 +592,7 @@ model ScoringConfig { /* full schema */ }
 |---|---|---|
 | Property management | LIVE | CRUD, compliance docs, document management |
 | Tenant pipeline | LIVE | Apply → Candidate → Invited → Tenant lifecycle |
-| Tenant portal | LIVE | Auth-protected, docs, rent, maintenance |
+| Tenant portal | LIVE | Auth-protected, docs, rent, maintenance, check-in inspection |
 | Document management | LIVE | 14 types, drag-drop upload, signed URLs |
 | Rent tracking | LIVE | Auto-generate payments, manual mark received |
 | Maintenance requests | LIVE | Priority, status, photos, audit trail |
@@ -593,7 +604,7 @@ model ScoringConfig { /* full schema */ }
 | Onboarding wizard | LIVE | 5-step first-run for new landlords (property → rooms → occupancy → tenant → done) |
 | Name capture modal | LIVE | Undismissable modal for landlords with no name set |
 | Settings page | LIVE | Display name edit |
-| Check-in reports | BETA | Property rooms, photo capture, tenant/landlord sign-off |
+| Check-in reports | BETA | Property rooms, photo capture, tenant/landlord sign-off, tenant dashboard section // Updated: 2026-03-09 — tenant check-in photo condition + dispute fix |
 | Financial Passport | PRE-LAUNCH | Email capture landing page only |
 | Live chat (Crisp) | LIVE | Marketing pages only |
 | Demo login | LIVE | Landlord + tenant demo buttons on login page, env-var gated |
@@ -733,6 +744,10 @@ npx tsx prisma/seed-scoring.ts         # Seed 32 scoring rules + ScoringConfig v
 npm run build            # Production build
 npm run lint             # ESLint check
 npx tsc --noEmit         # TypeScript check
+
+# Cron jobs (vercel.json) // Updated: 2026-03-09 — rent reminder cron notifications
+# /api/cron/compliance — daily 9am UTC, protected by CRON_SECRET header
+# /api/cron/rent-reminders — daily 8am UTC, tenant rent reminders (5d, today, overdue max 7d)
 ```
 
 ---
@@ -888,9 +903,11 @@ SENTRY_PROJECT=            # Sentry project slug
 NEXT_PUBLIC_POSTHOG_KEY=   # On/off switch — empty = PostHog disabled entirely
 NEXT_PUBLIC_POSTHOG_HOST=  # Default: https://eu.i.posthog.com
 
-# Demo login (optional — buttons hidden when either var is empty/unset) // Updated: 2026-03-09 — demo login buttons
-NEXT_PUBLIC_DEMO_LANDLORD_PASSWORD=  # Password for demo.landlord@letsorted.co.uk
-NEXT_PUBLIC_DEMO_TENANT_PASSWORD=    # Password for demo.tenant@letsorted.co.uk
+# Demo login (optional — all 4 vars required, buttons hidden if any is empty/unset) // Updated: 2026-03-09 — demo login buttons
+NEXT_PUBLIC_DEMO_LANDLORD_EMAIL=     # e.g. demo.landlord.letsorted@gmail.com
+NEXT_PUBLIC_DEMO_LANDLORD_PASSWORD=
+NEXT_PUBLIC_DEMO_TENANT_EMAIL=       # e.g. demo.tenant.letsorted@gmail.com
+NEXT_PUBLIC_DEMO_TENANT_PASSWORD=
 
 # Payments (not yet integrated)
 STRIPE_SECRET_KEY=
@@ -913,6 +930,7 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
 - **Screening invite expiry:** 7 days from createdAt, lazily updated to EXPIRED on access
 - **Backward compat:** Reports with `screeningUsageId` (credit-pack flow) are treated as unlocked even though `isLocked` defaults true
 - **Check-in photo retention:** GDPR — check-in photos retained for tenancy duration + 3 months, then eligible for deletion
+- **Tenant check-in photos:** tenant must select condition (GOOD/MINOR_ISSUE/DAMAGE) before upload — no default; optional comment (max 500 chars). Dispute flow accepts optional reason text, included in landlord notification email.
 
 ---
 
@@ -929,6 +947,20 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
 - Never expose raw AI output to users — always parse, validate, and clean with `cleanSummary()`
 - Never create a new Supabase table without immediately enabling RLS and writing policies in the same migration file — pattern: see `supabase/migrations/20260327_add_rls_policies.sql` // Updated: 2026-03-09 — RLS policy requirements
 - Never leave a table with UNRESTRICTED badge in Supabase dashboard — all tables must show globe icon (RLS enabled)
+- Never add a new email notification without registering it in `lib/notifications/registry.ts` — every notification must have an entry with correct trigger, recipient, status, and templateFn. Without this, the notification will not appear in the admin panel and the task is considered incomplete. // Updated: 2026-03-09 — notifications registry + admin panel
+
+---
+
+## Notifications // Updated: 2026-03-09 — notifications registry + admin panel
+
+- **Registry:** `lib/notifications/registry.ts` is the single source of truth for all email notifications
+- **Admin panel:** `/admin/notifications` shows live status of all notifications
+- **Trigger types:** `event` (fired from API routes), `cron` (fired from cron jobs), `event+cron` (fired by both — e.g. Awaab's Law: event on creation + cron 4h reminder)
+- **Cron jobs** (`vercel.json`): compliance daily 9am UTC, Awaab's Law every 15 minutes, rent reminders daily 8am UTC
+- **Deduplication:** `ComplianceAlertLog` table prevents duplicate sends (24h window for compliance, 2h for Awaab's Law, 23h for rent reminders)
+- **Adding a new notification requires two steps:**
+  1. Add the template function to `lib/email-templates/index.ts`
+  2. Add an entry to `lib/notifications/registry.ts` with correct trigger, recipient, status, and templateFn
 
 ---
 

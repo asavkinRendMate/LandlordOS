@@ -11,8 +11,13 @@ export async function POST(req: Request, { params }: { params: { token: string }
       where: { token: params.token },
       include: {
         property: {
-          select: { id: true, line1: true, city: true, postcode: true },
-          include: { user: { select: { id: true, name: true, email: true } } },
+          select: {
+            id: true,
+            line1: true,
+            city: true,
+            postcode: true,
+            user: { select: { id: true, name: true, email: true } },
+          },
         },
         tenant: { select: { name: true } },
       },
@@ -54,23 +59,28 @@ export async function POST(req: Request, { params }: { params: { token: string }
       )
     }
 
-    // Notify landlord
+    // Notify landlord (non-blocking — don't let email failure crash the endpoint)
     const landlord = report.property.user
     if (landlord) {
       const address = [report.property.line1, report.property.city, report.property.postcode].filter(Boolean).join(', ')
       const checkInUrl = `${env.NEXT_PUBLIC_APP_URL}/dashboard/properties/${report.property.id}/check-in?reportId=${report.id}`
 
-      await sendEmail({
-        to: landlord.email,
-        subject: `${report.tenant?.name ?? 'Your tenant'} has ${body.action === 'confirm' ? 'confirmed' : 'disputed'} the check-in report`,
-        html: checkInTenantResponseHtml({
-          landlordName: landlord.name ?? 'there',
-          tenantName: report.tenant?.name ?? 'Your tenant',
-          propertyAddress: address,
-          action: body.action === 'confirm' ? 'confirmed' : 'disputed',
-          checkInUrl,
-        }),
-      })
+      try {
+        await sendEmail({
+          to: landlord.email,
+          subject: `${report.tenant?.name ?? 'Your tenant'} has ${body.action === 'confirm' ? 'confirmed' : 'disputed'} the check-in report`,
+          html: checkInTenantResponseHtml({
+            landlordName: landlord.name ?? 'there',
+            tenantName: report.tenant?.name ?? 'Your tenant',
+            propertyAddress: address,
+            action: body.action === 'confirm' ? 'confirmed' : 'disputed',
+            checkInUrl,
+            note: body.action === 'dispute' ? body.note : undefined,
+          }),
+        })
+      } catch (emailErr) {
+        console.error('[check-in/token confirm] email send failed:', emailErr)
+      }
     }
 
     return NextResponse.json({ data: updated })

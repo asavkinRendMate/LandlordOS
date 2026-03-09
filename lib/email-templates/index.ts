@@ -228,6 +228,7 @@ export function checkInTenantResponseHtml(params: {
   propertyAddress: string
   action: 'confirmed' | 'disputed' | 'added photos'
   checkInUrl: string
+  note?: string
 }): string {
   const actionText = params.action === 'confirmed'
     ? `${params.tenantName} has confirmed the check-in report is accurate.`
@@ -241,6 +242,7 @@ export function checkInTenantResponseHtml(params: {
     content: `
       ${p(`Hi ${params.landlordName},`)}
       ${p(actionText)}
+      ${params.note ? greyBox(`<p style="color:#374151;font-size:14px;font-style:italic;margin:0;">&ldquo;${params.note}&rdquo;</p>`) : ''}
       ${infoBox(params.propertyAddress)}
       ${ctaButton('View check-in report', params.checkInUrl)}
     `,
@@ -264,6 +266,330 @@ export function checkInCompleteHtml(params: {
       ${infoBox(params.propertyAddress)}
       ${ctaButton('Download check-in report', params.downloadUrl)}
       ${muted('Keep this report safe — it documents the condition of the property at the start of your tenancy.')}
+    `,
+  })
+}
+
+// ─── 12. Compliance expiry 30 days (to landlord) ────────────────────────────
+// Used by: lib/notifications/cron-compliance.ts
+
+export function complianceExpiry30dHtml(params: {
+  landlordName: string
+  documentType: string
+  propertyAddress: string
+  expiryDate: string
+  dashboardUrl: string
+}): string {
+  return baseEmailTemplate({
+    previewText: `${params.documentType} expires in 30 days — ${params.propertyAddress}`,
+    subtitle: 'Compliance',
+    content: `
+      ${p(`Hi ${params.landlordName},`)}
+      ${p(`Your <strong style="color:#1a1a1a;">${params.documentType}</strong> for the property below expires on <strong style="color:#1a1a1a;">${params.expiryDate}</strong>.`)}
+      ${infoBox(params.propertyAddress)}
+      ${p('Now is a good time to arrange a renewal so you stay compliant.')}
+      ${ctaButton('View property', params.dashboardUrl)}
+      ${muted('You will receive another reminder 7 days before expiry.')}
+    `,
+  })
+}
+
+// ─── 13. Compliance expiry 7 days (to landlord) ─────────────────────────────
+// Used by: lib/notifications/cron-compliance.ts
+
+export function complianceExpiry7dHtml(params: {
+  landlordName: string
+  documentType: string
+  propertyAddress: string
+  expiryDate: string
+  dashboardUrl: string
+}): string {
+  return baseEmailTemplate({
+    previewText: `Urgent: ${params.documentType} expires in 7 days — ${params.propertyAddress}`,
+    subtitle: 'Compliance',
+    content: `
+      ${p(`Hi ${params.landlordName},`)}
+      ${p(`Your <strong style="color:#1a1a1a;">${params.documentType}</strong> for the property below expires on <strong style="color:#d97706;">${params.expiryDate}</strong>.`)}
+      ${infoBox(params.propertyAddress)}
+      ${p('Please arrange a renewal urgently to avoid becoming non-compliant.')}
+      ${ctaButton('View property', params.dashboardUrl)}
+      ${muted('Letting a compliance document expire may result in fines under the Renters\' Rights Act 2025.')}
+    `,
+  })
+}
+
+// ─── 14. Compliance expired (to landlord) ───────────────────────────────────
+// Used by: lib/notifications/cron-compliance.ts
+
+export function complianceExpiredHtml(params: {
+  landlordName: string
+  documentType: string
+  propertyAddress: string
+  expiredDate: string
+  dashboardUrl: string
+}): string {
+  return baseEmailTemplate({
+    previewText: `Overdue: ${params.documentType} has expired — ${params.propertyAddress}`,
+    subtitle: 'Compliance',
+    content: `
+      ${p(`Hi ${params.landlordName},`)}
+      ${p(`Your <strong style="color:#1a1a1a;">${params.documentType}</strong> for the property below expired on <strong style="color:#dc2626;">${params.expiredDate}</strong>.`)}
+      ${infoBox(params.propertyAddress)}
+      ${p('<strong style="color:#dc2626;">You may be non-compliant.</strong> Under the Renters\' Rights Act 2025, landlords can face fines of up to \u00a340,000 for failing to maintain valid compliance documents.')}
+      ${p('Please arrange a renewal as soon as possible and upload the new certificate.')}
+      ${ctaButton('View property', params.dashboardUrl)}
+    `,
+  })
+}
+
+// ─── 15. Deposit unprotected warning (to landlord) ──────────────────────────
+// Used by: lib/notifications/cron-compliance.ts
+
+// ─── 16. New maintenance request (to landlord) ─────────────────────────────
+// Used by: api/maintenance POST handler
+
+export function maintenanceNewRequestHtml(params: {
+  landlordName: string
+  tenantName: string
+  propertyAddress: string
+  requestTitle: string
+  description: string
+  priority: string
+  photosCount: number
+  dashboardUrl: string
+}): string {
+  const priorityColors: Record<string, string> = {
+    URGENT: '#dc2626',
+    HIGH: '#ea580c',
+    MEDIUM: '#d97706',
+    LOW: '#6b7280',
+  }
+  const color = priorityColors[params.priority] || '#6b7280'
+
+  return baseEmailTemplate({
+    previewText: `${params.priority} maintenance request: ${params.requestTitle} — ${params.propertyAddress}`,
+    subtitle: 'Maintenance',
+    content: `
+      ${p(`Hi ${params.landlordName},`)}
+      ${p(`<strong style="color:#1a1a1a;">${params.tenantName}</strong> has submitted a new maintenance request for:`)}
+      ${infoBox(params.propertyAddress)}
+      ${greyBox(`
+        <p style="color:#374151;font-size:14px;margin:0 0 8px;"><strong>Title:</strong> ${params.requestTitle}</p>
+        <p style="color:#374151;font-size:14px;margin:0 0 8px;"><strong>Priority:</strong> <span style="color:${color};font-weight:600;">${params.priority}</span></p>
+        <p style="color:#374151;font-size:14px;margin:0 0 ${params.photosCount > 0 ? '8px' : '0'};">${params.description}</p>
+        ${params.photosCount > 0 ? `<p style="color:#6b7280;font-size:13px;margin:0;">${params.photosCount} photo${params.photosCount === 1 ? '' : 's'} attached</p>` : ''}
+      `)}
+      ${ctaButton('View request', params.dashboardUrl)}
+    `,
+  })
+}
+
+// ─── 17. Maintenance tenant confirmation (to tenant) ────────────────────────
+// Used by: api/maintenance POST handler
+
+export function maintenanceTenantConfirmationHtml(params: {
+  tenantName: string
+  requestTitle: string
+  propertyAddress: string
+  dashboardUrl: string
+}): string {
+  return baseEmailTemplate({
+    previewText: `We've received your maintenance request — ${params.requestTitle}`,
+    subtitle: 'Maintenance',
+    content: `
+      ${p(`Hi ${params.tenantName},`)}
+      ${p(`We've received your maintenance request for:`)}
+      ${infoBox(params.propertyAddress)}
+      ${greyBox(`<p style="color:#374151;font-size:14px;margin:0;"><strong>${params.requestTitle}</strong></p>`)}
+      ${p('Your landlord has been notified and will be in touch.')}
+      ${ctaButton('View your request', params.dashboardUrl)}
+      ${muted("You'll receive an email when the status of your request changes.")}
+    `,
+  })
+}
+
+// ─── 18. Maintenance status update (to landlord) ────────────────────────────
+// Used by: api/maintenance/[id] PATCH handler
+
+export function maintenanceStatusUpdateLandlordHtml(params: {
+  landlordName: string
+  requestTitle: string
+  propertyAddress: string
+  tenantName: string
+  oldStatus: string
+  newStatus: string
+  dashboardUrl: string
+}): string {
+  return baseEmailTemplate({
+    previewText: `Maintenance update: ${params.requestTitle} — ${params.propertyAddress}`,
+    subtitle: 'Maintenance',
+    content: `
+      ${p(`Hi ${params.landlordName},`)}
+      ${p(`The status of a maintenance request from <strong style="color:#1a1a1a;">${params.tenantName}</strong> has been updated.`)}
+      ${infoBox(params.propertyAddress)}
+      ${greyBox(`
+        <p style="color:#374151;font-size:14px;margin:0 0 8px;"><strong>${params.requestTitle}</strong></p>
+        <p style="color:#374151;font-size:14px;margin:0;">${params.oldStatus} &rarr; <strong style="color:#1a1a1a;">${params.newStatus}</strong></p>
+      `)}
+      ${ctaButton('View request', params.dashboardUrl)}
+    `,
+  })
+}
+
+// ─── 19. Maintenance status update (to tenant) ─────────────────────────────
+// Used by: api/maintenance/[id] PATCH handler
+
+export function maintenanceStatusUpdateTenantHtml(params: {
+  tenantName: string
+  requestTitle: string
+  propertyAddress: string
+  oldStatus: string
+  newStatus: string
+  landlordNote?: string
+  dashboardUrl: string
+}): string {
+  return baseEmailTemplate({
+    previewText: `Update on your maintenance request — ${params.requestTitle}`,
+    subtitle: 'Maintenance',
+    content: `
+      ${p(`Hi ${params.tenantName},`)}
+      ${p('Your maintenance request has been updated.')}
+      ${infoBox(params.propertyAddress)}
+      ${greyBox(`
+        <p style="color:#374151;font-size:14px;margin:0 0 8px;"><strong>${params.requestTitle}</strong></p>
+        <p style="color:#374151;font-size:14px;margin:0;">${params.oldStatus} &rarr; <strong style="color:#1a1a1a;">${params.newStatus}</strong></p>
+      `)}
+      ${params.landlordNote ? greyBox(`<p style="color:#374151;font-size:14px;font-style:italic;margin:0;">&ldquo;${params.landlordNote}&rdquo;</p>`) : ''}
+      ${ctaButton('View your request', params.dashboardUrl)}
+    `,
+  })
+}
+
+// ─── 20. Awaab's Law timer expiring (to landlord) ──────────────────────────
+// Used by: api/maintenance POST handler + lib/notifications/cron-awaabs.ts
+
+export function awaabsLawExpiringHtml(params: {
+  landlordName: string
+  propertyAddress: string
+  tenantName: string
+  requestTitle: string
+  createdAt: string
+  respondByDeadline: string
+  hoursRemaining: number
+  dashboardUrl: string
+}): string {
+  return baseEmailTemplate({
+    previewText: `URGENT: response required in ${params.hoursRemaining}h — ${params.propertyAddress}`,
+    subtitle: 'Maintenance',
+    content: `
+      ${p(`Hi ${params.landlordName},`)}
+      ${p(`A damp or mould complaint from <strong style="color:#1a1a1a;">${params.tenantName}</strong> requires your response within <strong style="color:#dc2626;">${params.hoursRemaining} hours</strong>.`)}
+      ${infoBox(params.propertyAddress)}
+      ${greyBox(`
+        <p style="color:#374151;font-size:14px;margin:0 0 8px;"><strong>${params.requestTitle}</strong></p>
+        <p style="color:#374151;font-size:14px;margin:0 0 4px;"><strong>Reported:</strong> ${params.createdAt}</p>
+        <p style="color:#dc2626;font-size:14px;font-weight:600;margin:0;"><strong>Deadline:</strong> ${params.respondByDeadline}</p>
+      `)}
+      ${p('<strong style="color:#dc2626;">Awaab\'s Law (private rentals from 2026)</strong> requires landlords to respond to damp and mould complaints within 24 hours. Non-compliance can result in fines of up to \u00a340,000.')}
+      ${ctaButton('View request', params.dashboardUrl)}
+    `,
+  })
+}
+
+// ─── 21. Rent due reminder — 5 days (to tenant) ───────────────────────────
+// Used by: lib/notifications/cron-rent-reminders.ts
+
+export function rentDueReminder5dHtml(params: {
+  tenantName: string
+  propertyAddress: string
+  amount: string
+  dueDate: string
+  dashboardUrl: string
+}): string {
+  return baseEmailTemplate({
+    previewText: `Reminder: rent of ${params.amount} due in 5 days — ${params.propertyAddress}`,
+    subtitle: 'Rent',
+    content: `
+      ${p(`Hi ${params.tenantName},`)}
+      ${p(`Your rent of <strong style="color:#1a1a1a;">${params.amount}</strong> is due on <strong style="color:#1a1a1a;">${params.dueDate}</strong>.`)}
+      ${infoBox(params.propertyAddress)}
+      ${p('Please arrange payment with your landlord before the due date.')}
+      ${ctaButton('View tenant portal', params.dashboardUrl)}
+      ${muted('If you have already arranged payment, you can safely ignore this reminder.')}
+    `,
+  })
+}
+
+// ─── 22. Rent due today (to tenant) ────────────────────────────────────────
+// Used by: lib/notifications/cron-rent-reminders.ts
+
+export function rentDueTodayHtml(params: {
+  tenantName: string
+  propertyAddress: string
+  amount: string
+  dueDate: string
+  dashboardUrl: string
+}): string {
+  return baseEmailTemplate({
+    previewText: `Your rent of ${params.amount} is due today — ${params.propertyAddress}`,
+    subtitle: 'Rent',
+    content: `
+      ${p(`Hi ${params.tenantName},`)}
+      ${p(`Your rent of <strong style="color:#1a1a1a;">${params.amount}</strong> is due today.`)}
+      ${infoBox(params.propertyAddress)}
+      ${p('Please arrange payment as soon as possible.')}
+      ${ctaButton('View tenant portal', params.dashboardUrl)}
+      ${muted('If you have already paid, you can safely ignore this reminder.')}
+    `,
+  })
+}
+
+// ─── 23. Rent overdue (to tenant) ──────────────────────────────────────────
+// Used by: lib/notifications/cron-rent-reminders.ts
+
+export function rentOverdueHtml(params: {
+  tenantName: string
+  propertyAddress: string
+  amount: string
+  dueDate: string
+  daysPastDue: number
+  dashboardUrl: string
+}): string {
+  return baseEmailTemplate({
+    previewText: `Overdue: rent payment of ${params.amount} — ${params.propertyAddress}`,
+    subtitle: 'Rent',
+    content: `
+      ${p(`Hi ${params.tenantName},`)}
+      ${p(`Your rent of <strong style="color:#1a1a1a;">${params.amount}</strong> was due on <strong style="color:#dc2626;">${params.dueDate}</strong> (${params.daysPastDue} day${params.daysPastDue === 1 ? '' : 's'} ago).`)}
+      ${infoBox(params.propertyAddress)}
+      ${p('Please contact your landlord to arrange payment.')}
+      ${ctaButton('View tenant portal', params.dashboardUrl)}
+      ${muted("If you've already paid, please ignore this reminder.")}
+    `,
+  })
+}
+
+export function depositUnprotectedWarningHtml(params: {
+  landlordName: string
+  propertyAddress: string
+  tenantName: string
+  tenancyStartDate: string
+  deadlineDate: string
+  dashboardUrl: string
+}): string {
+  return baseEmailTemplate({
+    previewText: `Deposit must be protected by ${params.deadlineDate} — ${params.propertyAddress}`,
+    subtitle: 'Deposit Protection',
+    content: `
+      ${p(`Hi ${params.landlordName},`)}
+      ${p(`The deposit for <strong style="color:#1a1a1a;">${params.tenantName}</strong> at the property below has not yet been protected.`)}
+      ${infoBox(params.propertyAddress)}
+      ${greyBox(`
+        <p style="color:#374151;font-size:14px;margin:0 0 4px;"><strong>Tenancy started:</strong> ${params.tenancyStartDate}</p>
+        <p style="color:#dc2626;font-size:14px;font-weight:600;margin:0;"><strong>Protection deadline:</strong> ${params.deadlineDate}</p>
+      `)}
+      ${p('By law, you must protect your tenant\'s deposit in a government-approved scheme within 30 days of receiving it. Failure to do so can result in a court order to repay up to 3x the deposit amount.')}
+      ${ctaButton('View property', params.dashboardUrl)}
     `,
   })
 }

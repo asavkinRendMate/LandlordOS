@@ -40,7 +40,7 @@
 | Property Management | LIVE | Address, type, bedrooms (synced picker), rooms, status tracking |
 | Multi-tenant Dashboard | LIVE | Landlord + tenant context switching |
 | Document Storage | LIVE | Supabase Storage, signed URLs |
-| Admin Panel | LIVE | User/property management |
+| Admin Panel | LIVE | User/property management, notifications registry |
 
 ### Tenant Pipeline
 | Feature | Status | Notes |
@@ -76,7 +76,7 @@
 | Photo Upload System | LIVE | Both parties can attach photos |
 | Priority Management | LIVE | LOW/MEDIUM/HIGH/URGENT |
 | Status Tracking | LIVE | OPEN → IN_PROGRESS → RESOLVED |
-| Awaab's Law Timer | NOT STARTED | 24h damp/mould response |
+| Awaab's Law Timer | LIVE | 24h damp/mould response, 4h email reminder cron (every 15min) |
 
 ### Tenancy Management
 | Feature | Status | Notes |
@@ -94,15 +94,17 @@
 | Document Upload | LIVE | Upload own ID/income docs |
 | Maintenance Submission | LIVE | Create requests with photos |
 | Rent Payment View | LIVE | Read-only payment history |
+| Check-in Inspection | LIVE | View/confirm/dispute check-in reports, photo upload with condition + comment |
 | Notice Period | NOT STARTED | Tenant-initiated termination |
 
 ### Notifications & Alerts
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Email Templates | LIVE | Resend integration, 8 templates |
-| Compliance Alerts | NOT STARTED | Cron job for expiry warnings |
-| Rent Reminders | NOT STARTED | Automated tenant notifications |
-| Maintenance Updates | NOT STARTED | Status change notifications |
+| Email Templates | LIVE | Resend integration, 20 templates |
+| Notifications Registry | LIVE | `lib/notifications/registry.ts` — 28 notifications, admin panel at `/admin/notifications` |
+| Compliance Alerts | LIVE | Daily cron (9am UTC) — 30d/7d/expired doc warnings + deposit protection reminders |
+| Maintenance Notifications | LIVE | New request, tenant confirmation, status updates (landlord + tenant), Awaab's Law 4h reminder |
+| Rent Reminders | LIVE | Daily cron (8am UTC) — 5-day reminder, due-today, overdue (daily up to 7 days) |
 
 ---
 
@@ -202,8 +204,8 @@ Landlord Decision → Accept/Reject → Move-in Process
 ### Awaab's Law (Private Rentals)
 - **Scope:** Damp and mould complaints
 - **Response Time:** 24 hours maximum
-- **Implementation Status:** Timer system NOT STARTED
-- **Compliance:** Maintenance category system ready for DAMP_MOULD type
+- **Implementation Status:** LIVE — `respondBy` auto-set on DAMP_MOULD requests, 4h email reminder via cron (`/api/cron/awaabs`, every 15min)
+- **Compliance:** Maintenance `category` field triggers Awaab's Law timer when set to `DAMP_MOULD`
 
 ### Document Requirements
 - **Gas Safety:** Annual certificate mandatory
