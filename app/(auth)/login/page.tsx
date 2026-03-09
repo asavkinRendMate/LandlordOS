@@ -149,8 +149,8 @@ function LoginContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F7F8F6] flex flex-col">
-      <div className="flex-1 flex items-center justify-center px-4">
+    <div className="h-dvh bg-[#F7F8F6] flex flex-col overflow-y-auto">
+      <div className="flex-1 flex items-center justify-center px-4 py-6 sm:py-0">
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="flex justify-center mb-0">
@@ -158,7 +158,7 @@ function LoginContent() {
         </div>
 
         {sent ? (
-          <div className="bg-white border border-gray-200 rounded-2xl p-8 text-center shadow-sm relative overflow-hidden">
+          <div className="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 text-center shadow-sm relative overflow-hidden">
             {verifying ? (
               /* ── Verifying overlay ──────────────────────────────────── */
               <div className="py-4">
@@ -231,11 +231,11 @@ function LoginContent() {
             )}
           </div>
         ) : (
-          <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm">
+          <div className="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-sm">
             <h1 className="text-gray-900 font-semibold text-xl mb-1">Sign in</h1>
-            <p className="text-gray-500 text-sm mb-6">Enter your email to receive a sign-in code.</p>
+            <p className="text-gray-500 text-sm mb-4 sm:mb-6">Enter your email to receive a sign-in code.</p>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
               <div>
                 <label htmlFor="email" className="block text-sm text-gray-600 mb-1.5">
                   Email address
@@ -264,7 +264,7 @@ function LoginContent() {
               </button>
             </form>
 
-            <p className="mt-6 text-center text-xs text-gray-400">
+            <p className="mt-4 sm:mt-6 text-center text-xs text-gray-400">
               New to LetSorted?{' '}
               <a href="https://letsorted.co.uk" className="text-[#16a34a]/70 hover:text-[#16a34a] transition-colors">
                 Learn more
