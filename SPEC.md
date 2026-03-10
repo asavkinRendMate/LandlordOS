@@ -90,7 +90,8 @@ User clicks "Tenant Screening" → registers via OTP (email only, no property se
 | Multi-email Invite UI | LIVE | Up to 10 emails, cost counter, preview modal |
 | Tenant Status Pipeline | LIVE | CANDIDATE → INVITED → TENANT → FORMER_TENANT |
 | Tenant Onboarding | LIVE | `/tenant/join/[token]` |
-| Select Tenant Flow | LIVE | Winner email + rejections to others, Property → ACTIVE |
+| Select Tenant Flow | LIVE | 2-step confirmation modal: Step 1 = review selected tenant + rejections, Step 2 = rose warning screen with irreversibility notice. Winner email + rejections to others, Property → ACTIVE |
+| Applications Section | LIVE | Collapses to "View application history (N)" when tenant is active/invited. Expanded view is read-only. |
 | Tenant Portal Link | LIVE | Copyable + send by email on property detail |
 
 ### AI Financial Screening
@@ -333,6 +334,8 @@ All URLs: signed, 60-minute expiry.
 - PDF completeness: ALL photos (landlord + tenant) included — no selective inclusion
 - Candidate screening view: never show grade labels or "/100"
 - Photo upload: reuse maintenance pattern via props — never create duplicate components
+- "Require financial verification" defaults to ON for all new properties (DB + UI)
+- UK postcode validation on applicant address fields — inline error on submit if no valid postcode found
 
 ---
 

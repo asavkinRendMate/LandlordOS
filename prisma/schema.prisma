@@ -83,7 +83,7 @@ model Property {
   bedrooms         Int?
   status           PropertyStatus @default(VACANT)
   applicationToken String?        @unique @map("application_token")
-  requireFinancialVerification Boolean @default(false) @map("require_financial_verification")
+  requireFinancialVerification Boolean @default(true) @map("require_financial_verification")
   createdAt        DateTime       @default(now()) @map("created_at")
   updatedAt        DateTime       @updatedAt @map("updated_at")
 

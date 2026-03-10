@@ -8,6 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import Image from 'next/image'
 import ScoringProgressScreen from '@/components/shared/ScoringProgressScreen'
 import { inputClass, selectClass } from '@/lib/form-styles'
+import { isValidUKPostcode } from '@/lib/validators/postcode'
 
 function Label({ children, htmlFor }: { children: React.ReactNode; htmlFor?: string }) {
   return (
@@ -63,7 +64,9 @@ const schema = z.object({
   name: z.string().min(1, 'Full name is required'),
   email: z.string().email('Enter a valid email address'),
   phone: z.string().optional(),
-  currentAddress: z.string().min(1, 'Current address is required'),
+  currentAddress: z.string().min(1, 'Current address is required').refine(isValidUKPostcode, {
+    message: 'Please include your full postcode (e.g. S43 3BA)',
+  }),
   employmentStatus: z.enum(['EMPLOYED', 'SELF_EMPLOYED', 'STUDENT', 'OTHER'], {
     error: 'Please select your employment status',
   }),

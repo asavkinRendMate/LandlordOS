@@ -1958,9 +1958,11 @@ function SelectTenantModal({
   onClose: () => void
   selecting: boolean
 }) {
+  const [step, setStep] = useState<1 | 2>(1)
   const rejectableInvites = otherInvites.filter((inv) =>
     ['applied', 'analysing', 'complete'].includes(inv.status)
   )
+  const displayName = selectedInvite.candidateName ?? selectedInvite.email
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -1968,7 +1970,9 @@ function SelectTenantModal({
       <div className="relative bg-white border border-gray-200 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md max-h-[90vh] flex flex-col overflow-hidden shadow-xl">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
-          <h2 className="text-[#1A1A1A] font-semibold">Confirm tenant selection</h2>
+          <h2 className="text-[#1A1A1A] font-semibold">
+            {step === 1 ? 'Confirm tenant selection' : 'Are you absolutely sure?'}
+          </h2>
           <button onClick={onClose} className="text-[#9CA3AF] hover:text-[#6B7280] transition-colors">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1976,64 +1980,115 @@ function SelectTenantModal({
           </button>
         </div>
 
-        <div className="overflow-y-auto flex-1 p-5 space-y-4">
-          {/* Selected tenant (green) */}
-          <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <svg className="w-5 h-5 text-green-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <p className="text-sm font-semibold text-green-800">Selected tenant</p>
-            </div>
-            <p className="text-sm text-green-700 font-medium">{selectedInvite.candidateName ?? selectedInvite.email}</p>
-            <p className="text-xs text-green-600">{selectedInvite.email}</p>
-            <p className="text-xs text-green-600 mt-2">
-              They&apos;ll receive an email with a link to the tenant portal.
-            </p>
-          </div>
-
-          {/* Rejected applicants (amber) */}
-          {rejectableInvites.length > 0 && (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <svg className="w-5 h-5 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                <p className="text-sm font-semibold text-amber-800">
-                  {rejectableInvites.length} other applicant{rejectableInvites.length !== 1 ? 's' : ''} will be notified
+        {step === 1 ? (
+          <>
+            <div className="overflow-y-auto flex-1 p-5 space-y-4">
+              {/* Selected tenant (green) */}
+              <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <svg className="w-5 h-5 text-green-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="text-sm font-semibold text-green-800">Selected tenant</p>
+                </div>
+                <p className="text-sm text-green-700 font-medium">{displayName}</p>
+                <p className="text-xs text-green-600">{selectedInvite.email}</p>
+                <p className="text-xs text-green-600 mt-2">
+                  They&apos;ll receive an email with a link to the tenant portal.
                 </p>
               </div>
-              <div className="space-y-1.5">
-                {rejectableInvites.map((inv) => (
-                  <div key={inv.inviteId} className="flex items-center gap-2">
-                    <span className="text-xs text-amber-700">{inv.candidateName ?? inv.email}</span>
-                  </div>
-                ))}
-              </div>
-              <p className="text-xs text-amber-600 mt-2">
-                They&apos;ll receive a polite rejection email — no scores or reasons shared.
-              </p>
-            </div>
-          )}
-        </div>
 
-        {/* Footer */}
-        <div className="px-5 py-4 border-t border-gray-100 shrink-0 space-y-2">
-          <button
-            onClick={onConfirm}
-            disabled={selecting}
-            className="w-full bg-[#16a34a] hover:bg-[#15803d] disabled:opacity-50 text-white font-semibold rounded-xl py-3 text-sm transition-colors"
-          >
-            {selecting ? 'Processing…' : `Confirm — select ${selectedInvite.candidateName ?? selectedInvite.email}`}
-          </button>
-          <button
-            onClick={onClose}
-            disabled={selecting}
-            className="w-full bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium rounded-xl py-3 text-sm transition-colors"
-          >
-            Go back
-          </button>
-        </div>
+              {/* Rejected applicants (amber) */}
+              {rejectableInvites.length > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <svg className="w-5 h-5 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <p className="text-sm font-semibold text-amber-800">
+                      {rejectableInvites.length} other applicant{rejectableInvites.length !== 1 ? 's' : ''} will be notified
+                    </p>
+                  </div>
+                  <div className="space-y-1.5">
+                    {rejectableInvites.map((inv) => (
+                      <div key={inv.inviteId} className="flex items-center gap-2">
+                        <span className="text-xs text-amber-700">{inv.candidateName ?? inv.email}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-amber-600 mt-2">
+                    They&apos;ll receive a polite rejection email — no scores or reasons shared.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Footer — Step 1 */}
+            <div className="px-5 py-4 border-t border-gray-100 shrink-0 space-y-2">
+              <button
+                onClick={() => setStep(2)}
+                className="w-full bg-[#16a34a] hover:bg-[#15803d] text-white font-semibold rounded-xl py-3 text-sm transition-colors"
+              >
+                Confirm — select {displayName}
+              </button>
+              <button
+                onClick={onClose}
+                className="w-full bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium rounded-xl py-3 text-sm transition-colors"
+              >
+                Go back
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Step 2: Rose warning */}
+            <div className="overflow-y-auto flex-1 p-5">
+              <div className="bg-rose-50 border border-rose-200 rounded-xl p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <svg className="w-6 h-6 text-rose-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <p className="text-rose-800 font-semibold">This action cannot be undone</p>
+                </div>
+                <p className="text-sm text-rose-700 mb-3">
+                  Selecting <strong>{displayName}</strong> as your tenant will:
+                </p>
+                <ul className="text-sm text-rose-700 space-y-1.5 ml-1">
+                  <li className="flex items-start gap-2">
+                    <span className="mt-1.5 w-1 h-1 rounded-full bg-rose-400 shrink-0" />
+                    Send {displayName} a link to the tenant portal
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="mt-1.5 w-1 h-1 rounded-full bg-rose-400 shrink-0" />
+                    Send rejection emails to all other applicants
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="mt-1.5 w-1 h-1 rounded-full bg-rose-400 shrink-0" />
+                    This cannot be undone — choose carefully
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Footer — Step 2 */}
+            <div className="px-5 py-4 border-t border-gray-100 shrink-0 space-y-2">
+              <button
+                onClick={onConfirm}
+                disabled={selecting}
+                className="w-full bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-semibold rounded-xl py-3 text-sm transition-colors"
+              >
+                {selecting ? 'Processing…' : `Yes, confirm — select ${displayName}`}
+              </button>
+              <button
+                onClick={() => setStep(1)}
+                disabled={selecting}
+                className="w-full bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium rounded-xl py-3 text-sm transition-colors"
+              >
+                Go back
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   )
@@ -2046,11 +2101,13 @@ function ApplicationsSection({
   candidates,
   applyLink,
   onRefresh,
+  historyOnly = false,
 }: {
   property: Property
   candidates: Tenant[]
   applyLink: string
   onRefresh: () => void
+  historyOnly?: boolean
 }) {
   const [emails, setEmails] = useState<string[]>([''])
   const [requireFinancial, setRequireFinancial] = useState(property.requireFinancialVerification)
@@ -2061,6 +2118,7 @@ function ApplicationsSection({
   const [selecting, setSelecting] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [expanded, setExpanded] = useState(false)
 
   const validEmails = emails.filter((e) => EMAIL_RE.test(e))
   const hasValidEmails = validEmails.length > 0
@@ -2134,6 +2192,75 @@ function ApplicationsSection({
   }
 
   const address = [property.line1, property.city, property.postcode].filter(Boolean).join(', ')
+
+  // History-only collapsed mode (tenant already selected)
+  if (historyOnly) {
+    const totalApplicants = mergedList.length
+    if (totalApplicants === 0) return null
+
+    return (
+      <div className="bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4 mb-5">
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="flex items-center justify-between w-full text-left"
+        >
+          <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium">Applications</p>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-[#9CA3AF]">
+              {expanded ? 'Hide' : `View application history (${totalApplicants})`}
+            </span>
+            <svg
+              className={`w-4 h-4 text-[#9CA3AF] transition-transform ${expanded ? 'rotate-180' : ''}`}
+              fill="none" viewBox="0 0 24 24" stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+        </button>
+
+        {expanded && (
+          <div className="mt-3 border-t border-gray-100 pt-3">
+            <div className="space-y-0">
+              {mergedList.map((inv) => {
+                const badge = UNIFIED_BADGE[inv.status]
+                return (
+                  <div key={inv.inviteId} className="py-2.5 border-b border-gray-100 last:border-0">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm text-[#1A1A1A] font-medium">{inv.candidateName ?? inv.email}</span>
+                          <span className={`text-[10px] font-medium rounded px-1.5 py-0.5 ${badge.cls}`}>
+                            {badge.label}
+                          </span>
+                          {inv.status === 'complete' && inv.totalScore != null && (
+                            <span className={`text-xs font-semibold ${scoreTextColour(inv.grade)}`}>
+                              {inv.totalScore}/100
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-[#9CA3AF] mt-0.5">
+                          {inv.candidateName ? inv.email : null}
+                          {inv.sentAt ? `${inv.candidateName ? ' · ' : ''}Invited ${formatDate(inv.sentAt)}` : null}
+                        </p>
+                      </div>
+                      {inv.status === 'complete' && inv.reportId && (
+                        <Link
+                          href={`/screening/report/${inv.reportId}`}
+                          className="px-3 py-1.5 text-xs font-medium text-[#16a34a] bg-white border border-[#16a34a] rounded-md hover:bg-[#f0fdf4] transition-colors shrink-0"
+                        >
+                          View report
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4 mb-5">
@@ -2358,8 +2485,8 @@ export default function PropertyPage() {
   const applyLink = `${appUrl}/apply/${property.id}`
   const portalLink = inviteToken ? `${appUrl}/tenant/join/${inviteToken}` : null
   const activeTenancy = property.tenancies[0] ?? null
-  // Show Applications unless tenant is active AND tenancy is active (not on notice)
-  const showApplications = !(activeTenant && activeTenancy?.status === 'ACTIVE')
+  // Tenant selected = collapse applications section (show as expandable history)
+  const hasTenantSelected = !!(activeTenant || invitedTenant)
 
   return (
     <div className="p-4 lg:p-8 max-w-3xl">
@@ -2462,12 +2589,13 @@ export default function PropertyPage() {
       <PropertyMaintenanceSection propertyId={property.id} />
 
       {/* ── Applications section ─────────────────────────────────────────────── */}
-      {showApplications && <ApplicationsSection
+      <ApplicationsSection
         property={property}
         candidates={candidates}
         applyLink={applyLink}
         onRefresh={fetchProperty}
-      />}
+        historyOnly={hasTenantSelected}
+      />
 
       {/* Add Tenant Modal */}
       {showAddTenant && (

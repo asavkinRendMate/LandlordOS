@@ -193,7 +193,7 @@ export function DashboardShell({
       <div className="hidden lg:flex h-screen overflow-hidden">
         <aside className="w-56 shrink-0 flex flex-col h-screen overflow-y-auto bg-white border-r border-black/[0.06]">
           <div className="px-5 py-4 border-b border-gray-100">
-            <Image src="/logo.svg" alt="LetSorted" width={140} height={42} />
+            <Link href="/"><Image src="/logo.svg" alt="LetSorted" width={140} height={42} /></Link>
           </div>
           <NavLinks openMaintenanceCount={openMaintenanceCount} />
           {hasTenantProfile && <ContextSwitcher />}
@@ -220,7 +220,7 @@ export function DashboardShell({
             </svg>
           </button>
 
-          <Image src="/logo.svg" alt="LetSorted" width={100} height={33} />
+          <Link href="/"><Image src="/logo.svg" alt="LetSorted" width={100} height={33} /></Link>
 
           <div className="flex items-center gap-2">
             <button
@@ -253,7 +253,7 @@ export function DashboardShell({
           }`}
         >
           <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-            <Image src="/logo.svg" alt="LetSorted" width={120} height={40} />
+            <Link href="/"><Image src="/logo.svg" alt="LetSorted" width={120} height={40} /></Link>
             <button
               onClick={() => setDrawerOpen(false)}
               className="w-8 h-8 flex items-center justify-center rounded-lg text-[#9CA3AF] hover:text-[#1A1A1A] hover:bg-gray-100 transition-all duration-150"
