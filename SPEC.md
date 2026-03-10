@@ -108,6 +108,8 @@ User clicks "Tenant Screening" → registers via OTP (email only, no property se
 | Report Unlock | MOCK | MOCK_PAID — no real Stripe |
 | Verification Pages | LIVE | Public `/verify/[token]` |
 | Candidate View | LIVE | Neutral reliability score, no grade/"/100" |
+| Unified Candidate Result | LIVE | Shared `CandidateResultScreen` used by both apply flows |
+| Background Scoring | LIVE | `/api/scoring/process/[reportId]` with `maxDuration=60`; fire-and-forget from upload routes |
 | Credit Pack Flow | LIVE | Standalone entry point for non-subscribers; packs never expire, balances accumulate |
 
 ### Document Management
@@ -214,9 +216,13 @@ Upload Compliance Docs → Status Cards Update
 ```
 Landlord → enter emails + rent → invites sent
 ↓
-Candidate → /screening/apply/[token] → upload bank statements
+Candidate → /screening/apply/[token] OR /apply/[propertyId] → upload bank statements
+↓
+Upload route → fire-and-forget POST to /api/scoring/process/[reportId] (maxDuration=60)
 ↓
 AI: name verify (Haiku) → period validate → score 0–100 (Sonnet)
+↓
+Candidate sees unified result: CandidateScoreCard with reliability score + verification link
 ↓
 Report locked → landlord notified → pays to unlock (MOCK_PAID)
 ↓
@@ -298,6 +304,7 @@ All URLs: signed, 60-minute expiry.
 | `lib/screening-pricing.ts` | Screening pack definitions |
 | `lib/email-templates/base.ts` | Base email template + helpers |
 | `lib/email-templates/index.ts` | 9 email template functions |
+| `components/screening-flow/CandidateResultScreen.tsx` | Shared candidate score card + footer |
 
 ---
 
@@ -336,6 +343,8 @@ All URLs: signed, 60-minute expiry.
 - Photo upload: reuse maintenance pattern via props — never create duplicate components
 - "Require financial verification" defaults to ON for all new properties (DB + UI)
 - UK postcode validation on applicant address fields — inline error on submit if no valid postcode found
+- Both candidate flows (property apply + invite apply) use shared `CandidateResultScreen` — score card shown when financial verification is done, plain confirmation when not
+- Scoring analysis runs in dedicated `/api/scoring/process/[reportId]` route with `maxDuration=60` — upload routes use fire-and-forget fetch, never call `analyzeStatement()` directly
 
 ---
 
@@ -353,3 +362,5 @@ All URLs: signed, 60-minute expiry.
 - Never expose raw AI output — always `cleanSummary()`
 - Never create new photo upload components — extend maintenance pattern via props
 - Never generate check-in PDF unless both confirmations are set
+- Never call `analyzeStatement()` directly in upload routes — always use fire-and-forget to `/api/scoring/process/[reportId]`
+- Never duplicate `CandidateScoreCard`/`scoreMessage` inline — import from `components/screening-flow/CandidateResultScreen`

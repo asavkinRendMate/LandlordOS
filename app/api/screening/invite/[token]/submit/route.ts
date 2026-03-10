@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { uploadFile } from '@/lib/storage'
-import { analyzeStatement } from '@/lib/scoring'
 
 const BUCKET = 'bank-statements'
 const MAX_FILE_SIZE = 10 * 1024 * 1024
@@ -149,9 +148,11 @@ export async function POST(
     console.log(`[screening:db] Report created: ${report.id}, ${statementFiles.length} files uploaded`)
     console.log(`[screening] Triggering background analysis for reportId=${report.id}`)
 
-    // Trigger analysis in background
-    analyzeStatement(report.id).catch((err) =>
-      console.error(`[screening] ❌ Background analysis failed for ${report.id}:`, err),
+    // Fire-and-forget to a dedicated processing route with maxDuration=60
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL
+      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
+    fetch(`${baseUrl}/api/scoring/process/${report.id}`, { method: 'POST' }).catch((err) =>
+      console.error(`[screening] ❌ Background analysis trigger failed for ${report.id}:`, err),
     )
 
     return NextResponse.json({

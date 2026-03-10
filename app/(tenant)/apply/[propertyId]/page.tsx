@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import Image from 'next/image'
 import ScoringProgressScreen from '@/components/shared/ScoringProgressScreen'
+import { CandidateScoreCard } from '@/components/screening-flow/CandidateResultScreen'
 import { inputClass, selectClass } from '@/lib/form-styles'
 import { isValidUKPostcode } from '@/lib/validators/postcode'
 
@@ -52,6 +53,7 @@ interface ScoringResult {
   status: string
   totalScore: number | null
   grade: string | null
+  verificationToken?: string | null
   hasUnverifiedFiles?: boolean
   statementFiles?: StatementFile[]
   applicantName?: string | null
@@ -517,6 +519,27 @@ export default function ApplyPage() {
   // ── Done state ───────────────────────────────────────────────────────────────
 
   if (submitState === 'done') {
+    // Financial verification completed — show score card
+    if (scoring && scoring.totalScore !== null && scoring.verificationToken) {
+      return (
+        <div className="flex-1 py-10 px-4">
+          <div className="max-w-lg mx-auto">
+            <div className="text-center mb-6">
+              <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
+                <svg className="w-7 h-7 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h1 className="text-xl font-bold text-gray-900 mb-1">Check complete</h1>
+              <p className="text-gray-500 text-sm">Your landlord has been notified.</p>
+            </div>
+            <CandidateScoreCard score={scoring.totalScore} verificationToken={scoring.verificationToken} />
+          </div>
+        </div>
+      )
+    }
+
+    // No financial verification — plain confirmation
     return (
       <div className="flex-1 flex items-center justify-center p-4">
         <div className="max-w-sm w-full text-center">

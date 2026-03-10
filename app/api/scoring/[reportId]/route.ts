@@ -13,13 +13,16 @@ export async function GET(
     const supabase = createAuthClient()
     const { data: { user } } = await supabase.auth.getUser()
 
-    // ── Unauthenticated: return only status fields for candidate polling ────
+    // ── Unauthenticated: return status + score fields for candidate polling ──
     if (!user) {
       const report = await prisma.financialReport.findUnique({
         where: { id: reportId },
         select: {
           id: true,
           status: true,
+          totalScore: true,
+          grade: true,
+          verificationToken: true,
           hasUnverifiedFiles: true,
           statementFiles: true,
           applicantName: true,
