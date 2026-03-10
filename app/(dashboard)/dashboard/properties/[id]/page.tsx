@@ -2678,7 +2678,8 @@ export default function PropertyPage() {
       )}
 
       {/* ── More section ──────────────────────────────────────────────────── */}
-      <div className="bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4 mb-5">
+      <div className="flex items-start gap-3 mb-5">
+      <div className="flex-1 min-w-0 bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4">
         <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium mb-3">More</p>
         <button
           onClick={() => setShowDeleteModal(true)}
@@ -2686,6 +2687,10 @@ export default function PropertyPage() {
         >
           Delete property &rarr;
         </button>
+      </div>
+      <div className="pt-3 shrink-0">
+        <SectionHelpButton onClick={() => setHelpOpen('more')} />
+      </div>
       </div>
 
       {/* Delete Property Modal */}

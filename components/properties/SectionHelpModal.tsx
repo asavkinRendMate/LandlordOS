@@ -8,6 +8,7 @@ export type SectionHelpKey =
   | 'rent'
   | 'maintenance'
   | 'applications'
+  | 'more'
 
 const SECTION_HELP: Record<SectionHelpKey, {
   title: string
@@ -57,6 +58,12 @@ const SECTION_HELP: Record<SectionHelpKey, {
     example: 'Enter up to 10 email addresses, toggle financial verification on, send invites \u2014 candidates upload bank statements and you get a scored report.',
     role: 'Full tenant pipeline from application to selection. Once you select a tenant, this section archives automatically.',
   },
+  more: {
+    title: 'Danger Zone',
+    description: 'Deleting a property is permanent and cannot be undone. You will lose access to all historical data associated with this property.',
+    example: 'The following data will be permanently deleted:\n\u2022 All screening reports and applicant data\n\u2022 All tenant records and documents\n\u2022 All maintenance requests\n\u2022 All rent payment records\n\u2022 All check-in reports and photos\n\u2022 All compliance documents',
+    role: 'Consider exporting or downloading any important documents before deleting. This action is impossible to undo.',
+  },
 }
 
 interface SectionHelpModalProps {
@@ -92,7 +99,7 @@ export default function SectionHelpModal({ isOpen, onClose, section }: SectionHe
           </div>
           <div>
             <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium mb-1">Example</p>
-            <p className="text-sm text-[#1A1A1A] leading-relaxed">{help.example}</p>
+            <p className="text-sm text-[#1A1A1A] leading-relaxed whitespace-pre-line">{help.example}</p>
           </div>
           <div>
             <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium mb-1">How it fits in</p>
