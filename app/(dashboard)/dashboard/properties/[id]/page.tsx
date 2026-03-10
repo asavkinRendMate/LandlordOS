@@ -2627,7 +2627,10 @@ export default function PropertyPage() {
           propertyId={property.id}
           propertyAddress={address}
           onClose={() => setShowDeleteModal(false)}
-          onDeleted={() => router.push('/dashboard/properties')}
+          onDeleted={() => {
+            router.refresh()
+            router.push('/dashboard/properties')
+          }}
         />
       )}
 
