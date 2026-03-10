@@ -46,8 +46,11 @@ function initGA() {
 
   // 1. Bootstrap gtag before the script loads so consent defaults are queued first
   window.dataLayer = window.dataLayer || []
-  function gtag(...args: unknown[]) {
-    window.dataLayer.push(args)
+  // Must use `arguments` (not rest params) — Google's gtag.js expects Arguments objects in dataLayer
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const gtag: (...args: any[]) => void = function () {
+    // eslint-disable-next-line prefer-rest-params, @typescript-eslint/no-explicit-any
+    ;(window.dataLayer as any[]).push(arguments)
   }
   window.gtag = gtag
 
