@@ -188,7 +188,7 @@ User clicks "Tenant Screening" → registers via OTP (email only, no property se
 ### Analytics & Monitoring
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Google Analytics | LIVE | Consent-gated |
+| Google Analytics | LIVE | Consent Mode v2 — anonymous modelling before consent, full tracking after analytics consent |
 | Microsoft Clarity | LIVE | Consent-gated |
 | Facebook Pixel | LIVE | Consent-gated |
 | Cookie Consent | LIVE | vanilla-cookieconsent |

@@ -1,9 +1,19 @@
 'use client'
 
+// Google Analytics with Consent Mode v2
+// ──────────────────────────────────────
+// GA loads UNCONDITIONALLY — Consent Mode v2 handles gating internally:
+//   1. On page load: gtag('consent', 'default', { analytics_storage: 'denied', ... })
+//      → GA loads but only collects anonymous/modelled data (GDPR-compliant)
+//   2. On cookie consent "analytics" accepted: gtag('consent', 'update', { analytics_storage: 'granted' })
+//   3. On cookie consent "marketing" accepted: gtag('consent', 'update', { ad_storage: 'granted', ... })
+//
+// FB Pixel and Clarity do NOT support consent mode — loaded only after consent.
+//
 // Where to get each ID:
-// GA:       analytics.google.com
-// FB Pixel: business.facebook.com/events-manager
-// Clarity:  clarity.microsoft.com
+//   GA:       analytics.google.com
+//   FB Pixel: business.facebook.com/events-manager
+//   Clarity:  clarity.microsoft.com
 
 import { useEffect, useRef } from 'react'
 import { usePathname } from 'next/navigation'
@@ -23,27 +33,72 @@ const CLARITY_ID = process.env.NEXT_PUBLIC_CLARITY_ID
 
 const isDev = process.env.NODE_ENV === 'development'
 
-// ── Loaders (idempotent — safe to call multiple times) ───────────────────────
+// ── GA: Consent Mode v2 ─────────────────────────────────────────────────────
 
-function loadGA() {
-  if (!GA_ID || document.getElementById('ga-script')) return
+/** Initialise dataLayer + gtag function, set consent defaults, then load the GA script. */
+function initGA() {
+  if (!GA_ID) {
+    if (isDev) console.log('[analytics] NEXT_PUBLIC_GA_ID is not set — skipping GA')
+    return
+  }
 
+  if (document.getElementById('ga-script')) return
+
+  // 1. Bootstrap gtag before the script loads so consent defaults are queued first
+  window.dataLayer = window.dataLayer || []
+  function gtag(...args: unknown[]) {
+    window.dataLayer.push(args)
+  }
+  window.gtag = gtag
+
+  // 2. Consent Mode v2 defaults — all denied until user interacts with banner.
+  //    GA still loads and models anonymous traffic (cookieless pings).
+  gtag('consent', 'default', {
+    analytics_storage: 'denied',
+    ad_storage: 'denied',
+    ad_user_data: 'denied',
+    ad_personalization: 'denied',
+    wait_for_update: 500,
+  })
+
+  // 3. Load the gtag.js script
   const script = document.createElement('script')
   script.id = 'ga-script'
   script.src = `https://www.googletagmanager.com/gtag/js?id=${GA_ID}`
   script.async = true
   document.head.appendChild(script)
 
-  window.dataLayer = window.dataLayer || []
-  function gtag(...args: unknown[]) {
-    window.dataLayer.push(args)
-  }
-  window.gtag = gtag
   gtag('js', new Date())
-  gtag('config', GA_ID, { anonymize_ip: true })
+  gtag('config', GA_ID)
 
-  if (isDev) console.log('[analytics] GA loaded')
+  if (isDev) console.log('[analytics] GA loaded with Consent Mode v2 (defaults: denied)')
 }
+
+/** Update GA consent state based on current cookie preferences. */
+function updateGAConsent() {
+  if (!GA_ID || !window.gtag) return
+
+  const analyticsOk = acceptedCategory('analytics')
+  const marketingOk = acceptedCategory('marketing')
+
+  if (analyticsOk) {
+    window.gtag('consent', 'update', {
+      analytics_storage: 'granted',
+    })
+    if (isDev) console.log('[analytics] GA consent update: analytics_storage → granted')
+  }
+
+  if (marketingOk) {
+    window.gtag('consent', 'update', {
+      ad_storage: 'granted',
+      ad_user_data: 'granted',
+      ad_personalization: 'granted',
+    })
+    if (isDev) console.log('[analytics] GA consent update: ad_storage → granted')
+  }
+}
+
+// ── FB Pixel (no consent mode — loaded only after marketing consent) ─────────
 
 function loadFBPixel() {
   if (!FB_ID || document.getElementById('fb-pixel')) return
@@ -67,6 +122,8 @@ function loadFBPixel() {
   if (isDev) console.log('[analytics] FB Pixel loaded')
 }
 
+// ── Clarity (no consent mode — loaded only after analytics consent) ──────────
+
 function loadClarity() {
   if (!CLARITY_ID || document.getElementById('clarity-script')) return
 
@@ -84,20 +141,21 @@ function loadClarity() {
   if (isDev) console.log('[analytics] Clarity loaded')
 }
 
-// ── Consent handler ──────────────────────────────────────────────────────────
+// ── Consent handler (called on banner interaction + on mount for returning users) ──
 
 function handleConsent() {
-  const analyticsOk = acceptedCategory('analytics')
-  const marketingOk = acceptedCategory('marketing')
+  // GA consent mode update (analytics + marketing)
+  updateGAConsent()
 
-  if (analyticsOk) {
-    loadGA()
+  // Clarity — consent-gated (no consent mode support)
+  if (acceptedCategory('analytics')) {
     loadClarity()
   } else if (isDev) {
-    console.log('[analytics] No analytics consent — skipping GA & Clarity')
+    console.log('[analytics] No analytics consent — skipping Clarity')
   }
 
-  if (marketingOk) {
+  // FB Pixel — consent-gated (no consent mode support)
+  if (acceptedCategory('marketing')) {
     loadFBPixel()
   } else if (isDev) {
     console.log('[analytics] No marketing consent — skipping FB Pixel')
@@ -110,8 +168,11 @@ export default function Analytics() {
   const pathname = usePathname()
   const prevPathname = useRef(pathname)
 
-  // Listen for consent events
+  // Initialise GA unconditionally, then listen for consent events
   useEffect(() => {
+    // GA loads immediately with consent defaults (denied) — Consent Mode v2
+    initGA()
+
     // Check existing consent (returning visitors who already accepted)
     handleConsent()
 
@@ -126,7 +187,7 @@ export default function Analytics() {
     }
   }, [])
 
-  // Track route changes for FB Pixel
+  // Track SPA route changes for FB Pixel
   useEffect(() => {
     if (prevPathname.current !== pathname) {
       prevPathname.current = pathname
