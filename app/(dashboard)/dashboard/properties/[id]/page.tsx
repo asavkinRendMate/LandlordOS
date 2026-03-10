@@ -2551,7 +2551,7 @@ export default function PropertyPage() {
   const hasTenantSelected = !!(activeTenant || invitedTenant)
 
   return (
-    <div className="p-4 lg:p-8 max-w-3xl">
+    <div className="p-4 lg:p-8 max-w-[50rem]">
 
       {/* Back */}
       <Link href="/dashboard/properties" className="inline-flex items-center gap-1 text-sm text-[#9CA3AF] hover:text-[#6B7280] transition-colors mb-6">
