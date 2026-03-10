@@ -9,16 +9,23 @@ export async function GET() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const dbUser = await prisma.user.findUnique({
-      where: { id: user.id },
-      select: { name: true, email: true, createdAt: true },
-    })
+    const [dbUser, tenantProfile] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: user.id },
+        select: { name: true, email: true, createdAt: true },
+      }),
+      prisma.tenant.findFirst({
+        where: { userId: user.id },
+        select: { id: true },
+      }),
+    ])
 
     return NextResponse.json({
       data: {
         name: dbUser?.name ?? null,
         email: dbUser?.email ?? user.email,
         createdAt: dbUser?.createdAt ?? null,
+        hasTenantProfile: !!tenantProfile,
       },
     })
   } catch (err) {

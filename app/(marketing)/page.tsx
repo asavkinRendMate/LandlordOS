@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
+import { createClient } from '@/lib/supabase/client'
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -209,6 +210,26 @@ export default function LandingPage() {
   const [loading, setLoading] = useState(false)
   const [formError, setFormError] = useState('')
 
+  // Auth-aware dashboard CTA
+  const [dashboardInfo, setDashboardInfo] = useState<{ href: string; label: string } | null>(null)
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!data.user) return
+      try {
+        const res = await fetch('/api/user/profile')
+        if (!res.ok) return
+        const json = await res.json()
+        if (json.data?.hasTenantProfile) {
+          setDashboardInfo({ href: '/tenant/dashboard', label: 'Tenant Dashboard' })
+        } else {
+          setDashboardInfo({ href: '/dashboard', label: 'Landlord Dashboard' })
+        }
+      } catch {}
+    })
+  }, [])
+
   // Lightbox state
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null)
 
@@ -365,12 +386,21 @@ export default function LandingPage() {
             >
               Guides
             </a>
-            <button
-              onClick={() => setBetaOpen(true)}
-              className="border border-green-600 text-green-600 bg-white hover:bg-green-600/[0.06] font-semibold px-3 py-2 md:px-5 md:py-2.5 rounded-lg text-xs md:text-sm transition-all duration-150"
-            >
-              Closed Beta
-            </button>
+            {dashboardInfo ? (
+              <a
+                href={dashboardInfo.href}
+                className="border border-green-600 text-green-600 bg-white hover:bg-green-600/[0.06] font-semibold px-3 py-2 md:px-5 md:py-2.5 rounded-lg text-xs md:text-sm transition-all duration-150"
+              >
+                {dashboardInfo.label}
+              </a>
+            ) : (
+              <button
+                onClick={() => setBetaOpen(true)}
+                className="border border-green-600 text-green-600 bg-white hover:bg-green-600/[0.06] font-semibold px-3 py-2 md:px-5 md:py-2.5 rounded-lg text-xs md:text-sm transition-all duration-150"
+              >
+                Closed Beta
+              </button>
+            )}
             <a
               href="/screening"
               className="inline-flex items-center gap-1 md:gap-1.5 bg-green-600 hover:bg-green-700 text-white font-semibold px-3 py-2 md:px-5 md:py-2.5 rounded-lg text-xs md:text-sm transition-colors duration-150"
