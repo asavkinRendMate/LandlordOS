@@ -2119,7 +2119,10 @@ function ApplicationsSection({
       const res = await fetch('/api/screening/select-tenant', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ inviteId: selectInvite.inviteId, propertyId: property.id }),
+        body: JSON.stringify({
+          inviteId: selectInvite.candidateId ? `candidate-${selectInvite.candidateId}` : selectInvite.inviteId,
+          propertyId: property.id,
+        }),
       })
       if (res.ok) {
         setSelectInvite(null)
