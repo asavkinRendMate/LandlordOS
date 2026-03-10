@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import DocumentUploadModal from '@/components/shared/DocumentUploadModal'
 import DeletePropertyModal from '@/components/properties/DeletePropertyModal'
+import SectionHelpModal, { SectionHelpButton, type SectionHelpKey } from '@/components/properties/SectionHelpModal'
 import TenantDetailsForm, { type TenantFormData } from '@/components/shared/TenantDetailsForm'
 import { type RoomEntry, ROOM_TYPE_LABELS, QUICK_ADD_ROOMS } from '@/lib/room-utils'
 import { inputClass, selectClassCompact } from '@/lib/form-styles'
@@ -711,6 +712,7 @@ function RentPaymentsSection({ propertyId }: { propertyId: string }) {
   const [loading, setLoading] = useState(true)
   const [showHistory, setShowHistory] = useState(false)
   const [openFormId, setOpenFormId] = useState<string | null>(null)
+  const [showHelp, setShowHelp] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -732,15 +734,19 @@ function RentPaymentsSection({ propertyId }: { propertyId: string }) {
   const tooltipText = "You're marking payments manually for now. Open Banking integration is coming soon — your rent payments will be confirmed automatically."
 
   const headerRow = (
-    <div className="flex items-center gap-2 mb-3">
-      <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium">Rent Payments</p>
-      <InfoTooltip text={tooltipText} />
-    </div>
+    <>
+      <SectionHelpButton onClick={() => setShowHelp(true)} />
+      <SectionHelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} section="rent" />
+      <div className="flex items-center gap-2 mb-3">
+        <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium">Rent Payments</p>
+        <InfoTooltip text={tooltipText} />
+      </div>
+    </>
   )
 
   if (loading) {
     return (
-      <div className="bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4 mb-5">
+      <div className="relative bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4 mb-5">
         {headerRow}
         <div className="flex justify-center py-6">
           <div className="w-5 h-5 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
@@ -751,7 +757,7 @@ function RentPaymentsSection({ propertyId }: { propertyId: string }) {
 
   if (payments.length === 0) {
     return (
-      <div className="bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4 mb-5">
+      <div className="relative bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4 mb-5">
         {headerRow}
         <p className="text-[#9CA3AF] text-sm italic">
           Payments will appear once the tenancy has a rent amount and payment day set.
@@ -761,7 +767,7 @@ function RentPaymentsSection({ propertyId }: { propertyId: string }) {
   }
 
   return (
-    <div className="bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4 mb-5">
+    <div className="relative bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4 mb-5">
       {headerRow}
 
       {/* Summary strip */}
@@ -858,6 +864,7 @@ function ComplianceSection({ propertyId }: { propertyId: string }) {
   const [docs, setDocs] = useState<PropertyDocument[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
+  const [showHelp, setShowHelp] = useState(false)
 
   const loadDocs = useCallback(async () => {
     setLoading(true)
@@ -884,8 +891,10 @@ function ComplianceSection({ propertyId }: { propertyId: string }) {
   const requiredTypes = ['GAS_SAFETY', 'EPC', 'EICR', 'HOW_TO_RENT']
 
   return (
-    <div className="bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4 mb-5">
-      <div className="flex items-center justify-between mb-4">
+    <div className="relative bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4 mb-5">
+      <SectionHelpButton onClick={() => setShowHelp(true)} />
+      <SectionHelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} section="documents" />
+      <div className="flex items-center justify-between mb-4 pr-10">
         <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium">Property Documents</p>
         <button
           onClick={() => setShowModal(true)}
@@ -1031,6 +1040,7 @@ function RoomsSection({ propertyId, rooms: initialRooms }: { propertyId: string;
   const [editing, setEditing] = useState(false)
   const [editRooms, setEditRooms] = useState<RoomEntry[]>([])
   const [saving, setSaving] = useState(false)
+  const [showHelp, setShowHelp] = useState(false)
   const [addingRoom, setAddingRoom] = useState(false)
   const [newRoom, setNewRoom] = useState<RoomEntry>({ type: 'OTHER', name: '' })
 
@@ -1131,8 +1141,10 @@ function RoomsSection({ propertyId, rooms: initialRooms }: { propertyId: string;
   const savedBedroomCount = rooms.filter((r) => r.type === 'BEDROOM').length
 
   return (
-    <div className="bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4 mb-5">
-      <div className="flex items-center justify-between mb-3">
+    <div className="relative bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4 mb-5">
+      <SectionHelpButton onClick={() => setShowHelp(true)} />
+      <SectionHelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} section="rooms" />
+      <div className="flex items-center justify-between mb-3 pr-10">
         <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium">Rooms</p>
         {!editing && (
           <button onClick={startEdit} className="text-xs text-[#16a34a] hover:text-[#15803d] font-medium transition-colors">
@@ -1282,6 +1294,7 @@ function RoomsSection({ propertyId, rooms: initialRooms }: { propertyId: string;
 function CheckInSection({ propertyId }: { propertyId: string }) {
   const [report, setReport] = useState<{ id: string; status: string; pdfUrl: string | null } | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showHelp, setShowHelp] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -1309,7 +1322,9 @@ function CheckInSection({ propertyId }: { propertyId: string }) {
   if (loading) return null
 
   return (
-    <div className="bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4 mb-5">
+    <div className="relative bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4 mb-5">
+      <SectionHelpButton onClick={() => setShowHelp(true)} />
+      <SectionHelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} section="checkin" />
       <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium mb-3">Check-in Report</p>
 
       {report?.status === 'AGREED' ? (
@@ -1372,6 +1387,7 @@ const MAINT_STATUS_LABEL: Record<string, string> = {
 function PropertyMaintenanceSection({ propertyId }: { propertyId: string }) {
   const [requests, setRequests] = useState<MaintenanceRequest[]>([])
   const [loading, setLoading] = useState(true)
+  const [showHelp, setShowHelp] = useState(false)
 
   useEffect(() => {
     fetch(`/api/maintenance?propertyId=${propertyId}&status=OPEN`)
@@ -1381,8 +1397,10 @@ function PropertyMaintenanceSection({ propertyId }: { propertyId: string }) {
   }, [propertyId])
 
   return (
-    <div className="bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4 mb-5">
-      <div className="flex items-center justify-between mb-3">
+    <div className="relative bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4 mb-5">
+      <SectionHelpButton onClick={() => setShowHelp(true)} />
+      <SectionHelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} section="maintenance" />
+      <div className="flex items-center justify-between mb-3 pr-10">
         <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium">Maintenance</p>
         <a
           href={`/dashboard/maintenance?propertyId=${propertyId}`}
@@ -2119,6 +2137,7 @@ function ApplicationsSection({
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [expanded, setExpanded] = useState(false)
+  const [showHelp, setShowHelp] = useState(false)
 
   const validEmails = emails.filter((e) => EMAIL_RE.test(e))
   const hasValidEmails = validEmails.length > 0
@@ -2199,10 +2218,12 @@ function ApplicationsSection({
     if (totalApplicants === 0) return null
 
     return (
-      <div className="bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4 mb-5">
+      <div className="relative bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4 mb-5">
+        <SectionHelpButton onClick={() => setShowHelp(true)} />
+        <SectionHelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} section="applications" />
         <button
           onClick={() => setExpanded(!expanded)}
-          className="flex items-center justify-between w-full text-left"
+          className="flex items-center justify-between w-full text-left pr-10"
         >
           <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium">Applications</p>
           <div className="flex items-center gap-2">
@@ -2263,7 +2284,9 @@ function ApplicationsSection({
   }
 
   return (
-    <div className="bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4 mb-5">
+    <div className="relative bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4 mb-5">
+      <SectionHelpButton onClick={() => setShowHelp(true)} />
+      <SectionHelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} section="applications" />
       <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium mb-3">Applications</p>
 
       {/* Application link */}
@@ -2437,6 +2460,7 @@ export default function PropertyPage() {
   const [showAddTenant, setShowAddTenant] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+  const [helpOpen, setHelpOpen] = useState<SectionHelpKey | null>(null)
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
 
@@ -2525,7 +2549,8 @@ export default function PropertyPage() {
           : TENANT_STRIP_TYPES.some((t) => tenantDocStatus(currentTenant.documents, t) !== 'valid') ? 'border-orange-300'
           : 'border-green-300'
         return (
-          <div className={`bg-white border ${borderCls} rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4 mb-5 transition-colors`}>
+          <div className={`relative bg-white border ${borderCls} rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4 mb-5 transition-colors`}>
+            <SectionHelpButton onClick={() => setHelpOpen('tenant')} />
             <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium mb-3">Tenant</p>
 
             {currentTenant ? (
@@ -2633,6 +2658,13 @@ export default function PropertyPage() {
           }}
         />
       )}
+
+      {/* Section help modal (for inline sections like Tenant) */}
+      <SectionHelpModal
+        isOpen={helpOpen !== null}
+        onClose={() => setHelpOpen(null)}
+        section={helpOpen ?? 'tenant'}
+      />
 
       {/* Toast */}
       {toast && (
