@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import DocumentUploadModal from '@/components/shared/DocumentUploadModal'
+import DeletePropertyModal from '@/components/properties/DeletePropertyModal'
 import TenantDetailsForm, { type TenantFormData } from '@/components/shared/TenantDetailsForm'
 import { type RoomEntry, ROOM_TYPE_LABELS, QUICK_ADD_ROOMS } from '@/lib/room-utils'
 import { inputClass, selectClassCompact } from '@/lib/form-styles'
@@ -2307,6 +2308,7 @@ export default function PropertyPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showAddTenant, setShowAddTenant] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
@@ -2477,6 +2479,27 @@ export default function PropertyPage() {
             fetchProperty()
             showToast(message)
           }}
+        />
+      )}
+
+      {/* ── More section ──────────────────────────────────────────────────── */}
+      <div className="bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4 mb-5">
+        <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium mb-3">More</p>
+        <button
+          onClick={() => setShowDeleteModal(true)}
+          className="text-sm text-red-600 hover:text-red-700 font-medium transition-colors"
+        >
+          Delete property &rarr;
+        </button>
+      </div>
+
+      {/* Delete Property Modal */}
+      {showDeleteModal && (
+        <DeletePropertyModal
+          propertyId={property.id}
+          propertyAddress={address}
+          onClose={() => setShowDeleteModal(false)}
+          onDeleted={() => router.push('/dashboard/properties')}
         />
       )}
 

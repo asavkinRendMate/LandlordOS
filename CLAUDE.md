@@ -991,7 +991,7 @@ model CheckInPhoto {
 
 | Feature | Status | Notes |
 |---|---|---|
-| Property management | LIVE | CRUD, compliance docs, document management |
+| Property management | LIVE | CRUD, compliance docs, document management, cascade delete with type-to-confirm |
 | Tenant pipeline | LIVE | Apply → Candidate → Invited → Tenant lifecycle. ApplicationInvite persists emailed invites; merged with CANDIDATE tenants for unified applicant list on property page |
 | Tenant portal | LIVE | Auth-protected, docs, rent, maintenance, check-in inspection |
 | Document management | LIVE | 14 types, drag-drop upload, signed URLs |
@@ -1161,3 +1161,4 @@ Every new table MUST include in its migration file: // Updated: 2026-03-09 — R
 - Screening charge route (`/api/payment/charge`) handles both invite IDs and report IDs in the `inviteId` param — falls back to FinancialReport lookup for standalone/credit-pack flow. // Updated: 2026-03-10 — invite unlock fix  <!-- Auto-preserved by update-docs -->
 - Screening focused-flow pages use shared `ScreeningLayout` + `ScreeningCard` components from `components/screening-flow/`. Unified bg: `bg-[#f5f7f2]`, consistent nav with logo, compact footer. // Updated: 2026-03-10 — unified screening layout  <!-- Auto-preserved by update-docs -->
 - Applicants list on property detail page shows score inline (`50/100`) for COMPLETED reports — landlord-only view. Colour uses `scoreTextColour(grade)` matching `gradeColour` thresholds from `ScreeningReportDisplay`. Never show grade label in this list. // Updated: 2026-03-10 — inline applicant score  <!-- Auto-preserved by update-docs -->
+- Property deletion (`DELETE /api/properties/[id]`) cascades through all related data + storage files. Deletion order matters to avoid FK violations: CheckInPhotos → CheckInReports → MaintenancePhotos/StatusHistory → MaintenanceRequests → ScreeningLogs/FinancialReports → DocumentAcknowledgments → TenantDocuments → RentPayments → Tenancies → Tenants → PropertyDocuments → ComplianceDocs → PropertyRooms → ApplicationInvites → Property. Storage cleanup (best-effort) covers 5 buckets: documents, check-in-photos, tenant-documents, maintenance-photos, bank-statements. // Updated: 2026-03-10 — property cascade delete  <!-- Auto-preserved by update-docs -->

@@ -76,6 +76,7 @@ User clicks "Tenant Screening" → registers via OTP (email only, no property se
 | OTP Auth (Supabase) | LIVE | 6-digit code |
 | Demo Login Buttons | LIVE | Env-var gated |
 | Property Management | LIVE | Address, type, bedrooms, status |
+| Delete Property | LIVE | Confirmation modal, type-to-confirm, full cascade delete including storage files. Archive feature planned (hide from UI, keep in DB) — not yet implemented |
 | Property Rooms Setup | LIVE | Wizard Step 2; used by check-in reports |
 | Onboarding Wizard | LIVE | 5 steps: Address → Rooms → Occupancy → Tenant → Done |
 | Name Capture Modal | LIVE | Undismissable on first login if no name |
