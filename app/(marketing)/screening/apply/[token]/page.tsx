@@ -143,7 +143,7 @@ export default function CandidateApplyPage() {
 
   // ── Submit ──────────────────────────────────────────────────────────────────────
 
-  const pollForResult = useCallback(async (_rid: string) => {
+  const pollForResult = useCallback(async () => {
     const pollInterval = setInterval(async () => {
       try {
         // Poll public invite endpoint (no auth required — candidate isn't logged in)
@@ -203,7 +203,7 @@ export default function CandidateApplyPage() {
 
       setStep('processing')
       setReportId(json.data.reportId)
-      pollForResult(json.data.reportId)
+      pollForResult()
     } catch {
       setFileError('Something went wrong. Please try again.')
       setSubmitting(false)
