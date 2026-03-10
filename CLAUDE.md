@@ -1007,7 +1007,7 @@ model CheckInPhoto {
 | Settings page | LIVE | Display name edit |
 | Check-in reports | BETA | Property rooms, photo capture, tenant/landlord sign-off, tenant dashboard section, auth-aware header on check-in page |
 | Financial Passport | PRE-LAUNCH | Email capture landing page only |
-| Google Analytics | LIVE | Consent Mode v2 — script loads unconditionally, anonymous modelling before consent, full tracking after analytics consent. `vanilla-cookieconsent` `onConsent`/`onChange` callbacks fire `gtag('consent', 'update', ...)` |
+| Google Analytics | LIVE | Consent Mode v2 — script loads unconditionally, `gtag('config')` must be called after consent defaults (otherwise GA defers all hits indefinitely). `vanilla-cookieconsent` `onConsent`/`onChange` callbacks fire `gtag('consent', 'update', ...)` |
 | Live chat (Crisp) | LIVE | Marketing pages only |
 | Demo login | LIVE | Landlord + tenant demo buttons on login page, env-var gated |
 | Stripe payments | NOT STARTED | All purchases use MOCK_PAID |

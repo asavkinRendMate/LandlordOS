@@ -61,17 +61,20 @@ function initGA() {
     wait_for_update: 500,
   })
 
-  // 3. Load the gtag.js script
+  // 3. Queue js + config commands BEFORE loading the script so the entire
+  //    dataLayer is ready when gtag.js processes the queue on load.
+  //    Without the config call GA defers all hits indefinitely.
+  gtag('js', new Date())
+  gtag('config', GA_ID)
+
+  // 4. Load the gtag.js script — processes the dataLayer queue above on load
   const script = document.createElement('script')
   script.id = 'ga-script'
   script.src = `https://www.googletagmanager.com/gtag/js?id=${GA_ID}`
   script.async = true
   document.head.appendChild(script)
 
-  gtag('js', new Date())
-  gtag('config', GA_ID)
-
-  if (isDev) console.log('[analytics] GA loaded with Consent Mode v2 (defaults: denied)')
+  if (isDev) console.log(`[analytics] GA loaded (${GA_ID}) with Consent Mode v2 (defaults: denied)`)
 }
 
 /** Update GA consent state based on current cookie preferences. */
