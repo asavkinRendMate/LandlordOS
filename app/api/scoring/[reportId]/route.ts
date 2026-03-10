@@ -68,7 +68,8 @@ export async function GET(
       return NextResponse.json({ error: 'Report not found' }, { status: 404 })
     }
 
-    const { invite: _invite, ...reportData } = report
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { invite, ...reportData } = report
     return NextResponse.json({ data: reportData })
   } catch (err) {
     console.error('[scoring/[reportId] GET]', err)
