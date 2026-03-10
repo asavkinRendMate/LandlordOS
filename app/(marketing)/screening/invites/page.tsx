@@ -286,9 +286,9 @@ export default function InvitesPage() {
                     <span>{fmtDate(inv.createdAt)}</span>
                   </div>
                   <p className="text-xs text-gray-500">{inv.propertyAddress}</p>
-                  {(inv.status === 'COMPLETED' || inv.status === 'PAID') && (
+                  {(inv.status === 'COMPLETED' || inv.status === 'PAID') && inv.report?.id && (
                     <Link
-                      href={`/screening/report/${inv.id}`}
+                      href={`/screening/report/${inv.report.id}`}
                       className="text-green-600 hover:text-green-700 text-xs font-medium mt-2 inline-block"
                     >
                       {inv.status === 'PAID' ? 'View report' : 'View & unlock report'}

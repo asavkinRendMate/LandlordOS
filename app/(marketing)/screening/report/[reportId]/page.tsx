@@ -27,7 +27,7 @@ interface InviteListItem {
 export default function ReportPage() {
   const params = useParams()
   const router = useRouter()
-  const inviteId = params.inviteId as string
+  const reportId = params.reportId as string
 
   const [loading, setLoading] = useState(true)
   const [invite, setInvite] = useState<InviteListItem | null>(null)
@@ -41,52 +41,33 @@ export default function ReportPage() {
   const [cardInfo, setCardInfo] = useState<{ last4: string; brand: string } | null>(null)
   const { showCardModal, requireCard, onCardSaveComplete, closeCardModal } = usePayment()
 
-  // ── Fetch invite + report ───────────────────────────────────────────────────────
+  // ── Fetch report ──────────────────────────────────────────────────────────────────
 
   const fetchData = useCallback(async () => {
     try {
-      // First check auth by fetching invites
-      const invitesRes = await fetch('/api/screening/invites')
-      if (invitesRes.status === 401) {
-        router.push(`/login?next=${encodeURIComponent(`/screening/report/${inviteId}`)}`)
+      // Auth check
+      const authRes = await fetch('/api/screening/invites')
+      if (authRes.status === 401) {
+        router.push(`/login?next=${encodeURIComponent(`/screening/report/${reportId}`)}`)
         return
       }
 
-      const invitesJson = await invitesRes.json()
-      const inv = invitesJson.data?.find((i: InviteListItem) => i.id === inviteId)
-
-      if (inv) {
-        setInvite(inv)
-
-        // If there's a completed report, fetch full details
-        if (inv.report?.id && inv.report.status === 'COMPLETED') {
-          const reportRes = await fetch(`/api/scoring/${inv.report.id}`)
-          const reportJson = await reportRes.json()
-          if (reportJson.data) {
-            setScoring(reportJson.data)
-            setIsLocked(inv.report.isLocked)
-          }
-        }
-        setLoading(false)
-        return
-      }
-
-      // Fallback: param may be a FinancialReport ID (property application flow)
-      const reportRes = await fetch(`/api/scoring/${inviteId}`)
+      // Always use reportId from URL params directly
+      const reportRes = await fetch(`/api/scoring/${reportId}`)
       if (!reportRes.ok) {
-        setError('Invite not found or you don\'t have access')
+        setError('Report not found or you don\'t have access')
         setLoading(false)
         return
       }
       const reportJson = await reportRes.json()
       const report = reportJson.data
       if (!report) {
-        setError('Invite not found or you don\'t have access')
+        setError('Report not found or you don\'t have access')
         setLoading(false)
         return
       }
 
-      // Build invite-like object from report data
+      // Build display data from report
       const addr = report.property
         ? [report.property.line1, report.property.line2, report.property.city, report.property.postcode].filter(Boolean).join(', ')
         : ''
@@ -114,7 +95,7 @@ export default function ReportPage() {
     } finally {
       setLoading(false)
     }
-  }, [inviteId, router])
+  }, [reportId, router])
 
   useEffect(() => { fetchData() }, [fetchData])
 
@@ -154,7 +135,7 @@ export default function ReportPage() {
       const chargeRes = await fetch('/api/payment/charge', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason: unlockReason, inviteId }),
+        body: JSON.stringify({ reason: unlockReason, inviteId: reportId }),
       })
       const chargeJson = await chargeRes.json()
       if (!chargeRes.ok) {
@@ -163,8 +144,8 @@ export default function ReportPage() {
       }
 
       setIsLocked(false)
-      // Refetch to get full report data
-      const reportRes = await fetch(`/api/scoring/${invite?.report?.id}`)
+      // Refetch to get full report data — always use reportId from URL params
+      const reportRes = await fetch(`/api/scoring/${reportId}`)
       const reportJson = await reportRes.json()
       if (reportJson.data) setScoring(reportJson.data)
     } catch {

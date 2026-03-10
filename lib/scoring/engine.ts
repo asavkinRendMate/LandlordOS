@@ -1350,7 +1350,7 @@ export async function analyzeStatement(reportId: string): Promise<void> {
         const { landlordNotificationHtml } = await import('@/lib/email-templates')
         const { sendEmail } = await import('@/lib/resend')
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://letsorted.co.uk'
-        const reportUrl = `${appUrl}/screening/report/${report.inviteId}`
+        const reportUrl = `${appUrl}/screening/report/${reportId}`
 
         log.info('SAVE', `Sending landlord notification to ${report.invite.landlord.email}`)
         await sendEmail({
