@@ -18,12 +18,34 @@
 - **1 property: FREE forever** (acquisition)
 - **2+ properties: £9.99/month per additional property**
 
-### Screening — Invite Flow (primary)
+### Screening — Subscriber (Invite Flow)
 | Scenario | Price |
 |----------|-------|
-| First screening per tenancy cycle (subscriber) | £9.99 |
-| Each additional candidate (same property cycle) | £1.49 |
-| Standalone (no subscription) | £11.99 |
+| First screening per tenancy cycle | £9.99 |
+| Each additional candidate (same property, same cycle) | £1.49 |
+
+Tenancy cycle resets when property returns to VACANT.
+
+Cycle is per-property. First **unlock** in the cycle costs £9.99; each subsequent unlock in the same cycle costs £1.49. Cycle resets when the property returns to VACANT status. Invites sent and statements uploaded do not trigger payment — only unlocking a report does.
+
+### Screening — Standalone (Credit Packs)
+For landlords without a LetSorted subscription. Packs never expire, tied to account, balances accumulate on top-up.
+
+| Pack | Price | Per check |
+|------|-------|-----------|
+| 1 check | £11.99 | £11.99 |
+| 3 checks | £19.99 | £6.66 |
+| 6 checks | £29.99 | £5.00 |
+| 10 checks | £39.99 | £4.00 |
+
+**Pack rules:**
+- Packs never expire — use anytime
+- Buying another pack adds to existing balance (no separate wallets)
+- If a pack user later subscribes — unused pack credits are NOT converted or lost; subscriber pricing (£9.99/£1.49) simply takes precedence for future checks
+- Each unlock consumes 1 credit. Subscribers with remaining pack credits are NOT charged from the pack — subscriber pricing (£9.99/£1.49) takes precedence.
+
+**Standalone entry flow (from homepage):**
+User clicks "Tenant Screening" → registers via OTP (email only, no property setup required) → selects pack → pays via Stripe → uploads bank statement → receives report → post-report prompt to upgrade to full subscription
 
 ### Pay-Per-Use (future)
 | Feature | Price | Status |
@@ -41,7 +63,7 @@
 - **Method:** Supabase Auth — **6-digit OTP code** (not magic link)
 - No passwords, no social login
 - OTP sent by email, 45s resend cooldown, `lib/supabase/otp.ts`
-- OTP handling in `(auth)/login/page.tsx` (landlords) and `(tenant)/passport/page.tsx` (tenants)
+- `OTPInput` component — 6-box auto-advance, paste support
 - **Why not magic link:** corporate email security (Outlook/Google) pre-clicks links, invalidating tokens before user sees them
 
 ---
@@ -68,12 +90,12 @@
 | Tenant Status Pipeline | LIVE | CANDIDATE → INVITED → TENANT → FORMER_TENANT |
 | Tenant Onboarding | LIVE | `/tenant/join/[token]` |
 | Select Tenant Flow | LIVE | Winner email + rejections to others, Property → ACTIVE |
-| Tenant Portal Dashboard | LIVE | Document access, maintenance, rent view |
+| Tenant Portal Link | LIVE | Copyable + send by email on property detail |
 
 ### AI Financial Screening
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Screening Invite Flow | LIVE | Primary flow — invite → upload → AI → unlock |
+| Screening Invite Flow | BETA | Primary flow — invite → upload → AI → unlock |
 | Joint Application | LIVE | Income summed as household |
 | AI Scoring Engine | LIVE | 32 rules, 6 categories, 0–100 score (Sonnet) |
 | Name Verification | LIVE | Per-file Claude Haiku call |
@@ -84,7 +106,7 @@
 | Report Unlock | MOCK | MOCK_PAID — no real Stripe |
 | Verification Pages | LIVE | Public `/verify/[token]` |
 | Candidate View | LIVE | Neutral reliability score, no grade/"/100" |
-| Credit Pack Flow | LIVE | Still functional, invite flow is primary |
+| Credit Pack Flow | LIVE | Standalone entry point for non-subscribers; packs never expire, balances accumulate |
 
 ### Document Management
 | Feature | Status | Notes |
@@ -124,6 +146,26 @@
 | Status Machine | LIVE | DRAFT → PENDING → IN_REVIEW → AGREED/DISPUTED |
 | GDPR Retention | NOTED | Deletion cron not yet built |
 
+### Tenant Portal
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Document Access + Upload | LIVE | View, acknowledge, upload own docs |
+| Maintenance Submission | LIVE | With photos |
+| Rent Payment View | LIVE | Read-only |
+| Check-in Review | LIVE | Confirm/dispute, upload photos |
+| Onboarding Checklist | LIVE | R2R, deposit, first rent, agreement |
+| Notice Period | NOT STARTED | — |
+
+### Tenancy Management
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Deposit Tracking | LIVE | Amount, scheme, protection status, 30-day alert |
+| Check-in Reports | LIVE | See above |
+| Contract Generation | NOT STARTED | APT template, Stripe payment |
+| Section 13 Notices | NOT STARTED | Rent increase workflow |
+| Section 8 Notices | NOT STARTED | Possession grounds |
+| Check-out Inspection | NOT STARTED | Side-by-side comparison with check-in |
+
 ### Notifications & Alerts
 | Feature | Status | Notes |
 |---------|--------|-------|
@@ -134,15 +176,14 @@
 | Rent Reminders Cron | LIVE | Daily 8am UTC |
 | Check-in Notifications | LIVE | Review request, response, PDF to both |
 
-### Marketing & SEO
+### SEO & Content
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Sitemap + Robots | LIVE | Dynamic |
 | JSON-LD + OG Image | LIVE | — |
 | Guides/Blog | LIVE | MDX, `/guides/[slug]` |
-| Article Generator | LIVE | `scripts/generate-article.ts` |
+| Article Generator | LIVE | `npm run generate-article "topic"` |
 | Feature Pages | LIVE | 5 marketing feature pages |
-| Renters' Rights Act Page | LIVE | `/renters-rights-act` with Crisp chat |
 
 ### Analytics & Monitoring
 | Feature | Status | Notes |
@@ -167,38 +208,38 @@ Wizard: Address + Type → Rooms → Occupancy → Tenant → Done
 Upload Compliance Docs → Status Cards Update
 ```
 
-### Screening Flow (Primary)
+### Screening Flow
 ```
-Property page → Invite Applicants → Enter emails + rent
+Landlord → enter emails + rent → invites sent
 ↓
-Candidates receive invitation → /screening/apply/[token]
+Candidate → /screening/apply/[token] → upload bank statements
 ↓
-Upload bank statements → AI processing (name verify + analysis)
+AI: name verify (Haiku) → period validate → score 0–100 (Sonnet)
 ↓
-Report locked → landlord pays to unlock (MOCK_PAID)
+Report locked → landlord notified → pays to unlock (MOCK_PAID)
 ↓
 Select Tenant → winner email + rejections → Property ACTIVE
 ```
 
 ### Check-in Report Flow
 ```
-Property ACTIVE → Create Check-in Report → Room setup required
+Rooms configured → Landlord creates report
 ↓
-Landlord: Room-by-room photos + conditions → Send to Tenant
+Room-by-room: photos + condition + captions → Send to tenant
 ↓
-Tenant: /check-in/[token] → Review + add own photos → Confirm
+Tenant: /tenant/check-in/[token] → reviews + adds own photos → confirms
 ↓
-Landlord confirms → Status AGREED → PDF generated
-→ PDF (all photos) + Gas Safety + EPC emailed to both
+Landlord confirms → status AGREED → PDF generated
+→ PDF (all photos attributed) + Gas Safety + EPC emailed to both
 ```
 
-### Tenant Journey
+### Tenant Lifecycle
 ```
-Application → CANDIDATE status → Landlord screening
+VACANT → Application Link → Applicant submits → CANDIDATE
 ↓
-Selected → INVITED → Join link → TENANT status
+Landlord invites → INVITED → Tenant joins → TENANT
 ↓
-Portal access: Documents, maintenance, rent, check-in
+Portal: docs, maintenance, rent, check-in
 ```
 
 ---
@@ -219,20 +260,9 @@ Portal access: Documents, maintenance, rent, check-in
 | AI | Claude Sonnet (analysis), Claude Haiku (name verify) |
 | Live Chat | Crisp |
 | Hosting | Vercel |
-| Styling | Tailwind CSS + shadcn/ui |
-| Validation | Zod v4 |
+| Styling | Tailwind CSS + shadcn/ui (New York style) |
+| Validation | Zod v4 — use `error:` not `errorMap:` |
 | PDF | pdf-lib |
-
-### Database Schema
-- **Users:** Supabase auth.users mirror with Stripe + subscription fields
-- **Properties:** Type, status, rooms, compliance docs
-- **Tenants:** Status pipeline, confirmation tokens, onboarding state
-- **Tenancies:** Rent, deposit, payment tracking
-- **Maintenance:** Awaab's Law timers, photo upload, status audit
-- **Screening:** Invites, reports, AI scores, package credits
-- **Check-in:** Room photos, dual confirmation, PDF generation
-
-Key migrations in `supabase/migrations/` — 30 files from core schema to screening logs.
 
 ### Storage Buckets
 | Bucket | Path Pattern | Contents |
@@ -243,90 +273,79 @@ Key migrations in `supabase/migrations/` — 30 files from core schema to screen
 | `bank-statements` | `/{reportId}/{filename}` | Screening PDFs |
 | `check-in-photos` | `/{propertyId}/{reportId}/{roomId}/{photoId}-{filename}` | Check-in photos |
 
-All URLs signed with 60-minute expiry.
+Check-in PDFs: `check-in-reports/{reportId}/check-in-report.pdf` (in `documents` bucket)
+All URLs: signed, 60-minute expiry.
 
 ### AI Models
-| Model | Used For | Location |
-|-------|---------|----------|
-| `claude-3-5-sonnet-20241022` | Financial analysis, scoring | `lib/scoring/engine.ts` |
-| `claude-3-5-haiku-20241022` | Name verification | Per-file validation |
+| Model | Used For |
+|-------|---------|
+| `claude-sonnet-4-20250514` | Financial analysis, article generation, update-docs |
+| `claude-haiku-4-5-20251001` | Name verification (per-file, ~80% cost saving) |
 
-### Key Components
-| Component | Path | Purpose |
-|-----------|------|---------|
-| `ScreeningReportDisplay` | `components/shared/` | Unified report UI (landlord + candidate) |
-| `ScoringProgressScreen` | `components/shared/` | AI processing progress |
-| `DocumentUploadModal` | `components/shared/` | Drag-drop file upload |
-| `TenantDetailsForm` | `components/shared/` | Tenant info collection |
-| `PaymentSetupModal` | `components/shared/` | Mock Stripe card setup |
-
-### Cron Jobs
-| Endpoint | Schedule | Purpose |
-|----------|----------|---------|
-| `/api/cron/compliance` | Daily 9am UTC | Gas/EPC/deposit alerts |
-| `/api/cron/rent-reminders` | Daily 8am UTC | Overdue payment notifications |
-| `/api/cron/awaabs` | Every 15 min | Damp/mould 4h reminders |
+### Key Files
+| File | Purpose |
+|------|---------|
+| `lib/scoring/engine.ts` | AI financial analysis engine |
+| `lib/check-in-pdf.ts` | Check-in PDF generation |
+| `lib/check-in-storage.ts` | Check-in photo helpers |
+| `lib/maintenance-storage.ts` | Maintenance photo helpers |
+| `lib/image-utils.ts` | Resize/compress (shared by maintenance + check-in) |
+| `lib/room-utils.ts` | Room type helpers, auto-suggest logic |
+| `lib/payment-service.ts` | Mock Stripe |
+| `lib/payments.ts` | Rent payment generation + status updates |
+| `lib/screening-pricing.ts` | Screening pack definitions |
+| `lib/email-templates/base.ts` | Base email template + helpers |
+| `lib/email-templates/index.ts` | 9 email template functions |
 
 ---
 
 ## Compliance & Legal
 
 ### Renters' Rights Act 2025
-- **Effective:** 1 May 2026
-- **Key Changes:**
-  - Section 21 abolished — possession via Section 8 grounds only
-  - All ASTs convert to APT (Assured Periodic Tenancy)
-  - Rent increases: once per year via Section 13 Notice only
-  - 15 new offences, fines up to £40,000
-- **Marketing:** Dedicated `/renters-rights-act` page with Crisp chat
+- Effective 1 May 2026
+- Section 21 abolished — possession via Section 8 grounds only
+- All ASTs convert to APT (Assured Periodic Tenancy)
+- Rent increases: once per year via Section 13 Notice only
+- 15 new offences, fines up to £40,000
 
 ### Awaab's Law
-- **DAMP_MOULD** category in maintenance sets `respondBy = createdAt + 24h`
-- Cron reminder 4h before deadline (`/api/cron/awaabs`)
-- Auto-escalation via email notifications
+- DAMP_MOULD maintenance sets `respondBy = createdAt + 24h`
+- 4h-before reminder cron at `/api/cron/awaabs` (every 15 min)
 
 ### GDPR
-- Check-in photos retained tenancy duration + 3 months (deletion cron pending)
-- All files encrypted at rest, signed URLs with 60-min expiry
+- Check-in photos retained tenancy duration + 3 months, then eligible for deletion (cron not yet built)
+- All files encrypted at rest, signed URLs 60-min expiry
 - PostHog EU residency, Supabase UUID only (no PII)
-- Cookie consent via vanilla-cookieconsent
 
 ---
 
 ## Business Rules
 
-### Pricing
-- Free tier: 1 property forever
-- 2+ properties: £9.99/month per additional property
-- Screening: £9.99 first per cycle, £1.49 additional candidates
-
-### Tenancy
-- All contracts generated as APT (never AST — abolished May 2026)
+- Free tier: 1 property forever. 2+ = £9.99/month per additional
+- All contracts generated are APT — never use AST language (abolished May 2026)
 - Rent increases: once per year via Section 13 only
-- Deposit protection: 30-day deadline with alerts
+- Deposit protection: 30-day deadline, alert if unprotected
 - Tenant notice: minimum 2 months
-
-### Screening
-- Invite expiry: 7 days (lazily updated to EXPIRED)
-- Backward compatibility: credit-pack reports (`screeningUsageId`) treated as unlocked
-- Candidate view: never show grades or "/100" scores
-
-### Check-in Reports
-- PDF generated only when BOTH confirmations set
-- ALL photos included (landlord + tenant) — no selective inclusion
-- Status flow: DRAFT → PENDING → IN_REVIEW → AGREED/DISPUTED
+- Screening invite expiry: 7 days, lazily updated to EXPIRED on access
+- Backward compat: reports with `screeningUsageId` (credit-pack) treated as unlocked
+- Check-in PDF: only generated when BOTH `landlordConfirmedAt` + `tenantConfirmedAt` set
+- PDF completeness: ALL photos (landlord + tenant) included — no selective inclusion
+- Candidate screening view: never show grade labels or "/100"
+- Photo upload: reuse maintenance pattern via props — never create duplicate components
 
 ---
 
 ## What NOT to Do
 
-- **Never use magic link auth** — OTP only (magic links get pre-clicked by corporate scanners)
-- **Never store passwords** — OTP-based auth only
-- **Never generate legal text from scratch** — AI fills pre-approved templates only
-- **Never expose Supabase service role key** to browser
-- **Never store monetary amounts as floats** — always pence integers
-- **Never skip input validation** on API routes
-- **Never show grade labels or "/100"** to screening candidates
-- **Never create new photo upload components** — extend existing patterns via props
-- **Never generate check-in PDF** unless both confirmations are set
-- **Never use `prisma.$executeRaw`** without parameterised queries
+- Never use magic link auth — OTP only (magic links get pre-clicked by corporate scanners)
+- Never store passwords
+- Never generate legal text from scratch — AI fills pre-approved templates only
+- Never expose Supabase service role key to browser
+- Never store monetary amounts as floats — always pence integers
+- Never skip input validation on API routes
+- Never use `prisma.$executeRaw` without parameterised queries
+- Never add contact fields to Tenancy — use the Tenant relation
+- Never show grade labels or "/100" to candidates
+- Never expose raw AI output — always `cleanSummary()`
+- Never create new photo upload components — extend maintenance pattern via props
+- Never generate check-in PDF unless both confirmations are set
