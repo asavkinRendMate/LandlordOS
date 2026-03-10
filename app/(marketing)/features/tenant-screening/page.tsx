@@ -92,8 +92,9 @@ export default function TenantScreeningPage() {
               </div>
               <div>
                 <p className="text-xs font-bold text-green-600 uppercase tracking-wide mb-1">Step 3</p>
-                <h3 className="font-semibold text-gray-900 text-lg mb-2">Unlock the full report for &pound;15</h3>
+                <h3 className="font-semibold text-gray-900 text-lg mb-2">Unlock the full report</h3>
                 <p className="text-gray-500 leading-relaxed">
+                  From &pound;9.99 for LetSorted subscribers, or &pound;11.99 as a standalone check.
                   See a 0&ndash;100 reliability score, affordability rating, income verification, and a
                   plain-English summary of every risk factor.
                 </p>
