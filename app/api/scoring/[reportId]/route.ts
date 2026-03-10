@@ -8,11 +8,29 @@ export async function GET(
   { params }: { params: Promise<{ reportId: string }> },
 ) {
   try {
+    const { reportId } = await params
+
     const supabase = createAuthClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
 
-    const { reportId } = await params
+    // ── Unauthenticated: return only status fields for candidate polling ────
+    if (!user) {
+      const report = await prisma.financialReport.findUnique({
+        where: { id: reportId },
+        select: {
+          id: true,
+          status: true,
+          hasUnverifiedFiles: true,
+          statementFiles: true,
+          applicantName: true,
+          failureReason: true,
+        },
+      })
+      if (!report) return NextResponse.json({ error: 'Report not found' }, { status: 404 })
+      return NextResponse.json({ data: report })
+    }
+
+    // ── Authenticated: return full report if user owns the property ─────────
     const report = await prisma.financialReport.findUnique({
       where: { id: reportId },
       select: {
