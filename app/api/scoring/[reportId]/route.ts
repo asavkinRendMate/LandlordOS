@@ -55,17 +55,21 @@ export async function GET(
         updatedAt: true,
         property: { select: { userId: true, line1: true, line2: true, city: true, postcode: true } },
         tenant: { select: { name: true, email: true } },
+        invite: { select: { landlordId: true } },
       },
     })
 
     if (!report) return NextResponse.json({ error: 'Report not found' }, { status: 404 })
 
-    // Verify the logged-in user owns the property this report belongs to
-    if (report.property?.userId !== user.id) {
+    // Verify the logged-in user owns this report (via property or invite)
+    const ownsViaProperty = report.property?.userId === user.id
+    const ownsViaInvite = report.invite?.landlordId === user.id
+    if (!ownsViaProperty && !ownsViaInvite) {
       return NextResponse.json({ error: 'Report not found' }, { status: 404 })
     }
 
-    return NextResponse.json({ data: report })
+    const { invite: _invite, ...reportData } = report
+    return NextResponse.json({ data: reportData })
   } catch (err) {
     console.error('[scoring/[reportId] GET]', err)
     return NextResponse.json({ error: 'Something went wrong' }, { status: 500 })
