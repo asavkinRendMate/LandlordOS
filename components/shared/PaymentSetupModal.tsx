@@ -1,6 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { loadStripe } from '@stripe/stripe-js'
+import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js'
+
+const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+  ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
+  : null
 
 interface Props {
   isOpen: boolean
@@ -9,79 +15,94 @@ interface Props {
   context?: string
 }
 
-const inputClass =
-  'w-full bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-[#1A1A1A] placeholder-gray-400 text-sm focus:outline-none focus:border-[#16a34a] focus:ring-1 focus:ring-[#16a34a]/20 transition-colors'
-
-function detectBrand(number: string): string {
-  const cleaned = number.replace(/\s/g, '')
-  if (cleaned.startsWith('4')) return 'Visa'
-  if (/^5[1-5]/.test(cleaned) || /^2[2-7]/.test(cleaned)) return 'Mastercard'
-  if (/^3[47]/.test(cleaned)) return 'Amex'
-  return 'Card'
-}
-
-function formatCardNumber(value: string): string {
-  const digits = value.replace(/\D/g, '').slice(0, 16)
-  return digits.replace(/(\d{4})(?=\d)/g, '$1 ')
-}
-
-function formatExpiry(value: string): string {
-  const digits = value.replace(/\D/g, '').slice(0, 4)
-  if (digits.length > 2) return `${digits.slice(0, 2)}/${digits.slice(2)}`
-  return digits
-}
-
-// TODO: Replace this entire form with Stripe's PaymentElement when integrating real payments.
-// The PaymentElement handles PCI compliance, card validation, and 3D Secure automatically.
-
-export default function PaymentSetupModal({ isOpen, onClose, onSuccess, context }: Props) {
-  const [cardNumber, setCardNumber] = useState('')
-  const [expiry, setExpiry] = useState('')
-  const [cvc, setCvc] = useState('')
-  const [name, setName] = useState('')
+function SetupForm({ onSuccess, onClose, context }: { onSuccess: () => void; onClose: () => void; context?: string }) {
+  const stripe = useStripe()
+  const elements = useElements()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  if (!isOpen) return null
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setError(null)
-
-    const digits = cardNumber.replace(/\s/g, '')
-    if (digits.length < 13) { setError('Enter a valid card number'); return }
-    if (!/^\d{2}\/\d{2}$/.test(expiry)) { setError('Enter expiry as MM/YY'); return }
-    if (cvc.length < 3) { setError('Enter a valid CVC'); return }
-    if (name.trim().length < 2) { setError('Enter cardholder name'); return }
-
-    const last4 = digits.slice(-4)
-    const brand = detectBrand(digits)
+    if (!stripe || !elements) return
 
     setSaving(true)
+    setError(null)
+
+    const { error: submitError } = await stripe.confirmSetup({
+      elements,
+      redirect: 'if_required',
+    })
+
+    if (submitError) {
+      setError(submitError.message ?? 'Something went wrong')
+      setSaving(false)
+      return
+    }
+
+    // SetupIntent succeeded — webhook will save card details to DB.
+    // Brief delay to let webhook process before UI refreshes.
+    await new Promise((r) => setTimeout(r, 1500))
+    onSuccess()
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="p-5 space-y-4">
+      {context && (
+        <p className="text-sm text-gray-500 bg-gray-50 rounded-lg p-3">{context}</p>
+      )}
+
+      <PaymentElement />
+
+      {error && <p className="text-red-500 text-sm">{error}</p>}
+
+      <button
+        type="submit"
+        disabled={saving || !stripe || !elements}
+        className="w-full bg-[#16a34a] hover:bg-[#15803d] disabled:opacity-50 text-white font-semibold rounded-xl py-3 text-sm transition-colors"
+      >
+        {saving ? 'Saving...' : 'Save card'}
+      </button>
+
+      <p className="text-xs text-gray-400 text-center">
+        Your card details are stored securely by Stripe. You can remove your card at any time from Settings.
+      </p>
+    </form>
+  )
+}
+
+export default function PaymentSetupModal({ isOpen, onClose, onSuccess, context }: Props) {
+  const [clientSecret, setClientSecret] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchSetupIntent = useCallback(async () => {
+    setLoading(true)
+    setError(null)
     try {
-      const res = await fetch('/api/payment/save-card', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ last4, brand, expiry, name: name.trim() }),
-      })
+      const res = await fetch('/api/payment/setup-intent', { method: 'POST' })
       const json = await res.json()
       if (!res.ok) {
-        setError(json.error || 'Failed to save card')
+        setError(json.error || 'Failed to initialise payment setup')
         return
       }
-      onSuccess()
+      setClientSecret(json.data.clientSecret)
     } catch {
       setError('Something went wrong')
     } finally {
-      setSaving(false)
+      setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    if (isOpen && !clientSecret) {
+      fetchSetupIntent()
+    }
+  }, [isOpen, clientSecret, fetchSetupIntent])
+
+  if (!isOpen) return null
 
   function handleClose() {
-    setCardNumber('')
-    setExpiry('')
-    setCvc('')
-    setName('')
+    setClientSecret(null)
     setError(null)
     onClose()
   }
@@ -101,77 +122,50 @@ export default function PaymentSetupModal({ isOpen, onClose, onSuccess, context 
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-4">
-          {context && (
-            <p className="text-sm text-gray-500 bg-gray-50 rounded-lg p-3">{context}</p>
-          )}
-
-          <div>
-            <label className="block text-sm text-[#374151] mb-1.5">Card number</label>
-            <input
-              type="text"
-              inputMode="numeric"
-              autoComplete="cc-number"
-              value={cardNumber}
-              onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
-              placeholder="1234 5678 9012 3456"
-              className={inputClass}
-            />
+        {loading && (
+          <div className="flex justify-center py-12">
+            <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
           </div>
+        )}
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm text-[#374151] mb-1.5">Expiry</label>
-              <input
-                type="text"
-                inputMode="numeric"
-                autoComplete="cc-exp"
-                value={expiry}
-                onChange={(e) => setExpiry(formatExpiry(e.target.value))}
-                placeholder="MM/YY"
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-[#374151] mb-1.5">CVC</label>
-              <input
-                type="text"
-                inputMode="numeric"
-                autoComplete="cc-csc"
-                value={cvc}
-                onChange={(e) => setCvc(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                placeholder="123"
-                className={inputClass}
-              />
-            </div>
+        {error && !loading && (
+          <div className="p-5 space-y-3">
+            <p className="text-red-500 text-sm">{error}</p>
+            <button
+              onClick={fetchSetupIntent}
+              className="text-sm text-green-600 hover:text-green-700 font-medium"
+            >
+              Try again
+            </button>
           </div>
+        )}
 
-          <div>
-            <label className="block text-sm text-[#374151] mb-1.5">Cardholder name</label>
-            <input
-              type="text"
-              autoComplete="cc-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="J Smith"
-              className={inputClass}
-            />
-          </div>
-
-          {error && <p className="text-red-500 text-sm">{error}</p>}
-
-          <button
-            type="submit"
-            disabled={saving}
-            className="w-full bg-[#16a34a] hover:bg-[#15803d] disabled:opacity-50 text-white font-semibold rounded-xl py-3 text-sm transition-colors"
+        {clientSecret && stripePromise && !loading && (
+          <Elements
+            stripe={stripePromise}
+            options={{
+              clientSecret,
+              appearance: {
+                theme: 'stripe',
+                variables: {
+                  colorPrimary: '#16a34a',
+                  borderRadius: '8px',
+                  fontFamily: 'system-ui, -apple-system, sans-serif',
+                },
+              },
+            }}
           >
-            {saving ? 'Saving...' : 'Save card'}
-          </button>
+            <SetupForm onSuccess={onSuccess} onClose={handleClose} context={context} />
+          </Elements>
+        )}
 
-          <p className="text-xs text-gray-400 text-center">
-            Your card details are stored securely. You can remove your card at any time from Settings.
-          </p>
-        </form>
+        {!stripePromise && !loading && (
+          <div className="p-5">
+            <p className="text-red-500 text-sm">
+              Payment setup is not available. Please contact support.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   )

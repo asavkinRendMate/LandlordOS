@@ -4,15 +4,15 @@
  * ALL payment logic lives here — UI never calls Stripe directly.
  * When Stripe is integrated, replace the mock implementations below.
  *
- * TODO: Stripe Integration Checklist
- * - [ ] Replace saveCard() with Stripe SetupIntent + PaymentMethod attach
- * - [ ] Replace removeCard() with Stripe PaymentMethod detach
- * - [ ] Replace charge() with Stripe PaymentIntent create + confirm
- * - [ ] Replace createOrUpdateSubscription() with Stripe Subscription create/update
- * - [ ] Replace cancelSubscription() with Stripe Subscription cancel
- * - [ ] Add Stripe webhook handler for subscription lifecycle events
- * - [ ] Add Stripe Customer creation on first payment action
- * - [ ] Replace mock chargeId with real Stripe PaymentIntent ID
+ * Stripe Integration Checklist
+ * - [x] Replace saveCard() with Stripe SetupIntent + PaymentElement (Phase 1)
+ * - [x] Replace removeCard() with Stripe PaymentMethod detach (Phase 1)
+ * - [x] Add Stripe webhook handler — /api/stripe/webhook (Phase 1)
+ * - [x] Add Stripe Customer creation — lib/stripe.ts getOrCreateStripeCustomer() (Phase 1)
+ * - [ ] Replace charge() with Stripe PaymentIntent create + confirm (Phase 3)
+ * - [ ] Replace createOrUpdateSubscription() with Stripe Subscription create/update (Phase 2)
+ * - [ ] Replace cancelSubscription() with Stripe Subscription cancel (Phase 2)
+ * - [ ] Replace mock chargeId with real Stripe PaymentIntent ID (Phase 3)
  */
 
 import { prisma } from '@/lib/prisma'

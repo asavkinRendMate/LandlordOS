@@ -17,7 +17,7 @@
 | Auth | Supabase Auth (6-digit OTP — no passwords, no magic links) |
 | Storage | Supabase Storage (5 private buckets) |
 | Email | Resend (`lib/resend.ts`, console fallback in dev) |
-| Payments | Stripe (not yet integrated — mock-paid flow in use) |
+| Payments | Stripe (Phase 1 complete — client, webhook, SetupIntent card flow) |
 | AI | Anthropic Claude API (`claude-sonnet-4-20250514`) |
 | Live Chat | Crisp (via `NEXT_PUBLIC_CRISP_WEBSITE_ID`) |
 | Hosting | Vercel |
@@ -123,6 +123,7 @@ app/
 │   │   ├── has-card/
 │   │   ├── remove-card/
 │   │   ├── save-card/
+│   │   ├── setup-intent/
 │   │   └── subscription/
 │   ├── payments/
 │   │   ├── [id]/
@@ -142,6 +143,8 @@ app/
 │   │   ├── report/
 │   │   ├── select-tenant/
 │   │   └── upload/
+│   ├── stripe/
+│   │   └── webhook/
 │   ├── tenancies/
 │   │   └── route.ts
 │   ├── tenant/
@@ -213,6 +216,7 @@ lib/
 ├── room-utils.ts
 ├── screening-pricing.ts
 ├── storage.ts
+├── stripe.ts
 └── utils.ts
 
 components/
@@ -1010,7 +1014,7 @@ model CheckInPhoto {
 | Google Analytics | LIVE | Consent Mode v2 — script loads unconditionally, `gtag('config')` must be called after consent defaults (otherwise GA defers all hits indefinitely). gtag function must use `arguments` (not rest params) — Google's gtag.js expects Arguments objects in dataLayer. `vanilla-cookieconsent` `onConsent`/`onChange` callbacks fire `gtag('consent', 'update', ...)` |
 | Live chat (Crisp) | LIVE | Marketing pages only |
 | Demo login | LIVE | Landlord + tenant demo buttons on login page, env-var gated |
-| Stripe payments | NOT STARTED | All purchases use MOCK_PAID |
+| Stripe payments | PHASE 1 | Client + webhook + SetupIntent card flow. Charges still mock (Phase 2–4 pending) |
 
 ---
 
@@ -1171,3 +1175,4 @@ Every new table MUST include in its migration file: // Updated: 2026-03-09 — R
 - Scoring `/api/scoring/[reportId]` GET returns `totalScore`, `grade`, `verificationToken` for unauthenticated requests (candidate polling). This is intentional — candidates need their own score. Never restrict score data from unauthenticated polling on this endpoint. // Updated: 2026-03-10 — unauth score access  <!-- Auto-preserved by update-docs -->
 - Background scoring uses dedicated `/api/scoring/process/[reportId]` route with `maxDuration = 60`. Upload routes (`/api/scoring/upload` and `/api/screening/invite/[token]/submit`) trigger analysis via fire-and-forget `fetch()` to this route — never call `analyzeStatement()` directly in upload routes. Base URL: `NEXT_PUBLIC_APP_URL` || `VERCEL_URL` || localhost. // Updated: 2026-03-10 — background scoring route  <!-- Auto-preserved by update-docs -->
 - Property detail page has contextual help (i) modals on all section cards via `components/properties/SectionHelpModal.tsx`. Exports `SectionHelpModal`, `SectionHelpButton`, and `SectionHelpKey` type. Each section (documents, rooms, checkin, tenant, rent, maintenance, applications) has a circular (i) button positioned absolute top-right that opens a modal with description, example, and role. // Updated: 2026-03-10 — contextual section help  <!-- Auto-preserved by update-docs -->
+- **Stripe Phase 1 (card setup):** `lib/stripe.ts` = server client singleton + `getOrCreateStripeCustomer()`. `/api/stripe/webhook` = single webhook endpoint handling all Stripe events (setup_intent.succeeded implemented; Phase 2-4 TODOs for subscription/payment/checkout events). `/api/payment/setup-intent` = creates Stripe SetupIntent for PaymentElement. `PaymentSetupModal` now uses Stripe Elements (`@stripe/react-stripe-js`) — PCI compliant, no raw card numbers. Remove-card route detaches via `stripe.paymentMethods.detach()`. Env vars: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` (server), `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (client). Webhook URL: `https://letsorted.co.uk/api/stripe/webhook`. Local testing: `stripe listen --forward-to localhost:3000/api/stripe/webhook`. Charge/subscription functions in `lib/payment-service.ts` are still mock — will be replaced in Phase 2-3. // Updated: 2026-03-10 — Stripe Phase 1  <!-- Auto-preserved by update-docs -->

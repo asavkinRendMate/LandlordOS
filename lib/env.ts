@@ -12,6 +12,10 @@ const schema = z.object({
   ADMIN_USERNAME: z.string().optional(),
   ADMIN_PASSWORD: z.string().optional(),
 
+  // Stripe
+  STRIPE_SECRET_KEY: z.string().min(1).optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().min(1).optional(),
+
   // Sentry (server-only — NEXT_PUBLIC_SENTRY_DSN read via process.env in config files)
   SENTRY_AUTH_TOKEN: z.string().optional(),
   SENTRY_ORG: z.string().optional(),
@@ -22,6 +26,7 @@ const schema = z.object({
 // Import this only from server-side modules — never from 'use client' files.
 //
 // Client-side env vars (read via process.env.NEXT_PUBLIC_* in 'use client' files):
+//   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY — required for Stripe Elements (PaymentSetupModal)
 //   NEXT_PUBLIC_DEMO_LANDLORD_PASSWORD — optional, demo login button password
 //   NEXT_PUBLIC_DEMO_TENANT_PASSWORD   — optional, demo login button password
 //   Demo buttons only visible on login page when BOTH are set and non-empty.
@@ -36,6 +41,8 @@ export const env = schema.parse({
   ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
   ADMIN_USERNAME: process.env.ADMIN_USERNAME,
   ADMIN_PASSWORD: process.env.ADMIN_PASSWORD,
+  STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+  STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
   SENTRY_AUTH_TOKEN: process.env.SENTRY_AUTH_TOKEN,
   SENTRY_ORG: process.env.SENTRY_ORG,
   SENTRY_PROJECT: process.env.SENTRY_PROJECT,

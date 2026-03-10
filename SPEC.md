@@ -54,7 +54,7 @@ User clicks "Tenant Screening" → registers via OTP (email only, no property se
 | Inventory Report PDF | £5 | NOT STARTED |
 | Dispute Evidence Pack | £29 | NOT STARTED |
 
-**Payment: Stripe NOT YET INTEGRATED.** All purchases use MOCK_PAID flow via `lib/payment-service.ts`.
+**Payment: Stripe Phase 1 complete** (client, webhook, PCI-compliant card setup via SetupIntent + Elements). Charges and subscriptions still use mock flow via `lib/payment-service.ts` — Phases 2–4 in progress.
 
 ---
 
@@ -105,7 +105,7 @@ User clicks "Tenant Screening" → registers via OTP (email only, no property se
 | Server-side Validation | LIVE | RENT_ABOVE_40_PCT + threshold rules |
 | Director's Loan Exclusion | LIVE | Excluded from debt calc |
 | Deduplication | LIVE | Gambling + income discrepancy (highest penalty only) |
-| Report Unlock | MOCK | MOCK_PAID — no real Stripe |
+| Report Unlock | MOCK | MOCK_PAID — Stripe charges coming in Phase 3 |
 | Verification Pages | LIVE | Public `/verify/[token]` |
 | Candidate View | LIVE | Neutral reliability score, no grade/"/100" |
 | Unified Candidate Result | LIVE | Shared `CandidateResultScreen` used by both apply flows |
@@ -126,7 +126,7 @@ User clicks "Tenant Screening" → registers via OTP (email only, no property se
 | Rent Payment Tracking | LIVE | Manual landlord entry |
 | Payment Status Pipeline | LIVE | PENDING → EXPECTED → RECEIVED/LATE/PARTIAL |
 | Auto-generate Payments | LIVE | Next 3 months on page load (idempotent) |
-| Stripe Subscriptions | NOT STARTED | Mock flow in place |
+| Stripe Subscriptions | PHASE 1 | Card setup via SetupIntent + Elements; charges/subscriptions still mock (Phase 2–4 pending) |
 | GoCardless | NOT STARTED | — |
 
 ### Maintenance
@@ -264,7 +264,7 @@ Portal: docs, maintenance, rent, check-in
 | Auth | Supabase Auth (OTP — 6-digit code) |
 | Storage | Supabase Storage (5 private buckets) |
 | Email | Resend (`lib/resend.ts`, console fallback in dev) |
-| Payments | Stripe (NOT INTEGRATED — mock via `lib/payment-service.ts`) |
+| Payments | Stripe (Phase 1 — client, webhook, SetupIntent card flow; charges still mock) |
 | AI | Claude Sonnet (analysis), Claude Haiku (name verify) |
 | Live Chat | Crisp |
 | Hosting | Vercel |
@@ -299,7 +299,8 @@ All URLs: signed, 60-minute expiry.
 | `lib/maintenance-storage.ts` | Maintenance photo helpers |
 | `lib/image-utils.ts` | Resize/compress (shared by maintenance + check-in) |
 | `lib/room-utils.ts` | Room type helpers, auto-suggest logic |
-| `lib/payment-service.ts` | Mock Stripe |
+| `lib/stripe.ts` | Stripe server client + getOrCreateStripeCustomer |
+| `lib/payment-service.ts` | Mock charge/subscription (Phase 2–3 will replace) |
 | `lib/payments.ts` | Rent payment generation + status updates |
 | `lib/screening-pricing.ts` | Screening pack definitions |
 | `lib/email-templates/base.ts` | Base email template + helpers |
