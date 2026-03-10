@@ -1,7 +1,7 @@
 'use client'
 
 import * as Sentry from '@sentry/nextjs'
-import { useEffect, useMemo } from 'react'
+import { useEffect, useState } from 'react'
 
 function generateErrorId(): string {
   return `ERR-${Date.now().toString(36).toUpperCase()}`
@@ -17,12 +17,11 @@ export default function GlobalError({
   error: Error & { digest?: string }
   reset: () => void
 }) {
-  const errorId = useMemo(() => {
-    return Sentry.lastEventId() || generateErrorId()
-  }, [])
+  const [errorId, setErrorId] = useState(() => generateErrorId())
 
   useEffect(() => {
-    Sentry.captureException(error)
+    const eventId = Sentry.captureException(error)
+    if (eventId) setErrorId(eventId)
   }, [error])
 
   function openSupport() {

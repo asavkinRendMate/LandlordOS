@@ -1,7 +1,7 @@
 'use client'
 
 import * as Sentry from '@sentry/nextjs'
-import { useEffect, useMemo } from 'react'
+import { useEffect, useState } from 'react'
 import { generateErrorId, openCrispWithError } from '@/lib/crisp-support'
 
 export default function Error({
@@ -11,12 +11,11 @@ export default function Error({
   error: Error & { digest?: string }
   reset: () => void
 }) {
-  const errorId = useMemo(() => {
-    return Sentry.lastEventId() || generateErrorId()
-  }, [])
+  const [errorId, setErrorId] = useState(() => generateErrorId())
 
   useEffect(() => {
-    Sentry.captureException(error)
+    const eventId = Sentry.captureException(error)
+    if (eventId) setErrorId(eventId)
   }, [error])
 
   return (
