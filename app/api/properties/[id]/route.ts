@@ -31,6 +31,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
               take: 1,
               select: {
                 id: true,
+                inviteId: true,
                 status: true,
                 totalScore: true,
                 grade: true,

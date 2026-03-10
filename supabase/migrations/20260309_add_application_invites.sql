@@ -17,20 +17,20 @@ ALTER TABLE application_invites ENABLE ROW LEVEL SECURITY;
 DO $$ BEGIN
   CREATE POLICY "Landlord can SELECT own property invites"
     ON application_invites FOR SELECT
-    USING (property_id IN (SELECT id FROM properties WHERE user_id = auth.uid()));
+    USING (property_id IN (SELECT id FROM properties WHERE user_id = auth.uid()::text));
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
 DO $$ BEGIN
   CREATE POLICY "Landlord can INSERT own property invites"
     ON application_invites FOR INSERT
-    WITH CHECK (property_id IN (SELECT id FROM properties WHERE user_id = auth.uid()));
+    WITH CHECK (property_id IN (SELECT id FROM properties WHERE user_id = auth.uid()::text));
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
 DO $$ BEGIN
   CREATE POLICY "Landlord can DELETE own property invites"
     ON application_invites FOR DELETE
-    USING (property_id IN (SELECT id FROM properties WHERE user_id = auth.uid()));
+    USING (property_id IN (SELECT id FROM properties WHERE user_id = auth.uid()::text));
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
