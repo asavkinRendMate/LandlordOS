@@ -192,8 +192,8 @@ export function DashboardShell({
       {/* ── Desktop layout (lg+) ────────────────────────────────────────────── */}
       <div className="hidden lg:flex h-screen overflow-hidden">
         <aside className="w-56 shrink-0 flex flex-col h-screen overflow-y-auto bg-white border-r border-black/[0.06]">
-          <div className="px-5 py-5 border-b border-gray-100">
-            <Image src="/logo.svg" alt="LetSorted" width={120} height={40} />
+          <div className="px-5 py-4 border-b border-gray-100">
+            <Image src="/logo.svg" alt="LetSorted" width={140} height={42} />
           </div>
           <NavLinks openMaintenanceCount={openMaintenanceCount} />
           {hasTenantProfile && <ContextSwitcher />}
