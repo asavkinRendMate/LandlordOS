@@ -92,11 +92,11 @@ export default function SectionHelpModal({ isOpen, onClose, section }: SectionHe
           </div>
           <div>
             <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium mb-1">Example</p>
-            <p className="text-sm text-[#6B7280] leading-relaxed">{help.example}</p>
+            <p className="text-sm text-[#1A1A1A] leading-relaxed">{help.example}</p>
           </div>
           <div>
             <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium mb-1">How it fits in</p>
-            <p className="text-sm text-[#6B7280] leading-relaxed">{help.role}</p>
+            <p className="text-sm text-[#1A1A1A] leading-relaxed">{help.role}</p>
           </div>
         </div>
       </div>
@@ -108,7 +108,7 @@ export function SectionHelpButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="absolute right-3 top-3 w-8 h-8 rounded-full border border-gray-200 bg-white text-gray-400 hover:text-gray-600 hover:border-gray-300 flex items-center justify-center text-sm font-medium cursor-pointer transition-colors"
+      className="shrink-0 w-8 h-8 rounded-full border border-gray-200 bg-white text-gray-400 hover:text-gray-600 hover:border-gray-300 flex items-center justify-center text-sm font-medium cursor-pointer transition-colors"
     >
       i
     </button>
