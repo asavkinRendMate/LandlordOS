@@ -14,7 +14,7 @@
 | Language | TypeScript (strict mode) |
 | Database | PostgreSQL via Supabase |
 | ORM | Prisma 5.22 |
-| Auth | Supabase Auth (magic link only — no passwords) |
+| Auth | Supabase Auth (6-digit OTP — no passwords, no magic links) |
 | Storage | Supabase Storage (5 private buckets) |
 | Email | Resend (`lib/resend.ts`, console fallback in dev) |
 | Payments | Stripe (not yet integrated — mock-paid flow in use) |
@@ -1142,7 +1142,7 @@ Every new table MUST include in its migration file: // Updated: 2026-03-09 — R
 - Always generate signed URLs (60 min expiry) — never expose raw storage paths  <!-- Auto-preserved by update-docs -->
 - Return user-friendly messages, never expose stack traces  <!-- Auto-preserved by update-docs -->
 - **Tenancy ↔ Tenant:** Tenancy = rental agreement; Tenant = person. Linked via `tenantId` FK. Never add contact fields to Tenancy.  <!-- Auto-preserved by update-docs -->
-- Never store passwords — auth is magic link via Supabase  <!-- Auto-preserved by update-docs -->
+- Never store passwords — auth is OTP via Supabase  <!-- Auto-preserved by update-docs -->
 - Never generate legal text from scratch — AI fills pre-approved templates only  <!-- Auto-preserved by update-docs -->
 - Never expose Supabase service role key to the browser  <!-- Auto-preserved by update-docs -->
 - Never store monetary amounts as floats — always pence integers  <!-- Auto-preserved by update-docs -->
