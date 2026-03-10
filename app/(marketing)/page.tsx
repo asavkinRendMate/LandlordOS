@@ -210,23 +210,28 @@ export default function LandingPage() {
   const [loading, setLoading] = useState(false)
   const [formError, setFormError] = useState('')
 
-  // Auth-aware dashboard CTA
-  const [dashboardInfo, setDashboardInfo] = useState<{ href: string; label: string } | null>(null)
+  // Auth-aware dashboard CTA: 'loading' → 'guest' | { href, label }
+  const [ctaState, setCtaState] = useState<'loading' | 'guest' | { href: string; label: string }>('loading')
 
   useEffect(() => {
     const supabase = createClient()
     supabase.auth.getUser().then(async ({ data }) => {
-      if (!data.user) return
+      if (!data.user) {
+        setCtaState('guest')
+        return
+      }
       try {
         const res = await fetch('/api/user/profile')
-        if (!res.ok) return
+        if (!res.ok) { setCtaState('guest'); return }
         const json = await res.json()
         if (json.data?.hasTenantProfile) {
-          setDashboardInfo({ href: '/tenant/dashboard', label: 'Tenant Dashboard' })
+          setCtaState({ href: '/tenant/dashboard', label: 'Tenant Dashboard' })
         } else {
-          setDashboardInfo({ href: '/dashboard', label: 'Landlord Dashboard' })
+          setCtaState({ href: '/dashboard', label: 'Landlord Dashboard' })
         }
-      } catch {}
+      } catch {
+        setCtaState('guest')
+      }
     })
   }, [])
 
@@ -386,20 +391,27 @@ export default function LandingPage() {
             >
               Guides
             </a>
-            {dashboardInfo ? (
-              <a
-                href={dashboardInfo.href}
-                className="border border-green-600 text-green-600 bg-white hover:bg-green-600/[0.06] font-semibold px-3 py-2 md:px-5 md:py-2.5 rounded-lg text-xs md:text-sm transition-all duration-150"
-              >
-                {dashboardInfo.label}
-              </a>
-            ) : (
+            {ctaState === 'loading' ? (
+              <span className="border border-green-600 bg-white font-semibold px-3 py-2 md:px-5 md:py-2.5 rounded-lg text-xs md:text-sm inline-flex items-center justify-center min-w-[90px] md:min-w-[110px]">
+                <svg className="animate-spin h-4 w-4 text-green-600" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+              </span>
+            ) : ctaState === 'guest' ? (
               <button
                 onClick={() => setBetaOpen(true)}
                 className="border border-green-600 text-green-600 bg-white hover:bg-green-600/[0.06] font-semibold px-3 py-2 md:px-5 md:py-2.5 rounded-lg text-xs md:text-sm transition-all duration-150"
               >
                 Closed Beta
               </button>
+            ) : (
+              <a
+                href={ctaState.href}
+                className="border border-green-600 text-green-600 bg-white hover:bg-green-600/[0.06] font-semibold px-3 py-2 md:px-5 md:py-2.5 rounded-lg text-xs md:text-sm transition-all duration-150"
+              >
+                {ctaState.label}
+              </a>
             )}
             <a
               href="/screening"
