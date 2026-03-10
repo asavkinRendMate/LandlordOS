@@ -295,7 +295,7 @@ export default function CandidateApplyPage() {
       const json = await res.json()
       if (json.data?.reanalyzing || hasRemovals) {
         setStep('processing')
-        pollForResult(reportId)
+        pollForResult()
       } else {
         setStep('done')
       }
