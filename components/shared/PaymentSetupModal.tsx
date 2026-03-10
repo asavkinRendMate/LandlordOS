@@ -15,7 +15,7 @@ interface Props {
   context?: string
 }
 
-function SetupForm({ onSuccess, onClose, context }: { onSuccess: () => void; onClose: () => void; context?: string }) {
+function SetupForm({ onSuccess, context }: { onSuccess: () => void; context?: string }) {
   const stripe = useStripe()
   const elements = useElements()
   const [saving, setSaving] = useState(false)
@@ -155,7 +155,7 @@ export default function PaymentSetupModal({ isOpen, onClose, onSuccess, context 
               },
             }}
           >
-            <SetupForm onSuccess={onSuccess} onClose={handleClose} context={context} />
+            <SetupForm onSuccess={onSuccess} context={context} />
           </Elements>
         )}
 
