@@ -1875,6 +1875,16 @@ interface MergedInvite {
   candidateName?: string
   candidateId?: string
   reportId?: string
+  totalScore?: number | null
+  grade?: string | null
+}
+
+function scoreTextColour(grade: string | null | undefined): string {
+  if (!grade) return 'text-gray-500'
+  if (grade === 'Excellent' || grade === 'Good') return 'text-green-700'
+  if (grade === 'Fair') return 'text-amber-700'
+  if (grade === 'Poor') return 'text-orange-700'
+  return 'text-red-700'
 }
 
 const UNIFIED_BADGE: Record<InviteStatus, { label: string; cls: string }> = {
@@ -1906,6 +1916,8 @@ function buildMergedList(invites: ApplicationInvite[], candidates: Tenant[]): Me
       candidateName: candidate?.name,
       candidateId: candidate?.id,
       reportId: candidate?.financialReports[0]?.inviteId ?? candidate?.financialReports[0]?.id ?? undefined,
+      totalScore: candidate?.financialReports[0]?.totalScore,
+      grade: candidate?.financialReports[0]?.grade,
     }
   })
 
@@ -1921,6 +1933,8 @@ function buildMergedList(invites: ApplicationInvite[], candidates: Tenant[]): Me
         candidateName: c.name,
         candidateId: c.id,
         reportId: c.financialReports[0]?.inviteId ?? c.financialReports[0]?.id ?? undefined,
+        totalScore: c.financialReports[0]?.totalScore,
+        grade: c.financialReports[0]?.grade,
       })
     }
   }
@@ -2183,6 +2197,11 @@ function ApplicationsSection({
                         <span className={`text-[10px] font-medium rounded px-1.5 py-0.5 ${badge.cls}`}>
                           {badge.label}
                         </span>
+                        {inv.status === 'complete' && inv.totalScore != null && (
+                          <span className={`text-xs font-semibold ${scoreTextColour(inv.grade)}`}>
+                            {inv.totalScore}/100
+                          </span>
+                        )}
                       </div>
                       <p className="text-xs text-[#9CA3AF] mt-0.5">
                         {inv.candidateName ? inv.email : null}
