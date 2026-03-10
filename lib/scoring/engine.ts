@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client'
 import { PDFDocument } from 'pdf-lib'
+import { distance } from 'fastest-levenshtein'
 import { prisma } from '@/lib/prisma'
 import { getSignedUrl } from '@/lib/storage'
 import { env } from '@/lib/env'
@@ -27,6 +28,35 @@ function cleanSummary(summary: string): string {
     clean = clean.replace(pattern, '')
   }
   return clean.trim()
+}
+
+// ── Fuzzy name matching (Levenshtein) ────────────────────────────────────────
+
+function normaliseNameTokens(name: string): string[] {
+  return name.toLowerCase().trim().replace(/\s+/g, ' ').split(' ').filter(Boolean)
+}
+
+function tokenSimilarity(a: string, b: string): number {
+  const maxLen = Math.max(a.length, b.length)
+  if (maxLen === 0) return 1
+  return 1 - distance(a, b) / maxLen
+}
+
+/**
+ * Returns true if ANY token pair across applicant vs statement name
+ * has Levenshtein similarity >= threshold (default 0.80).
+ */
+function fuzzyNameMatch(applicantName: string, statementName: string, threshold = 0.80): { match: boolean; bestScore: number } {
+  const aTokens = normaliseNameTokens(applicantName)
+  const sTokens = normaliseNameTokens(statementName)
+  let bestScore = 0
+  for (const a of aTokens) {
+    for (const s of sTokens) {
+      const sim = tokenSimilarity(a, s)
+      if (sim > bestScore) bestScore = sim
+    }
+  }
+  return { match: bestScore >= threshold, bestScore }
 }
 
 // ── Module-level cache for formatted rules string ────────────────────────────
@@ -823,6 +853,18 @@ export async function analyzeStatement(reportId: string): Promise<void> {
             statementFiles[fileIdx].detectedName = verifyResult.foundName
             statementFiles[fileIdx].confidence = verifyResult.confidence
             statementFiles[fileIdx].reason = verifyResult.reason
+
+            // Fuzzy name match fallback: if AI says UNVERIFIED but names are similar, upgrade to VERIFIED with warning
+            if (verifyResult.verification === 'UNVERIFIED' && verifyResult.foundName) {
+              const { match, bestScore } = fuzzyNameMatch(applicantName, verifyResult.foundName)
+              if (match) {
+                log.info('VERIFY', `Fuzzy match override: "${applicantName}" vs "${verifyResult.foundName}" — similarity ${bestScore.toFixed(2)} >= 0.80, upgrading to VERIFIED`)
+                statementFiles[fileIdx].verificationStatus = 'VERIFIED'
+                statementFiles[fileIdx].reason = `Name fuzzy-matched (${(bestScore * 100).toFixed(0)}% similar): "${verifyResult.foundName}" ≈ "${applicantName}"`
+              } else {
+                log.info('VERIFY', `Fuzzy match failed: "${applicantName}" vs "${verifyResult.foundName}" — best similarity ${bestScore.toFixed(2)} < 0.80`)
+              }
+            }
           }
 
           // Store period data

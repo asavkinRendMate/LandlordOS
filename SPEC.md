@@ -98,7 +98,7 @@ User clicks "Tenant Screening" → registers via OTP (email only, no property se
 | Screening Invite Flow | BETA | Primary flow — invite → upload → AI → unlock |
 | Joint Application | LIVE | Income summed as household |
 | AI Scoring Engine | LIVE | 32 rules, 6 categories, 0–100 score (Sonnet) |
-| Name Verification | LIVE | Per-file Claude Haiku call |
+| Name Verification | LIVE | Per-file Claude Haiku call + Levenshtein fuzzy fallback (≥80% token similarity) |
 | Period Validation | LIVE | ≥60 days coverage, ≤6 months old |
 | Server-side Validation | LIVE | RENT_ABOVE_40_PCT + threshold rules |
 | Director's Loan Exclusion | LIVE | Excluded from debt calc |

@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
+import Image from 'next/image'
 
 // ── Grade colour ───────────────────────────────────────────────────────────────
 
@@ -41,7 +42,7 @@ export default async function VerifyReportPage({
 
   if (!report || report.status !== 'COMPLETED' || report.totalScore === null) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[#f5f7f2] flex items-center justify-center p-4">
         <div className="max-w-sm text-center">
           <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
             <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -53,7 +54,7 @@ export default async function VerifyReportPage({
             This report could not be verified. The link may be invalid or the report may have been deleted.
           </p>
           <Link href="/" className="mt-6 inline-block text-sm text-green-600 hover:text-green-700 font-medium transition-colors">
-            ← letsorted.co.uk
+            &larr; letsorted.co.uk
           </Link>
         </div>
       </div>
@@ -65,16 +66,17 @@ export default async function VerifyReportPage({
   const colourCls = gradeColour(report.grade)
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4">
-      <div className="max-w-md mx-auto">
-
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <Link href="/" className="text-[#0f1a0f] font-bold text-xl tracking-tight hover:opacity-80 transition-opacity">
-            LetSorted
+    <div className="min-h-screen bg-[#f5f7f2]">
+      <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-100">
+        <div className="max-w-[1280px] mx-auto px-4 py-3 md:px-6 md:py-0 md:h-16 flex items-center justify-between">
+          <Link href="/">
+            <Image src="/logo-icon.svg" alt="LetSorted" width={32} height={32} className="md:hidden" />
+            <Image src="/logo.svg" alt="LetSorted" width={150} height={50} className="hidden md:block" />
           </Link>
         </div>
+      </nav>
 
+      <div className="max-w-md mx-auto py-10 px-4">
         {/* Verified badge */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-4 text-center">
           <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-3">
@@ -131,7 +133,6 @@ export default async function VerifyReportPage({
           </Link>
           <p className="text-gray-300 text-xs mt-1">letsorted.co.uk</p>
         </div>
-
       </div>
     </div>
   )

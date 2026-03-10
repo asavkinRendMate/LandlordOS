@@ -43,27 +43,45 @@ export async function POST(req: Request) {
 
     // For screening charges: unlock report + mark invite PAID
     if (SCREENING_REASONS.has(reason) && inviteId) {
+      // Try as screening invite first
       const invite = await prisma.screeningInvite.findUnique({ where: { id: inviteId } })
-      if (!invite || invite.landlordId !== user.id) {
-        return NextResponse.json({ error: 'Invite not found' }, { status: 404 })
-      }
 
-      const report = await prisma.financialReport.findFirst({
-        where: { inviteId, status: 'COMPLETED' },
-        orderBy: { createdAt: 'desc' },
-      })
+      if (invite) {
+        if (invite.landlordId !== user.id) {
+          return NextResponse.json({ error: 'Invite not found' }, { status: 404 })
+        }
 
-      if (report) {
-        await prisma.$transaction([
-          prisma.financialReport.update({
-            where: { id: report.id },
-            data: { isLocked: false },
-          }),
-          prisma.screeningInvite.update({
-            where: { id: inviteId },
-            data: { status: 'PAID', updatedAt: new Date() },
-          }),
-        ])
+        const report = await prisma.financialReport.findFirst({
+          where: { inviteId, status: 'COMPLETED' },
+          orderBy: { createdAt: 'desc' },
+        })
+
+        if (report) {
+          await prisma.$transaction([
+            prisma.financialReport.update({
+              where: { id: report.id },
+              data: { isLocked: false },
+            }),
+            prisma.screeningInvite.update({
+              where: { id: inviteId },
+              data: { status: 'PAID', updatedAt: new Date() },
+            }),
+          ])
+        }
+      } else {
+        // Fallback: inviteId may be a FinancialReport ID (standalone/credit-pack flow)
+        const report = await prisma.financialReport.findFirst({
+          where: { id: inviteId, status: 'COMPLETED', property: { userId: user.id } },
+        })
+
+        if (!report) {
+          return NextResponse.json({ error: 'Report not found' }, { status: 404 })
+        }
+
+        await prisma.financialReport.update({
+          where: { id: report.id },
+          data: { isLocked: false },
+        })
       }
     }
 

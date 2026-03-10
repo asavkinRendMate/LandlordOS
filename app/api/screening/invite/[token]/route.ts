@@ -14,7 +14,17 @@ export async function GET(
       where: { token },
       include: {
         reports: {
-          select: { id: true, status: true, totalScore: true, grade: true, verificationToken: true },
+          select: {
+            id: true,
+            status: true,
+            totalScore: true,
+            grade: true,
+            verificationToken: true,
+            hasUnverifiedFiles: true,
+            statementFiles: true,
+            applicantName: true,
+            failureReason: true,
+          },
           orderBy: { createdAt: 'desc' },
           take: 1,
         },
@@ -45,6 +55,7 @@ export async function GET(
       })
     }
 
+    const report = invite.reports[0] ?? null
     return NextResponse.json({
       data: {
         id: invite.id,
@@ -53,7 +64,7 @@ export async function GET(
         propertyAddress: invite.propertyAddress,
         monthlyRentPence: invite.monthlyRentPence,
         status: invite.status,
-        report: invite.reports[0] ?? null,
+        report,
       },
     })
   } catch (err) {

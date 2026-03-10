@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import Image from 'next/image'
 import Link from 'next/link'
 import ScreeningReportDisplay, { type ScoringResult } from '@/components/shared/ScreeningReportDisplay'
 import PaymentSetupModal from '@/components/shared/PaymentSetupModal'
+import ScreeningLayout from '@/components/screening-flow/ScreeningLayout'
 import { usePayment } from '@/hooks/usePayment'
 
 interface InviteListItem {
@@ -55,22 +55,59 @@ export default function ReportPage() {
       const invitesJson = await invitesRes.json()
       const inv = invitesJson.data?.find((i: InviteListItem) => i.id === inviteId)
 
-      if (!inv) {
+      if (inv) {
+        setInvite(inv)
+
+        // If there's a completed report, fetch full details
+        if (inv.report?.id && inv.report.status === 'COMPLETED') {
+          const reportRes = await fetch(`/api/scoring/${inv.report.id}`)
+          const reportJson = await reportRes.json()
+          if (reportJson.data) {
+            setScoring(reportJson.data)
+            setIsLocked(inv.report.isLocked)
+          }
+        }
+        setLoading(false)
+        return
+      }
+
+      // Fallback: param may be a FinancialReport ID (property application flow)
+      const reportRes = await fetch(`/api/scoring/${inviteId}`)
+      if (!reportRes.ok) {
+        setError('Invite not found or you don\'t have access')
+        setLoading(false)
+        return
+      }
+      const reportJson = await reportRes.json()
+      const report = reportJson.data
+      if (!report) {
         setError('Invite not found or you don\'t have access')
         setLoading(false)
         return
       }
 
-      setInvite(inv)
-
-      // If there's a completed report, fetch full details
-      if (inv.report?.id && inv.report.status === 'COMPLETED') {
-        const reportRes = await fetch(`/api/scoring/${inv.report.id}`)
-        const reportJson = await reportRes.json()
-        if (reportJson.data) {
-          setScoring(reportJson.data)
-          setIsLocked(inv.report.isLocked)
-        }
+      // Build invite-like object from report data
+      const addr = report.property
+        ? [report.property.line1, report.property.line2, report.property.city, report.property.postcode].filter(Boolean).join(', ')
+        : ''
+      setInvite({
+        id: report.id,
+        candidateName: report.applicantName ?? report.tenant?.name ?? 'Applicant',
+        candidateEmail: report.tenant?.email ?? '',
+        propertyAddress: addr,
+        monthlyRentPence: report.monthlyRentPence ?? 0,
+        status: report.status === 'COMPLETED' ? 'COMPLETED' : report.status,
+        report: {
+          id: report.id,
+          status: report.status,
+          totalScore: report.totalScore,
+          grade: report.grade,
+          isLocked: report.isLocked,
+        },
+      })
+      if (report.status === 'COMPLETED') {
+        setScoring(report)
+        setIsLocked(report.isLocked)
       }
     } catch {
       setError('Something went wrong')
@@ -141,7 +178,7 @@ export default function ReportPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="min-h-screen bg-[#f5f7f2] flex items-center justify-center">
         <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
       </div>
     )
@@ -151,8 +188,8 @@ export default function ReportPage() {
 
   if (error && !invite) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center p-4">
-        <div className="max-w-sm text-center">
+      <ScreeningLayout navLink={{ href: '/screening/invites', label: 'All invites' }}>
+        <div className="max-w-sm mx-auto text-center">
           <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
             <svg className="w-7 h-7 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
@@ -164,104 +201,87 @@ export default function ReportPage() {
             Back to invites
           </Link>
         </div>
-      </div>
+      </ScreeningLayout>
     )
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-100">
-        <div className="max-w-[1280px] mx-auto px-4 py-3 md:px-6 md:py-0 md:h-16 flex items-center justify-between">
-          <Link href="/">
-            <Image src="/logo-icon.svg" alt="LetSorted" width={32} height={32} className="md:hidden" priority />
-            <Image src="/logo.svg" alt="LetSorted" width={150} height={50} className="hidden md:block" priority />
-          </Link>
-          <Link
-            href="/screening/invites"
-            className="text-gray-500 hover:text-gray-700 text-xs md:text-sm font-medium"
-          >
-            All invites
-          </Link>
+    <ScreeningLayout navLink={{ href: '/screening/invites', label: 'All invites' }}>
+      {/* Invite info */}
+      {invite && (
+        <div className="mb-6">
+          <h1 className="text-xl font-bold text-gray-900 mb-1">{invite.candidateName}</h1>
+          <p className="text-gray-500 text-sm">
+            {invite.propertyAddress} &middot; £{(invite.monthlyRentPence / 100).toLocaleString('en-GB')}/mo
+          </p>
         </div>
-      </nav>
+      )}
 
-      <div className="max-w-lg mx-auto py-10 px-4">
-        {/* Invite info */}
-        {invite && (
-          <div className="mb-6">
-            <h1 className="text-xl font-bold text-gray-900 mb-1">{invite.candidateName}</h1>
-            <p className="text-gray-500 text-sm">
-              {invite.propertyAddress} &middot; £{(invite.monthlyRentPence / 100).toLocaleString('en-GB')}/mo
-            </p>
+      {/* No report yet */}
+      {!scoring && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center">
+          <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
+            <svg className="w-6 h-6 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
           </div>
-        )}
+          <h2 className="font-bold text-gray-900 mb-1">Waiting for candidate</h2>
+          <p className="text-gray-500 text-sm">
+            {invite?.candidateName} hasn&apos;t completed their check yet. We&apos;ll email you when the report is ready.
+          </p>
+          <p className="text-gray-400 text-xs mt-3">
+            Status: {invite?.status === 'STARTED' ? 'Started' : 'Pending'}
+          </p>
+        </div>
+      )}
 
-        {/* No report yet */}
-        {!scoring && (
-          <div className="bg-gray-50 rounded-2xl border border-gray-100 p-8 text-center">
-            <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
-              <svg className="w-6 h-6 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+      {/* Report display */}
+      {scoring && (
+        <>
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4">
+              <p className="text-red-600 text-sm">{error}</p>
             </div>
-            <h2 className="font-bold text-gray-900 mb-1">Waiting for candidate</h2>
-            <p className="text-gray-500 text-sm">
-              {invite?.candidateName} hasn&apos;t completed their check yet. We&apos;ll email you when the report is ready.
-            </p>
-            <p className="text-gray-400 text-xs mt-3">
-              Status: {invite?.status === 'STARTED' ? 'Started' : 'Pending'}
-            </p>
-          </div>
-        )}
+          )}
+          <ScreeningReportDisplay
+            scoring={scoring}
+            applicantName={invite?.candidateName}
+            isLocked={isLocked}
+            onUnlock={handleUnlock}
+            unlocking={unlocking}
+            showVerificationLink={!isLocked}
+            unlockPriceDisplay={unlockPrice}
+          />
 
-        {/* Report display */}
-        {scoring && (
-          <>
-            {error && (
-              <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4">
-                <p className="text-red-600 text-sm">{error}</p>
-              </div>
-            )}
-            <ScreeningReportDisplay
-              scoring={scoring}
-              applicantName={invite?.candidateName}
-              isLocked={isLocked}
-              onUnlock={handleUnlock}
-              unlocking={unlocking}
-              showVerificationLink={!isLocked}
-              unlockPriceDisplay={unlockPrice}
-            />
-
-            {/* Price confirmation */}
-            {showPriceConfirm && (
-              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mt-4">
-                <p className="text-sm text-gray-700 font-medium mb-2">
-                  Confirm payment of {unlockPrice}
+          {/* Price confirmation */}
+          {showPriceConfirm && (
+            <div className="bg-white border border-gray-200 rounded-xl p-4 mt-4">
+              <p className="text-sm text-gray-700 font-medium mb-2">
+                Confirm payment of {unlockPrice}
+              </p>
+              {cardInfo && (
+                <p className="text-xs text-gray-500 mb-3">
+                  Charging {cardInfo.brand} ending in {cardInfo.last4}
                 </p>
-                {cardInfo && (
-                  <p className="text-xs text-gray-500 mb-3">
-                    Charging {cardInfo.brand} ending in {cardInfo.last4}
-                  </p>
-                )}
-                <div className="flex gap-2">
-                  <button
-                    onClick={confirmUnlock}
-                    className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 rounded-lg text-sm transition-colors"
-                  >
-                    Confirm {unlockPrice}
-                  </button>
-                  <button
-                    onClick={() => setShowPriceConfirm(false)}
-                    className="flex-1 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium py-2.5 rounded-lg text-sm transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
+              )}
+              <div className="flex gap-2">
+                <button
+                  onClick={confirmUnlock}
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 rounded-lg text-sm transition-colors"
+                >
+                  Confirm {unlockPrice}
+                </button>
+                <button
+                  onClick={() => setShowPriceConfirm(false)}
+                  className="flex-1 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium py-2.5 rounded-lg text-sm transition-colors"
+                >
+                  Cancel
+                </button>
               </div>
-            )}
-          </>
-        )}
-      </div>
+            </div>
+          )}
+        </>
+      )}
 
       <PaymentSetupModal
         isOpen={showCardModal}
@@ -269,6 +289,6 @@ export default function ReportPage() {
         onSuccess={onCardSaveComplete}
         context="Add a payment method to unlock screening reports."
       />
-    </div>
+    </ScreeningLayout>
   )
 }

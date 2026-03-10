@@ -143,25 +143,27 @@ export default function CandidateApplyPage() {
 
   // ── Submit ──────────────────────────────────────────────────────────────────────
 
-  const pollForResult = useCallback(async (rid: string) => {
+  const pollForResult = useCallback(async (_rid: string) => {
     const pollInterval = setInterval(async () => {
       try {
-        const res = await fetch(`/api/scoring/${rid}`)
+        // Poll public invite endpoint (no auth required — candidate isn't logged in)
+        const res = await fetch(`/api/screening/invite/${token}`)
+        if (!res.ok) return // keep polling
         const json = await res.json()
-        const data = json.data as PollData | undefined
-        if (data?.status === 'COMPLETED') {
+        const report = json.data?.report as PollData | undefined
+        if (report?.status === 'COMPLETED') {
           clearInterval(pollInterval)
-          setScoring(json.data)
-          if (data.hasUnverifiedFiles && data.statementFiles?.some(
-            (f) => !f.removedByApplicant && f.verificationStatus === 'UNVERIFIED',
+          setScoring(report)
+          if (report.hasUnverifiedFiles && report.statementFiles?.some(
+            (f: StatementFile) => !f.removedByApplicant && f.verificationStatus === 'UNVERIFIED',
           )) {
             setStep('declarations')
           } else {
             setStep('done')
           }
-        } else if (data?.status === 'FAILED') {
+        } else if (report?.status === 'FAILED') {
           clearInterval(pollInterval)
-          setScoring(json.data)
+          setScoring(report)
           setStep('failed')
         }
       } catch {
@@ -173,7 +175,7 @@ export default function CandidateApplyPage() {
     setTimeout(() => {
       clearInterval(pollInterval)
     }, 180000)
-  }, [])
+  }, [token])
 
   async function handleSubmit() {
     if (submitting || files.length === 0) return

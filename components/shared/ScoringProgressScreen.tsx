@@ -44,7 +44,7 @@ export default function ScoringProgressScreen({ fileCount, isComplete }: Scoring
   }, [isComplete])
 
   return (
-    <div className="fixed inset-0 bg-[#F7F8F6] flex items-center justify-center">
+    <div className="fixed inset-0 bg-[#f5f7f2] flex items-center justify-center">
       <div className="flex flex-col items-center w-full max-w-[480px] px-6 -mt-[40px]">
         <div className="mb-6">
           <Image src="/logo.svg" alt="LetSorted" width={150} height={50} priority />
