@@ -247,7 +247,7 @@ export default function InvitesPage() {
             </p>
             {filter === 'all' && (
               <Link
-                href="/screening"
+                href="/screening#invite-form"
                 className="text-green-600 hover:text-green-700 text-sm font-medium"
               >
                 Send your first invite
