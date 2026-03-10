@@ -69,19 +69,40 @@ export async function POST(req: Request) {
           ])
         }
       } else {
-        // Fallback: inviteId may be a FinancialReport ID (standalone/credit-pack flow)
+        // Fallback: inviteId may be a FinancialReport ID (standalone/credit-pack or invite flow)
         const report = await prisma.financialReport.findFirst({
-          where: { id: inviteId, status: 'COMPLETED', property: { userId: user.id } },
+          where: {
+            id: inviteId,
+            status: 'COMPLETED',
+            OR: [
+              { property: { userId: user.id } },
+              { invite: { landlordId: user.id } },
+            ],
+          },
+          include: { invite: true },
         })
 
         if (!report) {
           return NextResponse.json({ error: 'Report not found' }, { status: 404 })
         }
 
-        await prisma.financialReport.update({
-          where: { id: report.id },
-          data: { isLocked: false },
-        })
+        if (report.invite) {
+          await prisma.$transaction([
+            prisma.financialReport.update({
+              where: { id: report.id },
+              data: { isLocked: false },
+            }),
+            prisma.screeningInvite.update({
+              where: { id: report.invite.id },
+              data: { status: 'PAID', updatedAt: new Date() },
+            }),
+          ])
+        } else {
+          await prisma.financialReport.update({
+            where: { id: report.id },
+            data: { isLocked: false },
+          })
+        }
       }
     }
 
