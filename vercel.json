@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/rent-reminders",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/inspections",
+      "schedule": "0 7 * * *"
     }
   ]
 }

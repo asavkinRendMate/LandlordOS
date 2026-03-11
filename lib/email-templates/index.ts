@@ -577,6 +577,7 @@ export function inspectionNoticeHtml(params: {
   tenantName: string
   propertyAddress: string
   scheduledDate: string
+  scheduledTime?: string
   landlordName: string
   acknowledgeUrl: string
 }): string {
@@ -588,7 +589,7 @@ export function inspectionNoticeHtml(params: {
       ${p(`Your landlord, <strong style="color:#1a1a1a;">${params.landlordName}</strong>, has scheduled a property inspection at:`)}
       ${infoBox(params.propertyAddress)}
       ${greyBox(`
-        <strong>Scheduled date:</strong> ${params.scheduledDate}
+        <strong>Scheduled date:</strong> ${params.scheduledDate}${params.scheduledTime ? `<br /><strong>Scheduled time:</strong> ${params.scheduledTime}` : ''}
       `)}
       ${p('Under Section 11 of the Landlord and Tenant Act 1985, your landlord must give you at least 24 hours\' written notice before entering the property for an inspection. This email serves as that notice.')}
       ${p('Please acknowledge receipt of this notice:')}
@@ -621,6 +622,60 @@ export function inspectionReminderHtml(params: {
       `)}
       ${p('Remember to send the tenant at least 24 hours\' written notice before entering the property.')}
       ${ctaButton('View property', params.dashboardUrl)}
+    `,
+  })
+}
+
+// ─── 26. Inspection day-of reminder (to landlord) ────────────────────────────
+// Used by: lib/notifications/cron-inspections.ts (Pass 2)
+
+export function inspectionDayLandlordHtml(params: {
+  landlordName: string
+  propertyAddress: string
+  scheduledDate: string
+  scheduledTime?: string
+  tenantName: string
+  dashboardUrl: string
+}): string {
+  return baseEmailTemplate({
+    previewText: `Today: property inspection at ${params.propertyAddress}`,
+    subtitle: 'Inspections',
+    content: `
+      ${p(`Hi ${params.landlordName},`)}
+      ${p('You have a property inspection scheduled for today.')}
+      ${infoBox(params.propertyAddress)}
+      ${greyBox(`
+        <strong>Date:</strong> ${params.scheduledDate}${params.scheduledTime ? `<br /><strong>Time:</strong> ${params.scheduledTime}` : ''}<br />
+        <strong>Tenant:</strong> ${params.tenantName}
+      `)}
+      ${p('Remember to bring your camera or phone to document the property condition.')}
+      ${ctaButton('View property', params.dashboardUrl)}
+    `,
+  })
+}
+
+// ─── 27. Inspection day-of reminder (to tenant) ─────────────────────────────
+// Used by: lib/notifications/cron-inspections.ts (Pass 2)
+
+export function inspectionDayTenantHtml(params: {
+  tenantName: string
+  propertyAddress: string
+  scheduledDate: string
+  scheduledTime?: string
+  landlordName: string
+}): string {
+  return baseEmailTemplate({
+    previewText: `Property inspection today at ${params.propertyAddress}`,
+    subtitle: 'Inspections',
+    content: `
+      ${p(`Hi ${params.tenantName},`)}
+      ${p(`Your landlord, <strong style="color:#1a1a1a;">${params.landlordName}</strong>, has a property inspection scheduled for today.`)}
+      ${infoBox(params.propertyAddress)}
+      ${greyBox(`
+        <strong>Date:</strong> ${params.scheduledDate}${params.scheduledTime ? `<br /><strong>Time:</strong> ${params.scheduledTime}` : ''}
+      `)}
+      ${p('You do not need to be present during the inspection, but you are welcome to be.')}
+      ${muted('This is a routine inspection as required under your tenancy agreement.')}
     `,
   })
 }

@@ -56,6 +56,7 @@ export async function POST(_req: Request, { params }: { params: { reportId: stri
         tenantName: inspection.tenant.name,
         propertyAddress,
         scheduledDate,
+        scheduledTime: inspection.scheduledTime ?? undefined,
         landlordName,
         acknowledgeUrl: `${appUrl}/tenant/inspection/${inspection.token}?acknowledge=true`,
       }),

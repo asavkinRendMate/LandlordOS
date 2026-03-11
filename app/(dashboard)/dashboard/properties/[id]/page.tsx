@@ -1413,6 +1413,7 @@ interface PeriodicInspection {
   inspectionType: 'MOVE_IN' | 'PERIODIC' | 'MOVE_OUT'
   inspectionNumber: number
   scheduledDate: string | null
+  scheduledTime: string | null
   pdfUrl: string | null
   createdAt: string
 }
@@ -1429,6 +1430,7 @@ function PeriodicInspectionSection({ propertyId, tenancyId }: { propertyId: stri
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [frequency, setFrequency] = useState<3 | 6>(3)
+  const [scheduledTime, setScheduledTime] = useState<string>('10:00')
   const router = useRouter()
 
   const fetchData = useCallback(async () => {
@@ -1486,6 +1488,7 @@ function PeriodicInspectionSection({ propertyId, tenancyId }: { propertyId: stri
         propertyId,
         inspectionType: 'PERIODIC',
         scheduledDate: schedule?.nextDueDate,
+        scheduledTime,
       }),
     })
     if (res.ok) {
@@ -1547,6 +1550,25 @@ function PeriodicInspectionSection({ propertyId, tenancyId }: { propertyId: stri
               </button>
             </div>
 
+            <div className="flex items-center gap-3 mb-3">
+              <label className="text-sm text-[#6B7280]">Inspection time:</label>
+              <select
+                value={scheduledTime}
+                onChange={(e) => setScheduledTime(e.target.value)}
+                className={selectClassCompact}
+                disabled={saving}
+              >
+                {Array.from({ length: 49 }, (_, i) => {
+                  const h = Math.floor(i / 4) + 8
+                  const m = (i % 4) * 15
+                  if (h > 20 || (h === 20 && m > 0)) return null
+                  const val = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+                  return <option key={val} value={val}>{val}</option>
+                })}
+              </select>
+              <span className="text-xs text-[#9CA3AF]">Legal requirement: 8am–8pm</span>
+            </div>
+
             {inspections.length > 0 && (
               <div className="border-t border-gray-100 pt-3">
                 {inspections.map((insp) => (
@@ -1559,6 +1581,7 @@ function PeriodicInspectionSection({ propertyId, tenancyId }: { propertyId: stri
                       {insp.scheduledDate && (
                         <span className="text-xs text-[#9CA3AF]">
                           {new Date(insp.scheduledDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          {insp.scheduledTime && ` at ${insp.scheduledTime}`}
                         </span>
                       )}
                     </div>

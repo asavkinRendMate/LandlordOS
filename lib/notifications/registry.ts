@@ -99,6 +99,16 @@ export const NOTIFICATIONS: Record<string, NotificationDefinition> = {
     templateFn: 'inspectionReminderHtml',
   },
 
+  INSPECTION_DAY_REMINDER_LANDLORD: {
+    id: 'INSPECTION_DAY_REMINDER_LANDLORD',
+    name: 'Inspection day-of reminder (landlord)',
+    description: 'Sent to landlord on the day of a scheduled periodic inspection',
+    trigger: 'cron',
+    recipient: 'landlord',
+    status: 'live',
+    templateFn: 'inspectionDayLandlordHtml',
+  },
+
   DD_PAYMENT_FAILED: {
     id: 'DD_PAYMENT_FAILED',
     name: 'DD payment failed',
@@ -188,6 +198,16 @@ export const NOTIFICATIONS: Record<string, NotificationDefinition> = {
     recipient: 'tenant',
     status: 'live',
     templateFn: 'inspectionNoticeHtml',
+  },
+
+  INSPECTION_DAY_REMINDER_TENANT: {
+    id: 'INSPECTION_DAY_REMINDER_TENANT',
+    name: 'Inspection day-of reminder (tenant)',
+    description: 'Sent to tenant on the day of a scheduled periodic inspection',
+    trigger: 'cron',
+    recipient: 'tenant',
+    status: 'live',
+    templateFn: 'inspectionDayTenantHtml',
   },
 
   INSPECTION_PDF_READY: {

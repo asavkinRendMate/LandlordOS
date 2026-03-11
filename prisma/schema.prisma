@@ -646,6 +646,8 @@ model PropertyInspection {
   inspectionType      InspectionType   @default(MOVE_IN) @map("inspection_type")
   inspectionNumber    Int              @default(1) @map("inspection_number")
   scheduledDate       DateTime?        @map("scheduled_date")
+  scheduledTime       String?          @map("scheduled_time") // "HH:MM" format, 08:00–20:00
+  dayOfReminderSentAt DateTime?        @map("day_of_reminder_sent_at")
   noticeSeenAt        DateTime?        @map("notice_seen_at")
   noticeToken         String?          @unique @map("notice_token")
   status              InspectionStatus @default(DRAFT)

@@ -4,11 +4,14 @@ import { createAuthClient } from '@/lib/supabase/auth'
 import { prisma } from '@/lib/prisma'
 import { InspectionType } from '@prisma/client'
 
+const timeRegex = /^(?:0[89]|1[0-9]|20):(?:00|15|30|45)$/
+
 const postSchema = z.object({
   propertyId: z.string().min(1),
   tenantId: z.string().optional(),
   inspectionType: z.enum(['MOVE_IN', 'PERIODIC', 'MOVE_OUT']).optional(),
   scheduledDate: z.string().optional(),
+  scheduledTime: z.string().regex(timeRegex, 'Time must be between 08:00 and 20:00 in 15-min increments').optional(),
 })
 
 export async function POST(req: Request) {
@@ -44,6 +47,7 @@ export async function POST(req: Request) {
         inspectionType: type,
         inspectionNumber,
         scheduledDate: result.data.scheduledDate ? new Date(result.data.scheduledDate) : null,
+        scheduledTime: result.data.scheduledTime ?? null,
       },
     })
 
@@ -81,6 +85,7 @@ export async function GET(req: NextRequest) {
           inspectionType: true,
           inspectionNumber: true,
           scheduledDate: true,
+          scheduledTime: true,
           pdfUrl: true,
           createdAt: true,
         },
