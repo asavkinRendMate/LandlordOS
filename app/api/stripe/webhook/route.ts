@@ -25,25 +25,67 @@ export async function POST(req: Request) {
     switch (event.type) {
       // ── Phase 1: Card setup ───────────────────────────────────────────
       case 'setup_intent.succeeded': {
-        console.log('[stripe/webhook] setup_intent.succeeded received', event.id)
         const setupIntent = event.data.object as Stripe.SetupIntent
+        console.log('[webhook] setup_intent.succeeded', {
+          setupIntentId: setupIntent.id,
+          customer: setupIntent.customer,
+          paymentMethod: setupIntent.payment_method,
+        })
+
         const pmId = typeof setupIntent.payment_method === 'string'
           ? setupIntent.payment_method
           : setupIntent.payment_method?.id
 
-        if (!pmId) break
+        if (!pmId) {
+          console.warn('[webhook] No payment_method on SetupIntent — skipping')
+          break
+        }
 
+        console.log('[webhook] Retrieving payment method:', pmId)
         const paymentMethod = await stripe.paymentMethods.retrieve(pmId)
         const card = paymentMethod.card
+        console.log('[webhook] Payment method retrieved', {
+          pmId,
+          type: paymentMethod.type,
+          hasCard: !!card,
+          pmCustomer: paymentMethod.customer,
+        })
 
-        if (!card) break
+        if (!card) {
+          console.warn('[webhook] Payment method has no card data — skipping')
+          break
+        }
 
-        const customerId = typeof setupIntent.customer === 'string'
+        // Customer may be null on the SetupIntent even when created with one.
+        // Fall back to the payment method's customer.
+        let customerId = typeof setupIntent.customer === 'string'
           ? setupIntent.customer
           : setupIntent.customer?.id
 
-        if (!customerId) break
+        if (!customerId) {
+          console.log('[webhook] setupIntent.customer is null — falling back to paymentMethod.customer')
+          customerId = typeof paymentMethod.customer === 'string'
+            ? paymentMethod.customer
+            : paymentMethod.customer?.id
+        }
 
+        if (!customerId) {
+          console.error('[webhook] No customer found on SetupIntent or PaymentMethod — cannot save card')
+          break
+        }
+
+        console.log('[webhook] Looking up user by stripeCustomerId:', customerId)
+        const user = await prisma.user.findUnique({
+          where: { stripeCustomerId: customerId },
+          select: { id: true },
+        })
+
+        if (!user) {
+          console.error('[webhook] No user found for stripeCustomerId:', customerId)
+          break
+        }
+
+        console.log('[webhook] Saving card to user:', user.id)
         await prisma.user.update({
           where: { stripeCustomerId: customerId },
           data: {
@@ -54,13 +96,13 @@ export async function POST(req: Request) {
             cardExpiry: `${String(card.exp_month).padStart(2, '0')}/${String(card.exp_year).slice(-2)}`,
           },
         })
+        console.log('[webhook] Card saved to DB')
 
         // Set as default payment method on the customer
         await stripe.customers.update(customerId, {
           invoice_settings: { default_payment_method: pmId },
         })
-
-        console.log(`[stripe/webhook] setup_intent.succeeded: customer=${customerId} pm=${pmId}`)
+        console.log('[webhook] Default PM set on Stripe customer:', customerId)
         break
       }
 
