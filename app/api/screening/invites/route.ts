@@ -13,20 +13,39 @@ export async function GET() {
     const invites = await prisma.screeningInvite.findMany({
       where: { landlordId: user.id },
       orderBy: { createdAt: 'desc' },
-      include: {
-        reports: {
+    })
+
+    // Batch-query reports linked to these invites
+    const inviteIds = invites.map((inv) => inv.id)
+    const reports = inviteIds.length > 0
+      ? await prisma.financialReport.findMany({
+          where: { inviteId: { in: inviteIds } },
           select: {
             id: true,
+            inviteId: true,
             status: true,
             totalScore: true,
             grade: true,
             isLocked: true,
+            createdAt: true,
           },
           orderBy: { createdAt: 'desc' },
-          take: 1,
-        },
-      },
-    })
+        })
+      : []
+
+    // Map: inviteId → most recent report
+    const reportByInvite = new Map<string, { id: string; status: string; totalScore: number | null; grade: string | null; isLocked: boolean }>()
+    for (const r of reports) {
+      if (r.inviteId && !reportByInvite.has(r.inviteId)) {
+        reportByInvite.set(r.inviteId, {
+          id: r.id,
+          status: r.status,
+          totalScore: r.totalScore,
+          grade: r.grade,
+          isLocked: r.isLocked,
+        })
+      }
+    }
 
     // Lazily expire old invites (7 days)
     const now = new Date()
@@ -41,7 +60,7 @@ export async function GET() {
         monthlyRentPence: inv.monthlyRentPence,
         status: isExpired ? 'EXPIRED' : inv.status,
         createdAt: inv.createdAt.toISOString(),
-        report: inv.reports[0] ?? null,
+        report: reportByInvite.get(inv.id) ?? null,
       }
     })
 

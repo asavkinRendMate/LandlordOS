@@ -1964,7 +1964,7 @@ function buildMergedList(invites: ApplicationInvite[], candidates: Tenant[]): Me
       status: deriveInviteStatus(candidate),
       candidateName: candidate?.name,
       candidateId: candidate?.id,
-      reportId: candidate?.financialReports[0]?.inviteId ?? candidate?.financialReports[0]?.id ?? undefined,
+      reportId: candidate?.financialReports[0]?.id ?? undefined,
       totalScore: candidate?.financialReports[0]?.totalScore,
       grade: candidate?.financialReports[0]?.grade,
     }
@@ -1981,7 +1981,7 @@ function buildMergedList(invites: ApplicationInvite[], candidates: Tenant[]): Me
         status: deriveInviteStatus(c),
         candidateName: c.name,
         candidateId: c.id,
-        reportId: c.financialReports[0]?.inviteId ?? c.financialReports[0]?.id ?? undefined,
+        reportId: c.financialReports[0]?.id ?? undefined,
         totalScore: c.financialReports[0]?.totalScore,
         grade: c.financialReports[0]?.grade,
       })
