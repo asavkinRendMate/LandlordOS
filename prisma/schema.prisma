@@ -134,6 +134,7 @@ model ComplianceDoc {
   updatedAt   DateTime            @updatedAt @map("updated_at")
 
   @@unique([propertyId, type])
+  @@index([expiryDate])
   @@map("compliance_docs")
 }
 
@@ -171,6 +172,8 @@ model Tenancy {
   @@index([propertyId])
   @@index([tenantId])
   @@index([propertyId, status])
+  @@index([status])
+  @@index([status, depositProtected])
   @@map("tenancies")
 }
 
@@ -319,6 +322,7 @@ model DocumentAcknowledgment {
   acknowledgedAt DateTime         @default(now()) @map("acknowledged_at")
 
   @@unique([documentId, tenantId])
+  @@index([tenantId])
   @@map("document_acknowledgments")
 }
 
@@ -361,6 +365,7 @@ model MaintenanceRequest {
   @@index([propertyId])
   @@index([tenantId])
   @@index([propertyId, status])
+  @@index([status, respondBy])
   @@map("maintenance_requests")
 }
 
@@ -478,6 +483,7 @@ model FinancialReport {
   @@index([propertyId])
   @@index([inviteId])
   @@index([inviteId, status])
+  @@index([status])
   @@map("financial_reports")
 }
 
@@ -655,6 +661,7 @@ model ComplianceAlertLog {
   sentAt         DateTime @default(now()) @map("sent_at")
 
   @@index([notificationId, referenceId, sentAt])
+  @@index([userId])
   @@map("compliance_alert_log")
 }
 

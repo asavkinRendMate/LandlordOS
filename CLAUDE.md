@@ -1137,6 +1137,7 @@ Subscriber (Pro plan): First check £9.99, additional £1.49 each.
 - Composite indexes: `[propertyId, status]` on Tenancy/MaintenanceRequest, `[landlordId, status]` on ScreeningInvite, `[inviteId, status]` on FinancialReport, `[email, status]` on Tenant, `[userId, paymentStatus]` on ScreeningPackage, `[tenancyId, dueDate]` and `[status, dueDate]` on RentPayment
 - No N+1 patterns found — codebase uses `include` consistently
 - Admin endpoints (`/api/admin/users`, `/api/admin/properties`) return all rows without pagination — acceptable for now but consider adding `take`/`skip` if user count grows
+- **Index audit completed:** 2026-03-11 (migration `20260332_add_missing_indexes.sql`) — 7 indexes added across 6 models: `[expiryDate]` on ComplianceDoc, `[status]` and `[status, depositProtected]` on Tenancy, `[tenantId]` on DocumentAcknowledgment, `[status, respondBy]` on MaintenanceRequest, `[status]` on FinancialReport, `[userId]` on ComplianceAlertLog. Next audit recommended after adding new models.
 - Monitor unused indexes: `SELECT * FROM pg_stat_user_indexes WHERE idx_scan = 0;`
 - Run `EXPLAIN ANALYZE` on slow queries via Supabase Dashboard SQL Editor
 
