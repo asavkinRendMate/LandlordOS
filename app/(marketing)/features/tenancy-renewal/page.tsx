@@ -66,7 +66,7 @@ export default function TenancyRenewalPage() {
                   </span>
                 </h3>
                 <p className="text-gray-500 leading-relaxed">
-                  Compare the property&apos;s current condition against the original check-in report.
+                  Compare the property&apos;s current condition against the original inspection report.
                   Photo-by-photo, room-by-room — any new damage is flagged automatically, giving you
                   a clear basis for deposit deductions.
                 </p>
@@ -111,7 +111,7 @@ export default function TenancyRenewalPage() {
 
           <div className="mt-16 border border-gray-200 rounded-xl p-6 bg-gray-50">
             <p className="text-gray-600 leading-relaxed">
-              Most deposit disputes come down to evidence. A timestamped check-in and check-out
+              Most deposit disputes come down to evidence. A timestamped inspection and check-out
               report, signed off by both parties, is your strongest defence. LetSorted creates both
               automatically.
             </p>

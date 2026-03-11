@@ -133,6 +133,9 @@ export default function AdminScreeningsPage() {
                 Notifications
               </Link>
               <span className="text-gray-900 font-medium">Screenings</span>
+              <Link href="/admin/payments" className="text-gray-500 hover:text-gray-900">
+                Payments
+              </Link>
             </nav>
           </div>
           <button

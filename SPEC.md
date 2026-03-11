@@ -6,9 +6,9 @@
 
 **Target:** 1–5 property landlords managing independently (~1.4M in UK). Currently using spreadsheets, folders, and WhatsApp.
 
-**Core Value:** Complete tenant lifecycle management — applications, AI screening, documents, rent tracking, maintenance, check-in evidence reports, and RRA 2025 compliance in one clean interface.
+**Core Value:** Complete tenant lifecycle management — applications, AI screening, documents, rent tracking, maintenance, inspection evidence reports, and RRA 2025 compliance in one clean interface.
 
-**Positioning:** Only product combining landlord compliance + AI financial screening + dual-confirmation check-in evidence system + tenant portal designed specifically for small-portfolio self-managers (not lettings agents).
+**Positioning:** Only product combining landlord compliance + AI financial screening + dual-confirmation inspection evidence system + tenant portal designed specifically for small-portfolio self-managers (not lettings agents).
 
 ---
 
@@ -77,7 +77,7 @@ User clicks "Tenant Screening" → registers via OTP (email only, no property se
 | Demo Login Buttons | LIVE | Env-var gated |
 | Property Management | LIVE | Address, type, bedrooms, status |
 | Delete Property | LIVE | Confirmation modal, type-to-confirm, full cascade delete including storage files. Archive feature planned (hide from UI, keep in DB) — not yet implemented |
-| Property Rooms Setup | LIVE | Wizard Step 2; used by check-in reports |
+| Property Rooms Setup | LIVE | Wizard Step 2; used by inspection reports |
 | Onboarding Wizard | LIVE | 5 steps: Address → Rooms → Occupancy → Tenant → Done |
 | Name Capture Modal | LIVE | Undismissable on first login if no name |
 | Settings Page | LIVE | Display name edit |
@@ -150,6 +150,20 @@ User clicks "Tenant Screening" → registers via OTP (email only, no property se
 | Status Machine | LIVE | DRAFT → PENDING → IN_REVIEW → AGREED/DISPUTED |
 | GDPR Retention | NOTED | Deletion cron not yet built |
 
+### Periodic Inspections
+| Feature | Status | Notes |
+|---------|--------|-------|
+| InspectionType enum | LIVE | MOVE_IN (default), PERIODIC, MOVE_OUT |
+| Inspection Schedule | LIVE | Per-tenancy, 3 or 6 month frequency |
+| Schedule UI | LIVE | Property detail page, enable/change frequency |
+| Tenant Notice Email | LIVE | Legally required (Section 11, LTA 1985) |
+| Notice Acknowledgment | LIVE | Token-based, noticeSeenAt timestamp |
+| 7-Day Reminder Cron | LIVE | `/api/cron/inspections`, landlord email |
+| Schedule Auto-Advance | LIVE | nextDueDate += frequencyMonths on AGREED |
+| Tenant Portal Section | LIVE | Periodic inspections list, notice acknowledge |
+| Shared Components | LIVE | InspectionTypeBadge, InspectionCard, InspectionTimeline |
+| PDF Generation | STUB | `buildPeriodicInspectionPDF` — not yet implemented |
+
 ### Tenant Portal
 | Feature | Status | Notes |
 |---------|--------|-------|
@@ -168,7 +182,7 @@ User clicks "Tenant Screening" → registers via OTP (email only, no property se
 | Contract Generation | NOT STARTED | APT template, Stripe payment |
 | Section 13 Notices | NOT STARTED | Rent increase workflow |
 | Section 8 Notices | NOT STARTED | Possession grounds |
-| Check-out Inspection | NOT STARTED | Side-by-side comparison with check-in |
+| Check-out Inspection | NOT STARTED | Side-by-side comparison with inspection |
 
 ### Notifications & Alerts
 | Feature | Status | Notes |
@@ -235,7 +249,7 @@ Rooms configured → Landlord creates report
 ↓
 Room-by-room: photos + condition + captions → Send to tenant
 ↓
-Tenant: /tenant/check-in/[token] → reviews + adds own photos → confirms
+Tenant: /tenant/inspection/[token] → reviews + adds own photos → confirms
 ↓
 Landlord confirms → status AGREED → PDF generated
 → PDF (all photos attributed) + Gas Safety + EPC emailed to both
@@ -247,7 +261,7 @@ VACANT → Application Link → Applicant submits → CANDIDATE
 ↓
 Landlord invites → INVITED → Tenant joins → TENANT
 ↓
-Portal: docs, maintenance, rent, check-in
+Portal: docs, maintenance, rent, inspection
 ```
 
 ---
@@ -275,13 +289,13 @@ Portal: docs, maintenance, rent, check-in
 ### Storage Buckets
 | Bucket | Path Pattern | Contents |
 |--------|-------------|----------|
-| `documents` | `/{userId}/{propertyId}/{docId}/{filename}` | Property docs + check-in PDFs |
+| `documents` | `/{userId}/{propertyId}/{docId}/{filename}` | Property docs + inspection PDFs |
 | `tenant-documents` | `/{propertyId}/{tenantId}/{docId}/{filename}` | Tenant docs |
 | `maintenance-photos` | `/{requestId}/{role}/{photoId}-{filename}` | Maintenance photos |
 | `bank-statements` | `/{reportId}/{filename}` | Screening PDFs |
-| `check-in-photos` | `/{propertyId}/{reportId}/{roomId}/{photoId}-{filename}` | Check-in photos |
+| `check-in-photos` | `/{propertyId}/{reportId}/{roomId}/{photoId}-{filename}` | Inspection photos |
 
-Check-in PDFs: `check-in-reports/{reportId}/check-in-report.pdf` (in `documents` bucket)
+Inspection PDFs: `inspection-reports/{reportId}/inspection-report.pdf` (in `documents` bucket)
 All URLs: signed, 60-minute expiry.
 
 ### AI Models
@@ -294,10 +308,10 @@ All URLs: signed, 60-minute expiry.
 | File | Purpose |
 |------|---------|
 | `lib/scoring/engine.ts` | AI financial analysis engine |
-| `lib/check-in-pdf.ts` | Check-in PDF generation |
-| `lib/check-in-storage.ts` | Check-in photo helpers |
+| `lib/inspection-pdf.ts` | Inspection PDF generation |
+| `lib/inspection-storage.ts` | Inspection photo helpers |
 | `lib/maintenance-storage.ts` | Maintenance photo helpers |
-| `lib/image-utils.ts` | Resize/compress (shared by maintenance + check-in) |
+| `lib/image-utils.ts` | Resize/compress (shared by maintenance + inspection) |
 | `lib/room-utils.ts` | Room type helpers, auto-suggest logic |
 | `lib/stripe.ts` | Stripe server client + getOrCreateStripeCustomer |
 | `lib/payment-service.ts` | Mock charge/subscription (Phase 2–3 will replace) |
@@ -306,6 +320,27 @@ All URLs: signed, 60-minute expiry.
 | `lib/email-templates/base.ts` | Base email template + helpers |
 | `lib/email-templates/index.ts` | 9 email template functions |
 | `components/screening-flow/CandidateResultScreen.tsx` | Shared candidate score card + footer |
+| `lib/pdf-engine/` | All PDF generation — isolated module, single public API |
+| `lib/pdf-mappers.ts` | Maps Prisma models → PDF payloads, calls generatePDF |
+
+## PDF Engine
+
+### Architecture
+Isolated module at `lib/pdf-engine/`. Generates all PDFs from typed payloads.
+No database access. No business logic. Called via `lib/pdf-mappers.ts`.
+
+| File | Purpose |
+|---|---|
+| `lib/pdf-engine/index.ts` | Single public API: `generatePDF(request)` |
+| `lib/pdf-engine/types.ts` | Contract — all PDFRequest/PDFResult types |
+| `lib/pdf-engine/AGENT.md` | Agent-only spec: design system, template specs |
+| `lib/pdf-mappers.ts` | Maps Prisma models → PDF payloads, calls generatePDF |
+
+### Templates (all currently stubs)
+screening-report · inspection-report · apt-contract · section-8-notice · section-13-notice · dispute-pack
+
+### Isolated agent
+The PDF engine is maintained by a separate agent that receives only `lib/pdf-engine/AGENT.md` + `lib/pdf-engine/types.ts`. It has no knowledge of LetSorted's domain or database. The `types.ts` contract is the only shared surface.
 
 ---
 
@@ -362,6 +397,10 @@ All URLs: signed, 60-minute expiry.
 - Never show grade labels or "/100" to candidates
 - Never expose raw AI output — always `cleanSummary()`
 - Never create new photo upload components — extend maintenance pattern via props
-- Never generate check-in PDF unless both confirmations are set
+- Never generate inspection PDF unless both confirmations are set
 - Never call `analyzeStatement()` directly in upload routes — always use fire-and-forget to `/api/scoring/process/[reportId]`
 - Never duplicate `CandidateScoreCard`/`scoreMessage` inline — import from `components/screening-flow/CandidateResultScreen`
+- Never import from `lib/pdf-engine/templates/` or `lib/pdf-engine/components/` — only use `generatePDF` from index
+- Never write PDF generation logic outside `lib/pdf-engine/` — all PDF logic lives there
+- Never pass Prisma model instances into `generatePDF` — map to plain PDFRequest payload first
+- Never modify `lib/pdf-engine/types.ts` to remove or rename fields — additive changes only

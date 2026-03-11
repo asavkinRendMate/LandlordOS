@@ -37,7 +37,7 @@ export default function ReportPage() {
   const [error, setError] = useState<string | null>(null)
   const [showPriceConfirm, setShowPriceConfirm] = useState(false)
   const [unlockPrice, setUnlockPrice] = useState('£9.99')
-  const [unlockReason, setUnlockReason] = useState<'SCREENING_FIRST' | 'SCREENING_ADDITIONAL'>('SCREENING_FIRST')
+  const [unlockMethod, setUnlockMethod] = useState<string>('subscriber')
   const [cardInfo, setCardInfo] = useState<{ last4: string; brand: string } | null>(null)
   const { showCardModal, requireCard, onCardSaveComplete, closeCardModal } = usePayment()
 
@@ -103,23 +103,31 @@ export default function ReportPage() {
 
   async function handleUnlock() {
     requireCard(async () => {
-      // Determine price: first or additional screening
       try {
-        const invitesRes = await fetch('/api/screening/invites')
-        const invitesJson = await invitesRes.json()
-        const paidCount = (invitesJson.data ?? []).filter(
-          (i: InviteListItem) => i.status === 'PAID',
-        ).length
+        // Fetch server-side pricing
+        const priceRes = await fetch(`/api/payment/unlock-price?reportId=${reportId}`)
+        const priceJson = await priceRes.json()
 
-        const reason = paidCount === 0 ? 'SCREENING_FIRST' as const : 'SCREENING_ADDITIONAL' as const
-        const price = reason === 'SCREENING_FIRST' ? '£9.99' : '£1.49'
-        setUnlockReason(reason)
-        setUnlockPrice(price)
+        if (!priceRes.ok) {
+          setError(priceJson.error || 'Unable to determine price')
+          return
+        }
+
+        const data = priceJson.data
+        setUnlockMethod(data.method)
+
+        if (data.method === 'credit_pack') {
+          setUnlockPrice('1 credit')
+        } else {
+          setUnlockPrice(`£${(data.amountPence / 100).toFixed(2)}`)
+        }
 
         // Fetch card info for confirmation display
-        const subRes = await fetch('/api/payment/subscription')
-        const subJson = await subRes.json()
-        if (subJson.data?.card) setCardInfo(subJson.data.card)
+        if (data.method === 'subscriber') {
+          const subRes = await fetch('/api/payment/subscription')
+          const subJson = await subRes.json()
+          if (subJson.data?.card) setCardInfo(subJson.data.card)
+        }
 
         setShowPriceConfirm(true)
       } catch {
@@ -135,7 +143,7 @@ export default function ReportPage() {
       const chargeRes = await fetch('/api/payment/charge', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason: unlockReason, inviteId: reportId }),
+        body: JSON.stringify({ reportId }),
       })
       const chargeJson = await chargeRes.json()
       if (!chargeRes.ok) {
@@ -238,9 +246,11 @@ export default function ReportPage() {
           {showPriceConfirm && (
             <div className="bg-white border border-gray-200 rounded-xl p-4 mt-4">
               <p className="text-sm text-gray-700 font-medium mb-2">
-                Confirm payment of {unlockPrice}
+                {unlockMethod === 'credit_pack'
+                  ? 'Use 1 credit to unlock this report?'
+                  : `Confirm payment of ${unlockPrice}`}
               </p>
-              {cardInfo && (
+              {cardInfo && unlockMethod === 'subscriber' && (
                 <p className="text-xs text-gray-500 mb-3">
                   Charging {cardInfo.brand} ending in {cardInfo.last4}
                 </p>
@@ -250,7 +260,7 @@ export default function ReportPage() {
                   onClick={confirmUnlock}
                   className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 rounded-lg text-sm transition-colors"
                 >
-                  Confirm {unlockPrice}
+                  {unlockMethod === 'credit_pack' ? 'Use credit' : `Confirm ${unlockPrice}`}
                 </button>
                 <button
                   onClick={() => setShowPriceConfirm(false)}

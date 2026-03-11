@@ -8,7 +8,8 @@ import DeletePropertyModal from '@/components/properties/DeletePropertyModal'
 import SectionHelpModal, { SectionHelpButton, type SectionHelpKey } from '@/components/properties/SectionHelpModal'
 import TenantDetailsForm, { type TenantFormData } from '@/components/shared/TenantDetailsForm'
 import { type RoomEntry, ROOM_TYPE_LABELS, QUICK_ADD_ROOMS } from '@/lib/room-utils'
-import { inputClass, selectClassCompact } from '@/lib/form-styles'
+import { inputClass, selectClassCompact, buttonClass } from '@/lib/form-styles'
+import { cardClass, Spinner, StatusBadge as UiStatusBadge } from '@/lib/ui'
 import { showErrorToast } from '@/lib/error-toast'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -114,6 +115,7 @@ interface ComplianceDoc {
 }
 
 interface Tenancy {
+  id: string
   monthlyRent: number | null
   startDate: string | null
   status: string
@@ -1311,16 +1313,16 @@ function RoomsSection({ propertyId, rooms: initialRooms }: { propertyId: string;
   )
 }
 
-// ── Check-in Section ──────────────────────────────────────────────────────────
+// ── Inspection Section ───────────────────────────────────────────────────────
 
-function CheckInSection({ propertyId }: { propertyId: string }) {
+function InspectionSection({ propertyId }: { propertyId: string }) {
   const [report, setReport] = useState<{ id: string; status: string; pdfUrl: string | null } | null>(null)
   const [loading, setLoading] = useState(true)
   const [showHelp, setShowHelp] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
-    fetch(`/api/check-in?propertyId=${propertyId}`)
+    fetch(`/api/inspections?propertyId=${propertyId}`)
       .then((r) => r.json())
       .then((json) => {
         if (json.data) setReport(json.data)
@@ -1330,41 +1332,40 @@ function CheckInSection({ propertyId }: { propertyId: string }) {
   }, [propertyId])
 
   async function createReport() {
-    const res = await fetch('/api/check-in', {
+    const res = await fetch('/api/inspections', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ propertyId }),
     })
     if (res.ok) {
       const json = await res.json()
-      router.push(`/dashboard/properties/${propertyId}/check-in?reportId=${json.data.id}`)
+      router.push(`/dashboard/properties/${propertyId}/inspection?reportId=${json.data.id}`)
     }
   }
 
-  if (loading) return null
-
   return (
     <div className="flex items-start gap-3 mb-5">
-    <div className="flex-1 min-w-0 bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4">
-      <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium mb-3">Check-in Report</p>
+    <div className={`flex-1 min-w-0 ${cardClass}`}>
+      <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium mb-3">Property Inspection</p>
 
-      {report?.status === 'AGREED' ? (
+      {loading ? (
+        <div className="flex justify-center py-4"><Spinner size="sm" /></div>
+      ) : report?.status === 'AGREED' ? (
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-green-400" />
-            <span className="text-sm text-[#1A1A1A] font-medium">Report agreed</span>
+            <UiStatusBadge status="AGREED" />
           </div>
           <div className="flex gap-2">
             {report.pdfUrl && (
               <button
-                onClick={() => window.open(`/api/check-in/${report.id}/pdf`, '_blank')}
+                onClick={() => window.open(`/api/inspections/${report.id}/pdf`, '_blank')}
                 className="text-xs text-[#16a34a] hover:text-[#15803d] font-medium transition-colors"
               >
                 Download PDF
               </button>
             )}
             <button
-              onClick={() => router.push(`/dashboard/properties/${propertyId}/check-in?reportId=${report.id}`)}
+              onClick={() => router.push(`/dashboard/properties/${propertyId}/inspection?reportId=${report.id}`)}
               className="text-xs text-[#16a34a] hover:text-[#15803d] font-medium transition-colors"
             >
               View report
@@ -1374,13 +1375,13 @@ function CheckInSection({ propertyId }: { propertyId: string }) {
       ) : report ? (
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${report.status === 'DRAFT' ? 'bg-gray-400' : 'bg-orange-400'}`} />
+            <UiStatusBadge status={report.status} />
             <span className="text-sm text-[#6B7280]">
               {report.status === 'DRAFT' ? 'Draft in progress' : report.status === 'PENDING' ? 'Sent to tenant' : 'Under review'}
             </span>
           </div>
           <button
-            onClick={() => router.push(`/dashboard/properties/${propertyId}/check-in?reportId=${report.id}`)}
+            onClick={() => router.push(`/dashboard/properties/${propertyId}/inspection?reportId=${report.id}`)}
             className="text-xs text-[#16a34a] hover:text-[#15803d] font-medium transition-colors"
           >
             Continue
@@ -1392,14 +1393,188 @@ function CheckInSection({ propertyId }: { propertyId: string }) {
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
-          Create check-in report
+          Create inspection report
         </button>
       )}
     </div>
     <div className="pt-3 shrink-0">
       <SectionHelpButton onClick={() => setShowHelp(true)} />
     </div>
-    <SectionHelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} section="checkin" />
+    <SectionHelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} section="inspection" />
+    </div>
+  )
+}
+
+// ── Periodic Inspection Section ──────────────────────────────────────────────
+
+interface PeriodicInspection {
+  id: string
+  status: string
+  inspectionType: 'MOVE_IN' | 'PERIODIC' | 'MOVE_OUT'
+  inspectionNumber: number
+  scheduledDate: string | null
+  pdfUrl: string | null
+  createdAt: string
+}
+
+interface InspectionScheduleData {
+  id: string
+  frequencyMonths: number
+  nextDueDate: string
+}
+
+function PeriodicInspectionSection({ propertyId, tenancyId }: { propertyId: string; tenancyId: string }) {
+  const [schedule, setSchedule] = useState<InspectionScheduleData | null>(null)
+  const [inspections, setInspections] = useState<PeriodicInspection[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [frequency, setFrequency] = useState<3 | 6>(3)
+  const router = useRouter()
+
+  const fetchData = useCallback(async () => {
+    setLoading(true)
+    const [schedRes, inspRes] = await Promise.all([
+      fetch(`/api/inspection-schedules?tenancyId=${tenancyId}`).then((r) => r.json()),
+      fetch(`/api/inspections?propertyId=${propertyId}&type=PERIODIC`).then((r) => r.json()),
+    ])
+    if (schedRes.data) {
+      setSchedule(schedRes.data)
+      setFrequency(schedRes.data.frequencyMonths as 3 | 6)
+    }
+    if (inspRes.data) setInspections(Array.isArray(inspRes.data) ? inspRes.data : [])
+    setLoading(false)
+  }, [tenancyId, propertyId])
+
+  useEffect(() => { fetchData() }, [fetchData])
+
+  async function enableSchedule() {
+    setSaving(true)
+    const res = await fetch('/api/inspection-schedules', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tenancyId, frequencyMonths: frequency }),
+    })
+    if (res.ok) {
+      const json = await res.json()
+      setSchedule(json.data)
+    }
+    setSaving(false)
+  }
+
+  async function updateFrequency(newFreq: 3 | 6) {
+    setFrequency(newFreq)
+    if (!schedule) return
+    setSaving(true)
+    const res = await fetch('/api/inspection-schedules', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tenancyId, frequencyMonths: newFreq }),
+    })
+    if (res.ok) {
+      const json = await res.json()
+      setSchedule(json.data)
+    }
+    setSaving(false)
+  }
+
+  async function startPeriodicInspection() {
+    setSaving(true)
+    const res = await fetch('/api/inspections', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        propertyId,
+        inspectionType: 'PERIODIC',
+        scheduledDate: schedule?.nextDueDate,
+      }),
+    })
+    if (res.ok) {
+      const json = await res.json()
+      router.push(`/dashboard/properties/${propertyId}/inspection?reportId=${json.data.id}`)
+    }
+    setSaving(false)
+  }
+
+  return (
+    <div className="flex items-start gap-3 mb-5">
+      <div className={`flex-1 min-w-0 ${cardClass}`}>
+        <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium mb-3">Periodic Inspections</p>
+
+        {loading ? (
+          <div className="flex justify-center py-4"><Spinner size="sm" /></div>
+        ) : !schedule ? (
+          <div>
+            <p className="text-sm text-[#6B7280] mb-3">
+              Schedule regular property inspections to document condition over time.
+            </p>
+            <div className="flex items-center gap-3">
+              <select
+                value={frequency}
+                onChange={(e) => setFrequency(Number(e.target.value) as 3 | 6)}
+                className={selectClassCompact}
+              >
+                <option value={3}>Every 3 months</option>
+                <option value={6}>Every 6 months</option>
+              </select>
+              <button onClick={enableSchedule} disabled={saving} className={buttonClass}>
+                {saving ? 'Enabling…' : 'Enable schedule'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-3">
+                <select
+                  value={frequency}
+                  onChange={(e) => updateFrequency(Number(e.target.value) as 3 | 6)}
+                  className={selectClassCompact}
+                  disabled={saving}
+                >
+                  <option value={3}>Every 3 months</option>
+                  <option value={6}>Every 6 months</option>
+                </select>
+                <span className="text-sm text-[#6B7280]">
+                  Next due: <span className="font-medium text-[#1A1A1A]">{new Date(schedule.nextDueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                </span>
+              </div>
+              <button
+                onClick={startPeriodicInspection}
+                disabled={saving}
+                className="text-xs text-[#16a34a] hover:text-[#15803d] font-medium transition-colors"
+              >
+                Start inspection
+              </button>
+            </div>
+
+            {inspections.length > 0 && (
+              <div className="border-t border-gray-100 pt-3">
+                {inspections.map((insp) => (
+                  <div key={insp.id} className="flex items-center justify-between py-1.5">
+                    <div className="flex items-center gap-2">
+                      <UiStatusBadge status={insp.status} />
+                      <span className="text-sm text-[#1A1A1A]">
+                        #{insp.inspectionNumber}
+                      </span>
+                      {insp.scheduledDate && (
+                        <span className="text-xs text-[#9CA3AF]">
+                          {new Date(insp.scheduledDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => router.push(`/dashboard/properties/${propertyId}/inspection?reportId=${insp.id}`)}
+                      className="text-xs text-[#16a34a] hover:text-[#15803d] font-medium transition-colors"
+                    >
+                      {insp.status === 'AGREED' ? 'View' : 'Continue'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -2576,8 +2751,13 @@ export default function PropertyPage() {
       {/* ── Rooms ──────────────────────────────────────────────────────────── */}
       <RoomsSection propertyId={property.id} rooms={property.rooms} />
 
-      {/* ── Check-in Report ────────────────────────────────────────────────── */}
-      <CheckInSection propertyId={property.id} />
+      {/* ── Property Inspection ─────────────────────────────────────────────── */}
+      <InspectionSection propertyId={property.id} />
+
+      {/* ── Periodic Inspections ─────────────────────────────────────────────── */}
+      {activeTenancy && (
+        <PeriodicInspectionSection propertyId={property.id} tenancyId={activeTenancy.id} />
+      )}
 
       {/* ── Tenant section ──────────────────────────────────────────────────── */}
       {(() => {

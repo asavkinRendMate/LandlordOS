@@ -4,6 +4,7 @@ import { createAuthClient } from '@/lib/supabase/auth'
 import { prisma } from '@/lib/prisma'
 import { ComplianceDocType } from '@prisma/client'
 import { createOrUpdateSubscription } from '@/lib/payment-service'
+import { canAddProperty } from '@/lib/subscription-guard'
 
 const schema = z.object({
   name: z.string().optional(),
@@ -34,6 +35,12 @@ export async function POST(req: Request) {
 
     const { name, line1, line2, city, postcode, type, bedrooms } = result.data
 
+    // Subscription guard: block if PAST_DUE or CANCELLED
+    const guard = await canAddProperty(user.id)
+    if (!guard.allowed) {
+      return NextResponse.json({ error: guard.reason }, { status: 402 })
+    }
+
     // Ensure user row exists (created by DB trigger on first sign-in, but race-safe)
     await prisma.user.upsert({
       where: { id: user.id },
@@ -54,6 +61,7 @@ export async function POST(req: Request) {
           postcode: postcode.toUpperCase(),
           type,
           bedrooms: bedrooms ?? null,
+          screeningCycleResetAt: new Date(),
         },
       })
 

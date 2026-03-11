@@ -196,33 +196,33 @@ export function landlordNotificationHtml(params: {
   })
 }
 
-// ─── 9. Check-in review request (to tenant) ─────────────────────────────────
-// Used by: api/check-in/[reportId] when status → PENDING
+// ─── 9. Inspection review request (to tenant) ───────────────────────────────
+// Used by: api/inspections/[reportId] when status → PENDING
 
-export function checkInReviewHtml(params: {
+export function inspectionReviewHtml(params: {
   tenantName: string
   landlordName: string
   propertyAddress: string
   reviewUrl: string
 }): string {
   return baseEmailTemplate({
-    previewText: `Please review your check-in report for ${params.propertyAddress}`,
-    subtitle: 'Check-in Report',
+    previewText: `Please review your property inspection report for ${params.propertyAddress}`,
+    subtitle: 'Property Inspection',
     content: `
       ${p(`Hi ${params.tenantName},`)}
-      ${p(`${params.landlordName} has prepared a check-in report for:`)}
+      ${p(`${params.landlordName} has prepared a property inspection report for:`)}
       ${infoBox(params.propertyAddress)}
       ${p('Please review the photos documenting the condition of your new home. You can also add your own photos if you notice anything.')}
-      ${ctaButton('Review check-in report', params.reviewUrl)}
+      ${ctaButton('Review inspection report', params.reviewUrl)}
       ${muted('This report protects both you and your landlord during deposit disputes.')}
     `,
   })
 }
 
-// ─── 10. Check-in tenant response (to landlord) ─────────────────────────────
-// Used by: api/check-in/token/[token]/confirm
+// ─── 10. Inspection tenant response (to landlord) ───────────────────────────
+// Used by: api/inspections/token/[token]/confirm
 
-export function checkInTenantResponseHtml(params: {
+export function inspectionTenantResponseHtml(params: {
   landlordName: string
   tenantName: string
   propertyAddress: string
@@ -231,40 +231,40 @@ export function checkInTenantResponseHtml(params: {
   note?: string
 }): string {
   const actionText = params.action === 'confirmed'
-    ? `${params.tenantName} has confirmed the check-in report is accurate.`
+    ? `${params.tenantName} has confirmed the inspection report is accurate.`
     : params.action === 'disputed'
-      ? `${params.tenantName} has raised concerns about the check-in report.`
-      : `${params.tenantName} has added photos to the check-in report.`
+      ? `${params.tenantName} has raised concerns about the inspection report.`
+      : `${params.tenantName} has added photos to the inspection report.`
 
   return baseEmailTemplate({
-    previewText: `${params.tenantName} has ${params.action} the check-in report`,
-    subtitle: 'Check-in Report',
+    previewText: `${params.tenantName} has ${params.action} the inspection report`,
+    subtitle: 'Property Inspection',
     content: `
       ${p(`Hi ${params.landlordName},`)}
       ${p(actionText)}
       ${params.note ? greyBox(`<p style="color:#374151;font-size:14px;font-style:italic;margin:0;">&ldquo;${params.note}&rdquo;</p>`) : ''}
       ${infoBox(params.propertyAddress)}
-      ${ctaButton('View check-in report', params.checkInUrl)}
+      ${ctaButton('View inspection report', params.checkInUrl)}
     `,
   })
 }
 
-// ─── 11. Check-in complete (to tenant) ──────────────────────────────────────
-// Used by: lib/check-in-pdf.ts after PDF generation
+// ─── 11. Inspection complete (to tenant) ────────────────────────────────────
+// Used by: lib/inspection-pdf.ts after PDF generation
 
-export function checkInCompleteHtml(params: {
+export function inspectionCompleteHtml(params: {
   tenantName: string
   propertyAddress: string
   downloadUrl: string
 }): string {
   return baseEmailTemplate({
-    previewText: `Your check-in report is ready — ${params.propertyAddress}`,
-    subtitle: 'Check-in Report',
+    previewText: `Your property inspection report is ready — ${params.propertyAddress}`,
+    subtitle: 'Property Inspection',
     content: `
       ${p(`Hi ${params.tenantName},`)}
-      ${p('Your check-in report has been agreed by both parties and the PDF is ready to download.')}
+      ${p('Your property inspection report has been agreed by both parties and the PDF is ready to download.')}
       ${infoBox(params.propertyAddress)}
-      ${ctaButton('Download check-in report', params.downloadUrl)}
+      ${ctaButton('Download inspection report', params.downloadUrl)}
       ${muted('Keep this report safe — it documents the condition of the property at the start of your tenancy.')}
     `,
   })
@@ -565,6 +565,62 @@ export function rentOverdueHtml(params: {
       ${p('Please contact your landlord to arrange payment.')}
       ${ctaButton('View tenant portal', params.dashboardUrl)}
       ${muted("If you've already paid, please ignore this reminder.")}
+    `,
+  })
+}
+
+// ─── 24. Inspection notice (legally required — to tenant) ──────────────────
+// Used by: api/inspections/[reportId]/notice
+// Section 11, Landlord and Tenant Act 1985 — at least 24h written notice
+
+export function inspectionNoticeHtml(params: {
+  tenantName: string
+  propertyAddress: string
+  scheduledDate: string
+  landlordName: string
+  acknowledgeUrl: string
+}): string {
+  return baseEmailTemplate({
+    previewText: `Property inspection scheduled — ${params.propertyAddress}`,
+    subtitle: 'Inspection Notice',
+    content: `
+      ${p(`Hi ${params.tenantName},`)}
+      ${p(`Your landlord, <strong style="color:#1a1a1a;">${params.landlordName}</strong>, has scheduled a property inspection at:`)}
+      ${infoBox(params.propertyAddress)}
+      ${greyBox(`
+        <strong>Scheduled date:</strong> ${params.scheduledDate}
+      `)}
+      ${p('Under Section 11 of the Landlord and Tenant Act 1985, your landlord must give you at least 24 hours\' written notice before entering the property for an inspection. This email serves as that notice.')}
+      ${p('Please acknowledge receipt of this notice:')}
+      ${ctaButton('Acknowledge notice', params.acknowledgeUrl)}
+      ${muted('You do not need to be present during the inspection, but you are welcome to be.')}
+    `,
+  })
+}
+
+// ─── 25. Inspection reminder (7 days before — to landlord) ────────────────
+// Used by: api/cron/inspections
+
+export function inspectionReminderHtml(params: {
+  landlordName: string
+  propertyAddress: string
+  scheduledDate: string
+  tenantName: string
+  dashboardUrl: string
+}): string {
+  return baseEmailTemplate({
+    previewText: `Inspection due soon — ${params.propertyAddress}`,
+    subtitle: 'Inspections',
+    content: `
+      ${p(`Hi ${params.landlordName},`)}
+      ${p(`A periodic inspection is due soon for:`)}
+      ${infoBox(params.propertyAddress)}
+      ${greyBox(`
+        <strong>Next due:</strong> ${params.scheduledDate}<br />
+        <strong>Tenant:</strong> ${params.tenantName}
+      `)}
+      ${p('Remember to send the tenant at least 24 hours\' written notice before entering the property.')}
+      ${ctaButton('View property', params.dashboardUrl)}
     `,
   })
 }

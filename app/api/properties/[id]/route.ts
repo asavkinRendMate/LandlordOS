@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { createAuthClient } from '@/lib/supabase/auth'
 import { createServerClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/prisma'
+import { createOrUpdateSubscription } from '@/lib/payment-service'
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   try {
@@ -185,13 +186,13 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
     // ── Cascade delete in FK-safe order inside a transaction ────────────
 
     await prisma.$transaction(async (tx) => {
-      // 1. CheckInPhotos (via CheckInReport)
-      await tx.checkInPhoto.deleteMany({
-        where: { report: { propertyId } },
+      // 1. InspectionPhotos (via PropertyInspection)
+      await tx.inspectionPhoto.deleteMany({
+        where: { inspection: { propertyId } },
       })
 
-      // 2. CheckInReports
-      await tx.checkInReport.deleteMany({ where: { propertyId } })
+      // 2. PropertyInspections
+      await tx.propertyInspection.deleteMany({ where: { propertyId } })
 
       // 3. MaintenancePhotos + StatusHistory (via MaintenanceRequest)
       await tx.maintenancePhoto.deleteMany({
@@ -222,6 +223,11 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
 
       // 8. RentPayments (via Tenancy)
       await tx.rentPayment.deleteMany({
+        where: { tenancy: { propertyId } },
+      })
+
+      // 8b. InspectionSchedules (via Tenancy)
+      await tx.inspectionSchedule.deleteMany({
         where: { tenancy: { propertyId } },
       })
 
@@ -296,6 +302,20 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
       await Promise.allSettled(storageOps)
     } catch (storageErr) {
       console.error('[properties/[id] DELETE] storage cleanup error:', storageErr)
+    }
+
+    // ── Subscription downgrade (best-effort) ──────────────────────────
+    try {
+      const remainingCount = await prisma.property.count({ where: { userId } })
+      const dbUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { subscriptionStatus: true, stripeSubscriptionId: true },
+      })
+      if (dbUser?.stripeSubscriptionId || dbUser?.subscriptionStatus === 'ACTIVE') {
+        await createOrUpdateSubscription(userId, remainingCount)
+      }
+    } catch (subErr) {
+      console.error('[properties/[id] DELETE] subscription downgrade error:', subErr)
     }
 
     return NextResponse.json({ data: { deleted: true } })

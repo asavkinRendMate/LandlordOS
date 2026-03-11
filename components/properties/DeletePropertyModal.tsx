@@ -69,7 +69,7 @@ export default function DeletePropertyModal({
                   <li>All tenant records and documents</li>
                   <li>All maintenance requests</li>
                   <li>All rent payment records</li>
-                  <li>All check-in reports and photos</li>
+                  <li>All inspection reports and photos</li>
                   <li>All compliance documents</li>
                 </ul>
                 <p className="font-medium mt-2 text-amber-900">This action cannot be undone.</p>

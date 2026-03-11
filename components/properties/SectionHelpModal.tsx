@@ -3,7 +3,7 @@
 export type SectionHelpKey =
   | 'documents'
   | 'rooms'
-  | 'checkin'
+  | 'inspection'
   | 'tenant'
   | 'rent'
   | 'maintenance'
@@ -24,12 +24,12 @@ const SECTION_HELP: Record<SectionHelpKey, {
   },
   rooms: {
     title: 'Rooms & Layout',
-    description: 'Define the rooms in your property. This is used when creating check-in reports.',
+    description: 'Define the rooms in your property. This is used when creating inspection reports.',
     example: 'A 2-bed flat might have: Bedroom 1, Bedroom 2, Living Room, Kitchen, Bathroom, Hallway.',
-    role: 'Rooms must be configured before you can create a check-in report. You can reorder and rename them.',
+    role: 'Rooms must be configured before you can create a inspection report. You can reorder and rename them.',
   },
-  checkin: {
-    title: 'Check-in Report',
+  inspection: {
+    title: 'Property Inspection',
     description: "A photographic record of the property's condition at the start of a tenancy.",
     example: 'Photograph each room, note any existing damage, then send to your tenant for review.',
     role: 'Protects both parties in deposit disputes. Both landlord and tenant confirm the report, then a PDF is generated and emailed to both.',
@@ -61,7 +61,7 @@ const SECTION_HELP: Record<SectionHelpKey, {
   more: {
     title: 'Danger Zone',
     description: 'Deleting a property is permanent and cannot be undone. You will lose access to all historical data associated with this property.',
-    example: 'The following data will be permanently deleted:\n\u2022 All screening reports and applicant data\n\u2022 All tenant records and documents\n\u2022 All maintenance requests\n\u2022 All rent payment records\n\u2022 All check-in reports and photos\n\u2022 All compliance documents',
+    example: 'The following data will be permanently deleted:\n\u2022 All screening reports and applicant data\n\u2022 All tenant records and documents\n\u2022 All maintenance requests\n\u2022 All rent payment records\n\u2022 All inspection reports and photos\n\u2022 All compliance documents',
     role: 'Consider exporting or downloading any important documents before deleting. This action is impossible to undo.',
   },
 }

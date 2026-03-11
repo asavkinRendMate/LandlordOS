@@ -85,7 +85,7 @@ app/
 ├── (tenant)/
 │   ├── apply/
 │   │   └── [propertyId]/
-│   ├── check-in/
+│   ├── inspection/
 │   │   └── [token]/
 │   ├── passport/
 │   │   └── page.tsx
@@ -103,7 +103,7 @@ app/
 │   │   └── users/
 │   ├── application-invites/
 │   │   └── [id]/
-│   ├── check-in/
+│   ├── inspections/
 │   │   ├── [reportId]/
 │   │   ├── token/
 │   │   └── route.ts
@@ -198,8 +198,8 @@ lib/
 │   ├── otp.ts
 │   └── server.ts
 ├── admin-auth.ts
-├── check-in-pdf.ts
-├── check-in-storage.ts
+├── inspection-pdf.ts
+├── inspection-storage.ts
 ├── crisp-support.ts
 ├── env.ts
 ├── error-toast.ts
@@ -284,6 +284,33 @@ supabase/
     ├── 20260329_maintenance_awaabs_law.sql
     └── 20260330_add_screening_logs.sql
 ```
+
+---
+
+## UI Design System
+
+**Full spec in `UI.md` — read it before building any UI.**
+
+### Import rules — always use these, never redefine inline
+
+```typescript
+// Form element classes
+import { inputClass, selectClass, selectClassCompact, textareaClass, buttonClass, buttonSecondaryClass, buttonDangerClass } from '@/lib/form-styles'
+
+// UI primitives
+import { cardClass, Spinner, Modal, StatusBadge, PriorityBadge, EmptyState, AlertBar, TabFilter, ListRow, PageHeader } from '@/lib/ui'
+
+// Utilities
+import { fmtDate, fmtCurrency } from '@/lib/utils'
+```
+
+### Non-negotiable rules
+- Never write a spinner inline — `<Spinner />`
+- Never write the card className inline — `cardClass`
+- Never build a modal overlay — `<Modal />`
+- Never define `fmtDate()` in a page file — import from `lib/utils`
+- Never write primary button styles inline — `buttonClass`
+- Fix inconsistencies on touch (see UI.md §9) — do not add new instances
 
 ---
 
@@ -386,7 +413,7 @@ model Property {
   maintenanceRequests MaintenanceRequest[]
   financialReports    FinancialReport[]
   rooms               PropertyRoom[]
-  checkInReports      CheckInReport[]
+  inspections      PropertyInspection[]
   applicationInvites  ApplicationInvite[]
 
   @@index([userId])
@@ -525,7 +552,7 @@ model Tenant {
   acknowledgments     DocumentAcknowledgment[]
   maintenanceRequests MaintenanceRequest[]
   financialReports    FinancialReport[]
-  checkInReports      CheckInReport[]
+  inspections      PropertyInspection[]
 
   @@index([propertyId])
   @@index([userId])
@@ -898,15 +925,15 @@ model PropertyRoom {
   order      Int      @default(0)
   createdAt  DateTime @default(now()) @map("created_at")
 
-  photos CheckInPhoto[]
+  photos InspectionPhoto[]
 
   @@index([propertyId])
   @@map("property_rooms")
 }
 
-// ── Check-in Reports ────────────────────────────────────────────────────────
+// ── Property Inspections ────────────────────────────────────────────────────
 
-enum CheckInReportStatus {
+enum InspectionStatus {
   DRAFT
   PENDING
   IN_REVIEW
@@ -914,13 +941,13 @@ enum CheckInReportStatus {
   DISPUTED
 }
 
-model CheckInReport {
+model PropertyInspection {
   id                  String              @id @default(uuid())
   propertyId          String              @map("property_id")
   property            Property            @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   tenantId            String?             @map("tenant_id")
   tenant              Tenant?             @relation(fields: [tenantId], references: [id])
-  status              CheckInReportStatus @default(DRAFT)
+  status              InspectionStatus @default(DRAFT)
   token               String              @unique @default(uuid())
   landlordConfirmedAt DateTime?           @map("landlord_confirmed_at")
   tenantConfirmedAt   DateTime?           @map("tenant_confirmed_at")
@@ -929,11 +956,11 @@ model CheckInReport {
   createdAt           DateTime            @default(now()) @map("created_at")
   updatedAt           DateTime            @updatedAt @map("updated_at")
 
-  photos CheckInPhoto[]
+  photos InspectionPhoto[]
 
   @@index([propertyId])
   @@index([tenantId])
-  @@map("check_in_reports")
+  @@map("property_inspections")
 }
 
 // ── Compliance Alert Log ────────────────────────────────────────────────────
@@ -967,25 +994,25 @@ model ApplicationInvite {
   @@map("application_invites")
 }
 
-// GDPR: Check-in photos retained for tenancy duration + 3 months
-model CheckInPhoto {
-  id           String          @id @default(uuid())
-  reportId     String          @map("report_id")
-  report       CheckInReport   @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  roomId       String?         @map("room_id")
-  room         PropertyRoom?   @relation(fields: [roomId], references: [id])
-  roomName     String          @map("room_name")
-  uploadedBy   String          @map("uploaded_by") // "LANDLORD" | "TENANT"
-  uploaderName String          @map("uploader_name")
-  fileUrl      String          @map("file_url")
-  caption      String?
-  condition    String?         // "GOOD" | "MINOR_ISSUE" | "DAMAGE"
-  takenAt      DateTime?       @map("taken_at")
-  createdAt    DateTime        @default(now()) @map("created_at")
+// GDPR: Inspection photos retained for tenancy duration + 3 months
+model InspectionPhoto {
+  id             String              @id @default(uuid())
+  inspectionId   String              @map("inspection_id")
+  inspection     PropertyInspection  @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  roomId         String?             @map("room_id")
+  room           PropertyRoom?       @relation(fields: [roomId], references: [id])
+  roomName       String              @map("room_name")
+  uploadedBy     String              @map("uploaded_by") // "LANDLORD" | "TENANT"
+  uploaderName   String              @map("uploader_name")
+  fileUrl        String              @map("file_url")
+  caption        String?
+  condition      String?             // "GOOD" | "MINOR_ISSUE" | "DAMAGE"
+  takenAt        DateTime?           @map("taken_at")
+  createdAt      DateTime            @default(now()) @map("created_at")
 
-  @@index([reportId])
+  @@index([inspectionId])
   @@index([roomId])
-  @@map("check_in_photos")
+  @@map("inspection_photos")
 }
 ```
 
@@ -997,7 +1024,7 @@ model CheckInPhoto {
 |---|---|---|
 | Property management | LIVE | CRUD, compliance docs, document management, cascade delete with type-to-confirm |
 | Tenant pipeline | LIVE | Apply → Candidate → Invited → Tenant lifecycle. ApplicationInvite persists emailed invites; merged with CANDIDATE tenants for unified applicant list on property page |
-| Tenant portal | LIVE | Auth-protected, docs, rent, maintenance, check-in inspection |
+| Tenant portal | LIVE | Auth-protected, docs, rent, maintenance, inspection |
 | Document management | LIVE | 14 types, drag-drop upload, signed URLs |
 | Rent tracking | LIVE | Auto-generate payments, manual mark received |
 | Maintenance requests | LIVE | Priority, status, photos, audit trail |
@@ -1009,7 +1036,7 @@ model CheckInPhoto {
 | Onboarding wizard | LIVE | 5-step first-run for new landlords (property → rooms → occupancy → tenant → done) |
 | Name capture modal | LIVE | Undismissable modal for landlords with no name set |
 | Settings page | LIVE | Display name edit |
-| Check-in reports | BETA | Property rooms, photo capture, tenant/landlord sign-off, tenant dashboard section, auth-aware header on check-in page |
+| Property inspections | BETA | Property rooms, photo capture, tenant/landlord sign-off, tenant dashboard section, auth-aware header on inspection page |
 | Financial Passport | PRE-LAUNCH | Email capture landing page only |
 | Google Analytics | LIVE | Consent Mode v2 — script loads unconditionally, `gtag('config')` must be called after consent defaults (otherwise GA defers all hits indefinitely). gtag function must use `arguments` (not rest params) — Google's gtag.js expects Arguments objects in dataLayer. `vanilla-cookieconsent` `onConsent`/`onChange` callbacks fire `gtag('consent', 'update', ...)` |
 | Live chat (Crisp) | LIVE | Marketing pages only |
@@ -1117,8 +1144,51 @@ Subscriber (Pro plan): First check £9.99, additional £1.49 each.
 | `applicationLinkHtml` | api/tenant/application-link-email | Send apply URL to prospect |
 | `candidateInviteHtml` | api/screening/invite | Invite candidate for financial check |
 | `landlordNotificationHtml` | lib/scoring/engine.ts | Notify landlord: screening complete |
-| `checkInReviewHtml` | api/check-in/[reportId] | Ask tenant to review check-in report |
-| `checkInTenantResponseHtml` | api/check-in/token/[token]/confirm | Notify landlord: tenant confirmed/disputed
+| `inspectionReviewHtml` | api/inspections/[reportId] | Ask tenant to review inspection report |
+| `inspectionTenantResponseHtml` | api/inspections/token/[token]/confirm | Notify landlord: tenant confirmed/disputed
+
+---
+
+## PDF Engine — `lib/pdf-engine/`
+
+**This is an isolated module. Do not modify its internals.**
+
+All PDF generation goes through one function:
+
+```typescript
+import { generatePDF } from '@/lib/pdf-engine'
+
+const result = await generatePDF({
+  template: 'inspection-report',
+  data: { ... }  // InspectionReportData — see lib/pdf-engine/types.ts
+})
+// result.buffer → write to Supabase storage
+// result.filename → suggested filename
+```
+
+### Available templates
+| template | Document | Status |
+|---|---|---|
+| `screening-report` | AI financial screening result | ⏸ Stub |
+| `inspection-report` | Property inspection with dual-party photos | ⏸ Stub |
+| `apt-contract` | Assured Periodic Tenancy agreement | ⏸ Stub |
+| `section-8-notice` | Notice seeking possession | ⏸ Stub |
+| `section-13-notice` | Rent increase notice | ⏸ Stub |
+| `dispute-pack` | Multi-section deposit/tribunal evidence pack | ⏸ Stub |
+
+### Mapper pattern
+Never call `generatePDF` directly in API routes or page logic. Use `lib/pdf-mappers.ts`:
+```typescript
+import { buildInspectionPDF } from '@/lib/pdf-mappers'
+const buffer = await buildInspectionPDF(reportId)
+```
+
+- Never import from `lib/pdf-engine/templates/` or `lib/pdf-engine/components/` — only `generatePDF` from index
+- Never modify `lib/pdf-engine/types.ts` field names or remove fields — additive changes only
+- Never write PDF rendering logic outside `lib/pdf-engine/`
+- Never pass Prisma model instances into `generatePDF` — map to plain payload first (via pdf-mappers.ts)
+- `lib/inspection-pdf.ts` is deprecated — new code uses `buildInspectionPDF()` from pdf-mappers.ts
+- Agent docs: `lib/pdf-engine/AGENT.md`
 
 ---
 
@@ -1166,7 +1236,7 @@ Every new table MUST include in its migration file: // Updated: 2026-03-09 — R
 - Mock payment unlock flow: Unlock button → `POST /api/payment/charge { reason, inviteId: reportId }` → `charge()` from `lib/payment-service.ts` (mock, requires saved card) → report `isLocked: false` + invite status → PAID. Client refetches report via `/api/scoring/${reportId}`. Fallback handles both property-linked (standalone/credit-pack) and invite-linked reports via `OR` query. Replace `charge()` mock with Stripe PaymentIntent when integrating real payments. // Updated: 2026-03-10 — mock payment flow  <!-- Auto-preserved by update-docs -->
 - Screening focused-flow pages use shared `ScreeningLayout` + `ScreeningCard` components from `components/screening-flow/`. Unified bg: `bg-[#f5f7f2]`, consistent nav with logo, compact footer. // Updated: 2026-03-10 — unified screening layout  <!-- Auto-preserved by update-docs -->
 - Applicants list on property detail page shows score inline (`50/100`) for COMPLETED reports — landlord-only view. Colour uses `scoreTextColour(grade)` matching `gradeColour` thresholds from `ScreeningReportDisplay`. Never show grade label in this list. // Updated: 2026-03-10 — inline applicant score  <!-- Auto-preserved by update-docs -->
-- Property deletion (`DELETE /api/properties/[id]`) cascades through all related data + storage files. Deletion order matters to avoid FK violations: CheckInPhotos → CheckInReports → MaintenancePhotos/StatusHistory → MaintenanceRequests → ScreeningLogs/FinancialReports → DocumentAcknowledgments → TenantDocuments → RentPayments → Tenancies → Tenants → PropertyDocuments → ComplianceDocs → PropertyRooms → ApplicationInvites → Property. Storage cleanup (best-effort) covers 5 buckets: documents, check-in-photos, tenant-documents, maintenance-photos, bank-statements. // Updated: 2026-03-10 — property cascade delete  <!-- Auto-preserved by update-docs -->
+- Property deletion (`DELETE /api/properties/[id]`) cascades through all related data + storage files. Deletion order matters to avoid FK violations: InspectionPhotos → PropertyInspections → MaintenancePhotos/StatusHistory → MaintenanceRequests → ScreeningLogs/FinancialReports → DocumentAcknowledgments → TenantDocuments → RentPayments → Tenancies → Tenants → PropertyDocuments → ComplianceDocs → PropertyRooms → ApplicationInvites → Property. Storage cleanup (best-effort) covers 5 buckets: documents, check-in-photos, tenant-documents, maintenance-photos, bank-statements. // Updated: 2026-03-10 — property cascade delete  <!-- Auto-preserved by update-docs -->
 - Screening report page (`screening/report/[reportId]`) must always use `params.reportId` directly for the `/api/scoring/` call — never derive the ID from a relation, invite lookup, or other source. All links to this page must pass the FinancialReport ID, not the ScreeningInvite ID. // Updated: 2026-03-10 — report page ID fix  <!-- Auto-preserved by update-docs -->
 - Tenant selection modal (`SelectTenantModal`) uses 2-step confirmation: Step 1 shows selected tenant + rejections preview, Step 2 shows rose/red irreversibility warning. Only Step 2's "Yes, confirm" button triggers the API call. // Updated: 2026-03-10 — 2-step tenant confirm  <!-- Auto-preserved by update-docs -->
 - Applications section collapses when a tenant is active/invited (`historyOnly` prop). Shows "View application history (N)" toggle. Expanded view is read-only (name, email, status, score). Invite fields, send button, and financial verification toggle are hidden. // Updated: 2026-03-10 — collapsed applications  <!-- Auto-preserved by update-docs -->
@@ -1175,5 +1245,9 @@ Every new table MUST include in its migration file: // Updated: 2026-03-09 — R
 - Candidate result screen shared component at `components/screening-flow/CandidateResultScreen.tsx` — exports `CandidateScoreCard`, `CandidateFooter`, `scoreMessage`. Used by BOTH `/apply/[propertyId]` (property apply) and `/screening/apply/[token]` (invite apply). Never duplicate these components inline. // Updated: 2026-03-10 — unified candidate result screen  <!-- Auto-preserved by update-docs -->
 - Scoring `/api/scoring/[reportId]` GET returns `totalScore`, `grade`, `verificationToken` for unauthenticated requests (candidate polling). This is intentional — candidates need their own score. Never restrict score data from unauthenticated polling on this endpoint. // Updated: 2026-03-10 — unauth score access  <!-- Auto-preserved by update-docs -->
 - Background scoring uses dedicated `/api/scoring/process/[reportId]` route with `maxDuration = 60`. Upload routes (`/api/scoring/upload` and `/api/screening/invite/[token]/submit`) trigger analysis via fire-and-forget `fetch()` to this route — never call `analyzeStatement()` directly in upload routes. Base URL: `NEXT_PUBLIC_APP_URL` || `VERCEL_URL` || localhost. // Updated: 2026-03-10 — background scoring route  <!-- Auto-preserved by update-docs -->
-- Property detail page has contextual help (i) modals on all section cards via `components/properties/SectionHelpModal.tsx`. Exports `SectionHelpModal`, `SectionHelpButton`, and `SectionHelpKey` type. Each section (documents, rooms, checkin, tenant, rent, maintenance, applications) has a circular (i) button positioned absolute top-right that opens a modal with description, example, and role. // Updated: 2026-03-10 — contextual section help  <!-- Auto-preserved by update-docs -->
+- Property detail page has contextual help (i) modals on all section cards via `components/properties/SectionHelpModal.tsx`. Exports `SectionHelpModal`, `SectionHelpButton`, and `SectionHelpKey` type. Each section (documents, rooms, inspection, tenant, rent, maintenance, applications) has a circular (i) button positioned absolute top-right that opens a modal with description, example, and role. // Updated: 2026-03-10 — contextual section help  <!-- Auto-preserved by update-docs -->
 - **Stripe Phase 1 (card setup):** `lib/stripe.ts` = server client singleton + `getOrCreateStripeCustomer()`. `/api/stripe/webhook` = single webhook endpoint handling all Stripe events (setup_intent.succeeded implemented; Phase 2-4 TODOs for subscription/payment/checkout events). `/api/payment/setup-intent` = creates Stripe SetupIntent for PaymentElement. `PaymentSetupModal` now uses Stripe Elements (`@stripe/react-stripe-js`) — PCI compliant, no raw card numbers. Remove-card route detaches via `stripe.paymentMethods.detach()`. Env vars: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` (server), `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (client). Webhook URL: `https://letsorted.co.uk/api/stripe/webhook`. Local testing: `stripe listen --forward-to localhost:3000/api/stripe/webhook`. Charge/subscription functions in `lib/payment-service.ts` are still mock — will be replaced in Phase 2-3. // Updated: 2026-03-10 — Stripe Phase 1  <!-- Auto-preserved by update-docs -->
+- Never define `inputClass`, `buttonClass`, or card className inline — import from `lib/form-styles.ts` / `lib/ui.tsx` // Updated: 2026-03-11 — UI primitives  <!-- Auto-preserved by update-docs -->
+- Never write inline loading spinners — use `<Spinner />` from `lib/ui.tsx` // Updated: 2026-03-11 — UI primitives  <!-- Auto-preserved by update-docs -->
+- Never build modal overlays from scratch — use `<Modal />` from `lib/ui.tsx` // Updated: 2026-03-11 — UI primitives  <!-- Auto-preserved by update-docs -->
+- Never define `fmtDate()` locally — import from `lib/utils.ts` // Updated: 2026-03-11 — UI primitives  <!-- Auto-preserved by update-docs -->

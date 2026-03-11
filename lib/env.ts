@@ -15,6 +15,7 @@ const schema = z.object({
   // Stripe
   STRIPE_SECRET_KEY: z.string().min(1).optional(),
   STRIPE_WEBHOOK_SECRET: z.string().min(1).optional(),
+  STRIPE_SUBSCRIPTION_PRICE_ID: z.string().min(1).optional(),
 
   // Sentry (server-only — NEXT_PUBLIC_SENTRY_DSN read via process.env in config files)
   SENTRY_AUTH_TOKEN: z.string().optional(),
@@ -43,6 +44,7 @@ export const env = schema.parse({
   ADMIN_PASSWORD: process.env.ADMIN_PASSWORD,
   STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
   STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
+  STRIPE_SUBSCRIPTION_PRICE_ID: process.env.STRIPE_SUBSCRIPTION_PRICE_ID,
   SENTRY_AUTH_TOKEN: process.env.SENTRY_AUTH_TOKEN,
   SENTRY_ORG: process.env.SENTRY_ORG,
   SENTRY_PROJECT: process.env.SENTRY_PROJECT,

@@ -49,14 +49,14 @@ export const NOTIFICATIONS: Record<string, NotificationDefinition> = {
     templateFn: 'landlordNotificationHtml',
   },
 
-  CHECK_IN_TENANT_RESPONSE: {
-    id: 'CHECK_IN_TENANT_RESPONSE',
-    name: 'Check-in tenant response',
-    description: 'Sent to landlord when tenant confirms or disputes check-in report',
+  INSPECTION_TENANT_RESPONSE: {
+    id: 'INSPECTION_TENANT_RESPONSE',
+    name: 'Inspection tenant response',
+    description: 'Sent to landlord when tenant confirms or disputes property inspection report',
     trigger: 'event',
     recipient: 'landlord',
     status: 'live',
-    templateFn: 'checkInTenantResponseHtml',
+    templateFn: 'inspectionTenantResponseHtml',
   },
 
   MAINTENANCE_NEW_REQUEST: {
@@ -87,6 +87,16 @@ export const NOTIFICATIONS: Record<string, NotificationDefinition> = {
     recipient: 'landlord',
     status: 'live',
     templateFn: 'awaabsLawExpiringHtml',
+  },
+
+  INSPECTION_REMINDER_LANDLORD: {
+    id: 'INSPECTION_REMINDER_LANDLORD',
+    name: 'Inspection reminder',
+    description: 'Sent to landlord 7 days before a periodic inspection is due',
+    trigger: 'cron',
+    recipient: 'landlord',
+    status: 'live',
+    templateFn: 'inspectionReminderHtml',
   },
 
   DD_PAYMENT_FAILED: {
@@ -160,24 +170,34 @@ export const NOTIFICATIONS: Record<string, NotificationDefinition> = {
     templateFn: 'applicantRejectedHtml',
   },
 
-  CHECK_IN_REVIEW: {
-    id: 'CHECK_IN_REVIEW',
-    name: 'Check-in review',
-    description: 'Sent to tenant asking them to review and confirm check-in report',
+  INSPECTION_REVIEW: {
+    id: 'INSPECTION_REVIEW',
+    name: 'Inspection review',
+    description: 'Sent to tenant asking them to review and confirm inspection report',
     trigger: 'event',
     recipient: 'tenant',
     status: 'live',
-    templateFn: 'checkInReviewHtml',
+    templateFn: 'inspectionReviewHtml',
   },
 
-  CHECK_IN_PDF_READY: {
-    id: 'CHECK_IN_PDF_READY',
-    name: 'Check-in PDF ready',
-    description: 'Sent to tenant with download link for signed check-in report PDF',
+  INSPECTION_NOTICE_TENANT: {
+    id: 'INSPECTION_NOTICE_TENANT',
+    name: 'Inspection notice',
+    description: 'Legally required notice to tenant before property inspection (Section 11, LTA 1985)',
     trigger: 'event',
     recipient: 'tenant',
     status: 'live',
-    templateFn: 'checkInCompleteHtml',
+    templateFn: 'inspectionNoticeHtml',
+  },
+
+  INSPECTION_PDF_READY: {
+    id: 'INSPECTION_PDF_READY',
+    name: 'Inspection PDF ready',
+    description: 'Sent to tenant with download link for signed inspection report PDF',
+    trigger: 'event',
+    recipient: 'tenant',
+    status: 'live',
+    templateFn: 'inspectionCompleteHtml',
   },
 
   MAINTENANCE_TENANT_CONFIRMATION: {

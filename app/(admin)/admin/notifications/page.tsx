@@ -51,6 +51,9 @@ export default function AdminNotificationsPage() {
               <Link href="/admin/screenings" className="text-gray-500 hover:text-gray-900">
                 Screenings
               </Link>
+              <Link href="/admin/payments" className="text-gray-500 hover:text-gray-900">
+                Payments
+              </Link>
             </nav>
           </div>
           <button

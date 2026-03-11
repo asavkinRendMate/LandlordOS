@@ -49,6 +49,7 @@ model User {
   tenantProfiles    Tenant[]
   screeningPackages ScreeningPackage[]
   screeningInvites  ScreeningInvite[]
+  payments          Payment[]
 
   @@map("users")
 }
@@ -84,6 +85,7 @@ model Property {
   status           PropertyStatus @default(VACANT)
   applicationToken String?        @unique @map("application_token")
   requireFinancialVerification Boolean @default(true) @map("require_financial_verification")
+  screeningCycleResetAt DateTime? @map("screening_cycle_reset_at")
   createdAt        DateTime       @default(now()) @map("created_at")
   updatedAt        DateTime       @updatedAt @map("updated_at")
 
@@ -94,7 +96,7 @@ model Property {
   maintenanceRequests MaintenanceRequest[]
   financialReports    FinancialReport[]
   rooms               PropertyRoom[]
-  checkInReports      CheckInReport[]
+  inspections         PropertyInspection[]
   applicationInvites  ApplicationInvite[]
 
   @@index([userId])
@@ -168,6 +170,7 @@ model Tenancy {
   createdAt          DateTime      @default(now()) @map("created_at")
   updatedAt          DateTime      @updatedAt @map("updated_at")
   payments           RentPayment[]
+  inspectionSchedule InspectionSchedule?
 
   @@index([propertyId])
   @@index([tenantId])
@@ -236,7 +239,7 @@ model Tenant {
   acknowledgments     DocumentAcknowledgment[]
   maintenanceRequests MaintenanceRequest[]
   financialReports    FinancialReport[]
-  checkInReports      CheckInReport[]
+  inspections         PropertyInspection[]
 
   @@index([propertyId])
   @@index([userId])
@@ -612,15 +615,21 @@ model PropertyRoom {
   order      Int      @default(0)
   createdAt  DateTime @default(now()) @map("created_at")
 
-  photos CheckInPhoto[]
+  photos InspectionPhoto[]
 
   @@index([propertyId])
   @@map("property_rooms")
 }
 
-// ── Check-in Reports ────────────────────────────────────────────────────────
+// ── Property Inspections ────────────────────────────────────────────────────
 
-enum CheckInReportStatus {
+enum InspectionType {
+  MOVE_IN
+  PERIODIC
+  MOVE_OUT
+}
+
+enum InspectionStatus {
   DRAFT
   PENDING
   IN_REVIEW
@@ -628,26 +637,47 @@ enum CheckInReportStatus {
   DISPUTED
 }
 
-model CheckInReport {
-  id                  String              @id @default(uuid())
-  propertyId          String              @map("property_id")
-  property            Property            @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  tenantId            String?             @map("tenant_id")
-  tenant              Tenant?             @relation(fields: [tenantId], references: [id])
-  status              CheckInReportStatus @default(DRAFT)
-  token               String              @unique @default(uuid())
-  landlordConfirmedAt DateTime?           @map("landlord_confirmed_at")
-  tenantConfirmedAt   DateTime?           @map("tenant_confirmed_at")
-  pdfUrl              String?             @map("pdf_url")
-  pdfGeneratedAt      DateTime?           @map("pdf_generated_at")
-  createdAt           DateTime            @default(now()) @map("created_at")
-  updatedAt           DateTime            @updatedAt @map("updated_at")
+model PropertyInspection {
+  id                  String           @id @default(uuid())
+  propertyId          String           @map("property_id")
+  property            Property         @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  tenantId            String?          @map("tenant_id")
+  tenant              Tenant?          @relation(fields: [tenantId], references: [id])
+  inspectionType      InspectionType   @default(MOVE_IN) @map("inspection_type")
+  inspectionNumber    Int              @default(1) @map("inspection_number")
+  scheduledDate       DateTime?        @map("scheduled_date")
+  noticeSeenAt        DateTime?        @map("notice_seen_at")
+  noticeToken         String?          @unique @map("notice_token")
+  status              InspectionStatus @default(DRAFT)
+  token               String           @unique @default(uuid())
+  landlordConfirmedAt DateTime?        @map("landlord_confirmed_at")
+  tenantConfirmedAt   DateTime?        @map("tenant_confirmed_at")
+  pdfUrl              String?          @map("pdf_url")
+  pdfGeneratedAt      DateTime?        @map("pdf_generated_at")
+  createdAt           DateTime         @default(now()) @map("created_at")
+  updatedAt           DateTime         @updatedAt @map("updated_at")
 
-  photos CheckInPhoto[]
+  photos InspectionPhoto[]
 
   @@index([propertyId])
   @@index([tenantId])
-  @@map("check_in_reports")
+  @@index([propertyId, inspectionType])
+  @@map("property_inspections")
+}
+
+// ── Inspection Schedule ─────────────────────────────────────────────────────
+// One schedule per tenancy — controls periodic inspection frequency.
+
+model InspectionSchedule {
+  id              String   @id @default(uuid())
+  tenancyId       String   @unique @map("tenancy_id")
+  tenancy         Tenancy  @relation(fields: [tenancyId], references: [id], onDelete: Cascade)
+  frequencyMonths Int      @map("frequency_months") // 3 or 6
+  nextDueDate     DateTime @map("next_due_date")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("inspection_schedules")
 }
 
 // ── Compliance Alert Log ────────────────────────────────────────────────────
@@ -682,23 +712,43 @@ model ApplicationInvite {
   @@map("application_invites")
 }
 
-// GDPR: Check-in photos retained for tenancy duration + 3 months
-model CheckInPhoto {
-  id           String          @id @default(uuid())
-  reportId     String          @map("report_id")
-  report       CheckInReport   @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  roomId       String?         @map("room_id")
-  room         PropertyRoom?   @relation(fields: [roomId], references: [id])
-  roomName     String          @map("room_name")
-  uploadedBy   String          @map("uploaded_by") // "LANDLORD" | "TENANT"
-  uploaderName String          @map("uploader_name")
-  fileUrl      String          @map("file_url")
+// GDPR: Inspection photos retained for tenancy duration + 3 months
+model InspectionPhoto {
+  id           String              @id @default(uuid())
+  inspectionId String              @map("inspection_id")
+  inspection   PropertyInspection  @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  roomId       String?             @map("room_id")
+  room         PropertyRoom?       @relation(fields: [roomId], references: [id])
+  roomName     String              @map("room_name")
+  uploadedBy   String              @map("uploaded_by") // "LANDLORD" | "TENANT"
+  uploaderName String              @map("uploader_name")
+  fileUrl      String              @map("file_url")
   caption      String?
-  condition    String?         // "GOOD" | "MINOR_ISSUE" | "DAMAGE"
-  takenAt      DateTime?       @map("taken_at")
-  createdAt    DateTime        @default(now()) @map("created_at")
+  condition    String?             // "GOOD" | "MINOR_ISSUE" | "DAMAGE"
+  takenAt      DateTime?           @map("taken_at")
+  createdAt    DateTime            @default(now()) @map("created_at")
 
-  @@index([reportId])
+  @@index([inspectionId])
   @@index([roomId])
-  @@map("check_in_photos")
+  @@map("inspection_photos")
+}
+
+// ── Payment ───────────────────────────────────────────────────────────────────
+// Tracks real Stripe PaymentIntent charges (screening unlocks, etc.)
+
+model Payment {
+  id                    String   @id @default(uuid())
+  userId                String   @map("user_id")
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amountPence           Int      @map("amount_pence")
+  currency              String   @default("gbp")
+  reason                String   // SCREENING_FIRST | SCREENING_ADDITIONAL | etc.
+  status                String   @default("pending") // pending | succeeded | failed
+  stripePaymentIntentId String?  @unique @map("stripe_payment_intent_id")
+  referenceId           String?  @map("reference_id") // e.g. FinancialReport.id
+  metadata              Json?
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("payments")
 }

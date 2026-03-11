@@ -93,6 +93,17 @@ export default function SettingsPage() {
     } catch { /* silent */ } finally { setBillingAction(false) }
   }
 
+  async function handleManageSubscription() {
+    setBillingAction(true)
+    try {
+      const res = await fetch('/api/stripe/portal', { method: 'POST' })
+      const json = await res.json()
+      if (json.data?.url) {
+        window.location.href = json.data.url
+      }
+    } catch { /* silent */ } finally { setBillingAction(false) }
+  }
+
   async function handleSave() {
     if (name.trim().length < 2) { setError('Name must be at least 2 characters'); return }
     setSaving(true)
@@ -257,7 +268,14 @@ export default function SettingsPage() {
                     )}
                   </div>
 
-                  <div className="mt-3">
+                  <div className="mt-3 flex items-center gap-3">
+                    <button
+                      onClick={handleManageSubscription}
+                      disabled={billingAction}
+                      className="text-xs text-green-600 hover:text-green-700 font-medium transition-colors"
+                    >
+                      Manage subscription
+                    </button>
                     {subscription.status === 'ACTIVE' ? (
                       <button
                         onClick={handleCancelSubscription}

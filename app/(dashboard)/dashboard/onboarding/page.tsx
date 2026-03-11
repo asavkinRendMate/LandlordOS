@@ -455,7 +455,7 @@ const stepContent: Record<number, { heading: string; subtitle: string }> = {
   },
   2: {
     heading: 'Set up your rooms',
-    subtitle: "We've suggested rooms based on your property type. Edit, add, or remove rooms — these are used for check-in reports and inventories.",
+    subtitle: "We've suggested rooms based on your property type. Edit, add, or remove rooms — these are used for inspection reports and inventories.",
   },
   3: {
     heading: 'Is the property currently let?',

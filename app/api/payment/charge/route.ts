@@ -2,20 +2,11 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createAuthClient } from '@/lib/supabase/auth'
 import { prisma } from '@/lib/prisma'
-import { charge, CHARGE_AMOUNTS, type ChargeReason } from '@/lib/payment-service'
-
-const SCREENING_REASONS = new Set<ChargeReason>(['SCREENING_FIRST', 'SCREENING_ADDITIONAL'])
+import { charge } from '@/lib/payment-service'
+import { determineUnlockMethod } from '@/lib/screening-unlock'
 
 const schema = z.object({
-  reason: z.enum([
-    'SCREENING_FIRST',
-    'SCREENING_ADDITIONAL',
-    'STANDALONE_SCREENING',
-    'APT_CONTRACT',
-    'INVENTORY_REPORT',
-    'DISPUTE_PACK',
-  ]),
-  inviteId: z.string().uuid().optional(),
+  reportId: z.string().uuid(),
 })
 
 export async function POST(req: Request) {
@@ -32,85 +23,90 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
     }
 
-    const { reason, inviteId } = result.data
-    const amountPence = CHARGE_AMOUNTS[reason]
+    const { reportId } = result.data
 
-    // Charge the user
-    const chargeResult = await charge(user.id, reason, amountPence)
-    if (!chargeResult.success) {
-      return NextResponse.json({ error: 'Payment failed' }, { status: 402 })
+    // Find report owned by this user (via property or invite)
+    const report = await prisma.financialReport.findFirst({
+      where: {
+        id: reportId,
+        status: 'COMPLETED',
+        isLocked: true,
+        OR: [
+          { property: { userId: user.id } },
+          { invite: { landlordId: user.id } },
+        ],
+      },
+      select: {
+        id: true,
+        propertyId: true,
+        isLocked: true,
+        status: true,
+        inviteId: true,
+      },
+    })
+
+    if (!report) {
+      return NextResponse.json({ error: 'Report not found or already unlocked' }, { status: 404 })
     }
 
-    // For screening charges: unlock report + mark invite PAID
-    if (SCREENING_REASONS.has(reason) && inviteId) {
-      // Try as screening invite first
-      const invite = await prisma.screeningInvite.findUnique({ where: { id: inviteId } })
+    // Determine unlock method (server-side pricing)
+    const method = await determineUnlockMethod(user.id, report)
 
-      if (invite) {
-        if (invite.landlordId !== user.id) {
-          return NextResponse.json({ error: 'Invite not found' }, { status: 404 })
-        }
+    if (method.type === 'error') {
+      return NextResponse.json({ error: method.message }, { status: 402 })
+    }
 
-        const report = await prisma.financialReport.findFirst({
-          where: { inviteId, status: 'COMPLETED' },
-          orderBy: { createdAt: 'desc' },
+    if (method.type === 'credit_pack') {
+      // Deduct credit + unlock in transaction
+      await prisma.$transaction([
+        prisma.screeningPackage.update({
+          where: { id: method.packageId },
+          data: { usedCredits: { increment: 1 } },
+        }),
+        prisma.financialReport.update({
+          where: { id: report.id },
+          data: { isLocked: false },
+        }),
+        ...(report.inviteId ? [
+          prisma.screeningInvite.update({
+            where: { id: report.inviteId },
+            data: { status: 'PAID', updatedAt: new Date() },
+          }),
+        ] : []),
+      ])
+
+      return NextResponse.json({
+        data: {
+          message: 'Report unlocked with credit pack',
+          method: 'credit_pack',
+          amountPence: 0,
+        },
+      })
+    }
+
+    // Subscriber flow: charge via Stripe
+    const chargeResult = await charge(user.id, method.reason, method.amountPence, report.id)
+
+    // Unlock report + mark invite PAID
+    await prisma.$transaction(async (tx) => {
+      await tx.financialReport.update({
+        where: { id: report.id },
+        data: { isLocked: false },
+      })
+      if (report.inviteId) {
+        await tx.screeningInvite.update({
+          where: { id: report.inviteId },
+          data: { status: 'PAID', updatedAt: new Date() },
         })
-
-        if (report) {
-          await prisma.$transaction([
-            prisma.financialReport.update({
-              where: { id: report.id },
-              data: { isLocked: false },
-            }),
-            prisma.screeningInvite.update({
-              where: { id: inviteId },
-              data: { status: 'PAID', updatedAt: new Date() },
-            }),
-          ])
-        }
-      } else {
-        // Fallback: inviteId may be a FinancialReport ID (standalone/credit-pack or invite flow)
-        const report = await prisma.financialReport.findFirst({
-          where: {
-            id: inviteId,
-            status: 'COMPLETED',
-            OR: [
-              { property: { userId: user.id } },
-              { invite: { landlordId: user.id } },
-            ],
-          },
-          include: { invite: true },
-        })
-
-        if (!report) {
-          return NextResponse.json({ error: 'Report not found' }, { status: 404 })
-        }
-
-        if (report.invite) {
-          await prisma.$transaction([
-            prisma.financialReport.update({
-              where: { id: report.id },
-              data: { isLocked: false },
-            }),
-            prisma.screeningInvite.update({
-              where: { id: report.invite.id },
-              data: { status: 'PAID', updatedAt: new Date() },
-            }),
-          ])
-        } else {
-          await prisma.financialReport.update({
-            where: { id: report.id },
-            data: { isLocked: false },
-          })
-        }
       }
-    }
+    })
 
     return NextResponse.json({
       data: {
         message: 'Payment successful',
+        method: 'subscriber',
         chargeId: chargeResult.chargeId,
-        amountPence,
+        amountPence: method.amountPence,
       },
     })
   } catch (err) {
@@ -119,6 +115,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: message }, { status: 402 })
     }
     console.error('[payment/charge POST]', err)
-    return NextResponse.json({ error: 'Something went wrong' }, { status: 500 })
+    return NextResponse.json({ error: 'Payment failed' }, { status: 500 })
   }
 }

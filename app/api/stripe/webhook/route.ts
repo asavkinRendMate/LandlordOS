@@ -106,29 +106,157 @@ export async function POST(req: Request) {
         break
       }
 
-      // ── Phase 2 (TODO): Subscription lifecycle ────────────────────────
+      // ── Phase 2: PaymentIntent lifecycle ────────────────────────────
+      case 'payment_intent.succeeded': {
+        const pi = event.data.object as Stripe.PaymentIntent
+        const paymentId = pi.metadata?.paymentId
+        console.log('[webhook] payment_intent.succeeded', { piId: pi.id, paymentId })
+
+        if (!paymentId) break
+
+        // Update Payment record
+        await prisma.payment.updateMany({
+          where: { id: paymentId, status: { not: 'succeeded' } },
+          data: { status: 'succeeded', stripePaymentIntentId: pi.id },
+        })
+
+        // If screening reason: idempotent unlock
+        const reason = pi.metadata?.reason
+        const referenceId = pi.metadata?.referenceId
+        if (
+          referenceId &&
+          (reason === 'SCREENING_FIRST' || reason === 'SCREENING_ADDITIONAL')
+        ) {
+          const report = await prisma.financialReport.findUnique({
+            where: { id: referenceId },
+            select: { id: true, isLocked: true, inviteId: true },
+          })
+
+          if (report?.isLocked) {
+            await prisma.financialReport.update({
+              where: { id: referenceId },
+              data: { isLocked: false },
+            })
+            if (report.inviteId) {
+              await prisma.screeningInvite.update({
+                where: { id: report.inviteId },
+                data: { status: 'PAID', updatedAt: new Date() },
+              })
+            }
+            console.log('[webhook] Report unlocked via webhook:', referenceId)
+          }
+        }
+        break
+      }
+
+      case 'payment_intent.payment_failed': {
+        const pi = event.data.object as Stripe.PaymentIntent
+        const paymentId = pi.metadata?.paymentId
+        console.log('[webhook] payment_intent.payment_failed', { piId: pi.id, paymentId })
+
+        if (paymentId) {
+          await prisma.payment.updateMany({
+            where: { id: paymentId },
+            data: { status: 'failed' },
+          })
+        }
+        break
+      }
+
+      // ── Phase 2: Subscription lifecycle ─────────────────────────────
       case 'customer.subscription.updated': {
-        // TODO Phase 2 — sync subscription status to DB
-        console.log(`[stripe/webhook] customer.subscription.updated (not yet handled)`)
+        const sub = event.data.object as Stripe.Subscription
+        console.log('[webhook] customer.subscription.updated', { subId: sub.id, status: sub.status })
+
+        const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer.id
+        const subUser = await prisma.user.findUnique({
+          where: { stripeCustomerId: customerId },
+          select: { id: true },
+        })
+        if (!subUser) {
+          console.error('[webhook] No user for customer:', customerId)
+          break
+        }
+
+        const dbStatus = mapStripeSubStatus(sub.status)
+        const item = sub.items.data[0]
+        const quantity = item?.quantity ?? 0
+        const periodEnd = item?.current_period_end
+          ? new Date(item.current_period_end * 1000)
+          : null
+
+        await prisma.user.update({
+          where: { id: subUser.id },
+          data: {
+            subscriptionStatus: dbStatus,
+            subscriptionPropertyCount: quantity + 1, // quantity = billable (extra) properties
+            subscriptionMonthlyAmount: quantity * 1000, // £10/mo per extra property
+            currentPeriodEnd: periodEnd,
+          },
+        })
+        console.log('[webhook] Subscription synced for user:', subUser.id, dbStatus)
         break
       }
 
       case 'customer.subscription.deleted': {
-        // TODO Phase 2 — mark subscription as cancelled
-        console.log(`[stripe/webhook] customer.subscription.deleted (not yet handled)`)
+        const sub = event.data.object as Stripe.Subscription
+        console.log('[webhook] customer.subscription.deleted', { subId: sub.id })
+
+        const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer.id
+        const subUser = await prisma.user.findUnique({
+          where: { stripeCustomerId: customerId },
+          select: { id: true },
+        })
+        if (!subUser) break
+
+        await prisma.user.update({
+          where: { id: subUser.id },
+          data: {
+            subscriptionStatus: 'CANCELLED',
+            currentPeriodEnd: null,
+            stripeSubscriptionId: null,
+          },
+        })
+        console.log('[webhook] Subscription deleted for user:', subUser.id)
         break
       }
 
       case 'invoice.payment_failed': {
-        // TODO Phase 2 — mark subscription as PAST_DUE
-        console.log(`[stripe/webhook] invoice.payment_failed (not yet handled)`)
+        const invoice = event.data.object as Stripe.Invoice
+        const subId = getInvoiceSubscriptionId(invoice)
+        console.log('[webhook] invoice.payment_failed', { invoiceId: invoice.id, subId })
+
+        if (subId) {
+          const subUser = await prisma.user.findUnique({
+            where: { stripeSubscriptionId: subId },
+            select: { id: true },
+          })
+          if (subUser) {
+            await prisma.user.update({
+              where: { id: subUser.id },
+              data: { subscriptionStatus: 'PAST_DUE' },
+            })
+            console.log('[webhook] Subscription set PAST_DUE for user:', subUser.id)
+          }
+        }
         break
       }
 
-      // ── Phase 3 (TODO): Screening unlock ──────────────────────────────
-      case 'payment_intent.succeeded': {
-        // TODO Phase 3 — screening report unlock
-        console.log(`[stripe/webhook] payment_intent.succeeded (not yet handled)`)
+      case 'invoice.paid': {
+        const invoice = event.data.object as Stripe.Invoice
+        const subId = getInvoiceSubscriptionId(invoice)
+        console.log('[webhook] invoice.paid', { invoiceId: invoice.id, subId })
+
+        if (subId) {
+          // Restore to ACTIVE only if currently PAST_DUE
+          await prisma.user.updateMany({
+            where: {
+              stripeSubscriptionId: subId,
+              subscriptionStatus: 'PAST_DUE',
+            },
+            data: { subscriptionStatus: 'ACTIVE' },
+          })
+        }
         break
       }
 
@@ -149,4 +277,30 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json({ received: true })
+}
+
+function getInvoiceSubscriptionId(invoice: Stripe.Invoice): string | undefined {
+  const subDetails = invoice.parent?.subscription_details
+  if (!subDetails) return undefined
+  return typeof subDetails.subscription === 'string'
+    ? subDetails.subscription
+    : subDetails.subscription?.id
+}
+
+function mapStripeSubStatus(
+  status: Stripe.Subscription.Status,
+): 'NONE' | 'ACTIVE' | 'PAST_DUE' | 'CANCELLED' {
+  switch (status) {
+    case 'active':
+    case 'trialing':
+      return 'ACTIVE'
+    case 'past_due':
+      return 'PAST_DUE'
+    case 'canceled':
+    case 'unpaid':
+    case 'incomplete_expired':
+      return 'CANCELLED'
+    default:
+      return 'ACTIVE'
+  }
 }

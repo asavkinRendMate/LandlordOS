@@ -76,7 +76,7 @@ export default function MoveInPage() {
               </div>
               <div className="pb-2">
                 <p className="text-xs font-bold text-green-600 uppercase tracking-wide mb-1">Step 2</p>
-                <h3 className="font-semibold text-gray-900 text-lg mb-2">Run the check-in inspection</h3>
+                <h3 className="font-semibold text-gray-900 text-lg mb-2">Run the property inspection</h3>
                 <p className="text-gray-500 leading-relaxed">
                   Go room by room, add photos and condition notes. Your tenant reviews the same report
                   from their portal and confirms or raises a dispute.

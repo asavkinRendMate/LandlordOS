@@ -11,7 +11,7 @@ import { selectClass } from '@/lib/form-styles'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-interface CheckInReportData {
+interface InspectionData {
   id: string
   status: string
   token: string
@@ -19,10 +19,22 @@ interface CheckInReportData {
   hasPdf: boolean
 }
 
+interface PeriodicInspectionData {
+  id: string
+  status: string
+  token: string
+  inspectionNumber: number
+  scheduledDate: string | null
+  tenantConfirmedAt: string | null
+  noticeSeenAt: string | null
+  hasPdf: boolean
+}
+
 interface Props {
   tenant: { id: string; name: string; email: string; status: string; onboardingState: Record<string, boolean> | null }
   property: { id: string; address: string; landlordName: string; landlordEmail: string }
-  checkInReport: CheckInReportData | null
+  inspection: InspectionData | null
+  periodicInspections: PeriodicInspectionData[]
 }
 
 interface TenantDocument {
@@ -667,7 +679,7 @@ function MyDocumentsSection({ tenantId }: { tenantId: string }) {
 
 // ── Check-in Inspection section ───────────────────────────────────────────────
 
-function CheckInInspectionSection({ report }: { report: CheckInReportData }) {
+function InspectionSection({ report }: { report: InspectionData }) {
   const isPending = report.status === 'PENDING' || report.status === 'IN_REVIEW'
   const isDisputed = report.status === 'DISPUTED'
   const isAgreed = report.status === 'AGREED'
@@ -694,12 +706,12 @@ function CheckInInspectionSection({ report }: { report: CheckInReportData }) {
         <div className="flex-1 min-w-0">
           {isPending && (
             <>
-              <p className="text-gray-900 text-sm font-medium">Review your check-in report</p>
+              <p className="text-gray-900 text-sm font-medium">Review your inspection report</p>
               <p className="text-gray-500 text-sm mt-1">
-                Your landlord has completed the check-in inspection. Please review the photos and confirm the condition of the property.
+                Your landlord has completed the property inspection. Please review the photos and confirm the condition of the property.
               </p>
               <Link
-                href={`/check-in/${report.token}`}
+                href={`/tenant/inspection/${report.token}`}
                 className="inline-flex items-center gap-1.5 mt-3 px-4 py-2 bg-green-600 hover:bg-green-500 text-white text-sm font-semibold rounded-xl transition-colors"
               >
                 Review &amp; confirm
@@ -723,11 +735,11 @@ function CheckInInspectionSection({ report }: { report: CheckInReportData }) {
             <>
               <p className="text-gray-900 text-sm font-medium">Check-in report confirmed</p>
               <p className="text-gray-500 text-sm mt-1">
-                You confirmed the check-in report on {formatDate(report.tenantConfirmedAt!)}.
+                You confirmed the inspection report on {formatDate(report.tenantConfirmedAt!)}.
               </p>
               {report.hasPdf && (
                 <Link
-                  href={`/check-in/${report.token}`}
+                  href={`/tenant/inspection/${report.token}`}
                   className="inline-flex items-center gap-1.5 mt-3 text-sm text-green-600 hover:text-green-700 font-medium transition-colors"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -739,6 +751,96 @@ function CheckInInspectionSection({ report }: { report: CheckInReportData }) {
             </>
           )}
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Periodic Inspections section ───────────────────────────────────────────────
+
+function PeriodicInspectionsSection({ inspections }: { inspections: PeriodicInspectionData[] }) {
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 p-5">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+        </div>
+        <h2 className="text-gray-900 font-semibold">Periodic Inspections</h2>
+      </div>
+
+      <div className="space-y-3">
+        {inspections.map((insp) => {
+          const isPending = insp.status === 'PENDING' || insp.status === 'IN_REVIEW'
+          const isAgreed = insp.status === 'AGREED'
+          const needsAcknowledge = isPending && !insp.noticeSeenAt
+
+          return (
+            <div key={insp.id} className="p-4 rounded-xl border border-gray-100 bg-gray-50">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                    #{insp.inspectionNumber}
+                  </span>
+                  {insp.scheduledDate && (
+                    <span className="text-xs text-gray-500">{formatDate(insp.scheduledDate)}</span>
+                  )}
+                </div>
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                  isAgreed ? 'bg-green-100 text-green-700'
+                  : insp.status === 'DISPUTED' ? 'bg-red-100 text-red-700'
+                  : 'bg-blue-100 text-blue-700'
+                }`}>
+                  {insp.status === 'IN_REVIEW' ? 'In Review' : insp.status.charAt(0) + insp.status.slice(1).toLowerCase()}
+                </span>
+              </div>
+
+              {needsAcknowledge && (
+                <div className="mb-3 p-3 rounded-lg bg-amber-50 border border-amber-200">
+                  <p className="text-amber-800 text-sm font-medium">Notice received</p>
+                  <p className="text-amber-700 text-xs mt-0.5">
+                    Your landlord has given notice to inspect the property. Please acknowledge receipt.
+                  </p>
+                  <Link
+                    href={`/tenant/inspection/${insp.token}?acknowledge=true`}
+                    className="inline-flex items-center gap-1.5 mt-2 text-xs text-amber-800 hover:text-amber-900 font-medium transition-colors"
+                  >
+                    Acknowledge &amp; review
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </Link>
+                </div>
+              )}
+
+              {isPending && !needsAcknowledge && (
+                <Link
+                  href={`/tenant/inspection/${insp.token}`}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-green-600 hover:bg-green-500 text-white text-sm font-semibold rounded-xl transition-colors"
+                >
+                  Review &amp; confirm
+                </Link>
+              )}
+
+              {isAgreed && (
+                <div>
+                  <p className="text-gray-500 text-sm">
+                    Confirmed{insp.tenantConfirmedAt ? ` on ${formatDate(insp.tenantConfirmedAt)}` : ''}.
+                  </p>
+                  {insp.hasPdf && (
+                    <Link
+                      href={`/tenant/inspection/${insp.token}`}
+                      className="inline-flex items-center gap-1.5 mt-2 text-sm text-green-600 hover:text-green-700 font-medium transition-colors"
+                    >
+                      View report
+                    </Link>
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        })}
       </div>
     </div>
   )
@@ -1288,7 +1390,7 @@ function PhotoLightbox({ src, onClose }: { src: string; onClose: () => void }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function TenantDashboardClient({ tenant, property, checkInReport }: Props) {
+export default function TenantDashboardClient({ tenant, property, inspection, periodicInspections }: Props) {
   // Identify tenant to Crisp (widget loaded by tenant layout)
   useEffect(() => {
     if (typeof window === 'undefined' || !window.$crisp) return
@@ -1389,8 +1491,13 @@ export default function TenantDashboardClient({ tenant, property, checkInReport 
           {/* My Documents */}
           <MyDocumentsSection tenantId={tenant.id} />
 
-          {/* Check-in Inspection */}
-          {checkInReport && <CheckInInspectionSection report={checkInReport} />}
+          {/* Move-in Inspection */}
+          {inspection && <InspectionSection report={inspection} />}
+
+          {/* Periodic Inspections */}
+          {periodicInspections.length > 0 && (
+            <PeriodicInspectionsSection inspections={periodicInspections} />
+          )}
 
           {/* Rent payments */}
           <TenantPaymentsSection propertyId={property.id} />

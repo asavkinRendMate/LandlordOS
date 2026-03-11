@@ -53,10 +53,11 @@ export default async function TenantDashboardPage() {
   const { property } = tenant
   const address = [property.line1, property.line2, property.city, property.postcode].filter(Boolean).join(', ')
 
-  // Check for an active check-in report (anything beyond DRAFT)
-  const checkInReport = await prisma.checkInReport.findFirst({
+  // Check for an active move-in inspection report (anything beyond DRAFT)
+  const inspection = await prisma.propertyInspection.findFirst({
     where: {
       tenantId: tenant.id,
+      inspectionType: 'MOVE_IN',
       status: { in: ['PENDING', 'IN_REVIEW', 'AGREED', 'DISPUTED'] },
     },
     select: {
@@ -64,6 +65,26 @@ export default async function TenantDashboardPage() {
       status: true,
       token: true,
       tenantConfirmedAt: true,
+      pdfUrl: true,
+    },
+    orderBy: { createdAt: 'desc' },
+  })
+
+  // Fetch periodic inspections for this tenant
+  const periodicInspections = await prisma.propertyInspection.findMany({
+    where: {
+      tenantId: tenant.id,
+      inspectionType: 'PERIODIC',
+      status: { in: ['PENDING', 'IN_REVIEW', 'AGREED', 'DISPUTED'] },
+    },
+    select: {
+      id: true,
+      status: true,
+      token: true,
+      inspectionNumber: true,
+      scheduledDate: true,
+      tenantConfirmedAt: true,
+      noticeSeenAt: true,
       pdfUrl: true,
     },
     orderBy: { createdAt: 'desc' },
@@ -84,13 +105,23 @@ export default async function TenantDashboardPage() {
         landlordName: property.user.name ?? 'Your landlord',
         landlordEmail: property.user.email,
       }}
-      checkInReport={checkInReport ? {
-        id: checkInReport.id,
-        status: checkInReport.status,
-        token: checkInReport.token,
-        tenantConfirmedAt: checkInReport.tenantConfirmedAt?.toISOString() ?? null,
-        hasPdf: !!checkInReport.pdfUrl,
+      inspection={inspection ? {
+        id: inspection.id,
+        status: inspection.status,
+        token: inspection.token,
+        tenantConfirmedAt: inspection.tenantConfirmedAt?.toISOString() ?? null,
+        hasPdf: !!inspection.pdfUrl,
       } : null}
+      periodicInspections={periodicInspections.map((pi) => ({
+        id: pi.id,
+        status: pi.status,
+        token: pi.token,
+        inspectionNumber: pi.inspectionNumber,
+        scheduledDate: pi.scheduledDate?.toISOString() ?? null,
+        tenantConfirmedAt: pi.tenantConfirmedAt?.toISOString() ?? null,
+        noticeSeenAt: pi.noticeSeenAt?.toISOString() ?? null,
+        hasPdf: !!pi.pdfUrl,
+      }))}
     />
   )
 }
