@@ -27,10 +27,12 @@ if (dsn) {
     ],
 
     beforeSend(event) {
-      // Drop events with no useful stack trace
+      // Only drop generic cross-origin "Script error."
+      // with no stack — these have zero useful info
+      const firstValue = event.exception?.values?.[0]
       if (
-        event.exception?.values?.length === 1 &&
-        !event.exception.values[0].stacktrace?.frames?.length
+        firstValue?.value === 'Script error.' &&
+        !firstValue.stacktrace?.frames?.length
       ) {
         return null
       }
