@@ -110,8 +110,92 @@ export async function POST(req: Request) {
       case 'payment_intent.succeeded': {
         const pi = event.data.object as Stripe.PaymentIntent
         const paymentId = pi.metadata?.paymentId
-        console.log('[webhook] payment_intent.succeeded', { piId: pi.id, paymentId })
+        const metaType = pi.metadata?.type
+        console.log('[webhook] payment_intent.succeeded', { piId: pi.id, paymentId, metaType })
 
+        // ── Credit pack purchase (Scenario B — new card) ────────────
+        if (metaType === 'credit_pack') {
+          const packId = pi.metadata?.packId as string | undefined
+          const userId = pi.metadata?.userId as string | undefined
+          const credits = parseInt(pi.metadata?.credits ?? '0', 10)
+
+          if (!packId || !userId || !credits) {
+            console.error('[webhook] credit_pack missing metadata', pi.metadata)
+            break
+          }
+
+          // Idempotent: check if Payment already exists for this PI
+          const existingPayment = await prisma.payment.findUnique({
+            where: { stripePaymentIntentId: pi.id },
+          })
+
+          if (existingPayment) {
+            console.log('[webhook] credit_pack already processed:', pi.id)
+            break
+          }
+
+          // Create ScreeningPackage + Payment in transaction
+          await prisma.$transaction(async (tx) => {
+            const sp = await tx.screeningPackage.create({
+              data: {
+                userId,
+                packageType: packId as 'SINGLE' | 'TRIPLE' | 'SIXER' | 'TEN',
+                totalCredits: credits,
+                usedCredits: 0,
+                pricePence: pi.amount,
+                paymentStatus: 'PAID',
+              },
+            })
+
+            await tx.payment.create({
+              data: {
+                userId,
+                amountPence: pi.amount,
+                reason: `CREDIT_PACK_${packId}`,
+                status: 'succeeded',
+                stripePaymentIntentId: pi.id,
+                referenceId: sp.id,
+                metadata: { packId, credits },
+              },
+            })
+          })
+
+          // Save card for future use if setup_future_usage was set
+          const pmId = typeof pi.payment_method === 'string'
+            ? pi.payment_method
+            : (pi.payment_method as Stripe.PaymentMethod | null)?.id
+
+          if (pmId) {
+            const pm = await stripe.paymentMethods.retrieve(pmId)
+            const card = pm.card
+            if (card) {
+              await prisma.user.update({
+                where: { id: userId },
+                data: {
+                  stripePaymentMethodId: pmId,
+                  paymentMethodStatus: 'SAVED',
+                  cardLast4: card.last4,
+                  cardBrand: card.brand ?? 'card',
+                  cardExpiry: `${String(card.exp_month).padStart(2, '0')}/${String(card.exp_year).slice(-2)}`,
+                },
+              })
+
+              // Set as default PM on customer
+              const customerId = typeof pi.customer === 'string' ? pi.customer : null
+              if (customerId) {
+                await stripe.customers.update(customerId, {
+                  invoice_settings: { default_payment_method: pmId },
+                })
+              }
+              console.log('[webhook] Card saved from credit_pack purchase:', userId)
+            }
+          }
+
+          console.log('[webhook] credit_pack fulfilled:', { userId, packId, credits, piId: pi.id })
+          break
+        }
+
+        // ── Existing screening unlock flow ──────────────────────────
         if (!paymentId) break
 
         // Update Payment record
@@ -260,10 +344,8 @@ export async function POST(req: Request) {
         break
       }
 
-      // ── Phase 4 (TODO): Credit pack purchase ──────────────────────────
       case 'checkout.session.completed': {
-        // TODO Phase 4 — credit pack fulfilment
-        console.log(`[stripe/webhook] checkout.session.completed (not yet handled)`)
+        console.log(`[stripe/webhook] checkout.session.completed (not handled — using PaymentIntent flow)`)
         break
       }
 

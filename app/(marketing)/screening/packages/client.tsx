@@ -1,15 +1,83 @@
 'use client'
 
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { STANDALONE_PACKAGES, SUBSCRIBER_PRICING } from '@/lib/screening-pricing'
+import type { StandalonePackage } from '@/lib/screening-pricing'
+import { AlertBar } from '@/lib/ui'
+import PackPurchaseModal from '@/components/screening-flow/PackPurchaseModal'
 
-export default function PackagesPage() {
+interface CardInfo {
+  hasSavedCard: boolean
+  last4?: string
+  brand?: string
+}
+
+export default function PackagesClient() {
   const router = useRouter()
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null)
+  const [cardInfo, setCardInfo] = useState<CardInfo>({ hasSavedCard: false })
+  const [selectedPack, setSelectedPack] = useState<StandalonePackage | null>(null)
+  const [successCredits, setSuccessCredits] = useState<number | null>(null)
+  const [totalCredits, setTotalCredits] = useState<number | null>(null)
 
-  function handleBuy(packageType: string) {
-    router.push(`/login?next=${encodeURIComponent(`/screening/use?buy=${packageType}`)}`)
+  // Check auth + card info on mount
+  const checkAuth = useCallback(async () => {
+    try {
+      const res = await fetch('/api/payment/has-card')
+      if (res.status === 401) {
+        setIsLoggedIn(false)
+        return
+      }
+      setIsLoggedIn(true)
+      const json = await res.json()
+      if (json.data?.hasCard) {
+        // Fetch card details
+        const profileRes = await fetch('/api/user/profile')
+        if (profileRes.ok) {
+          const profileJson = await profileRes.json()
+          setCardInfo({
+            hasSavedCard: true,
+            last4: profileJson.data?.cardLast4,
+            brand: profileJson.data?.cardBrand,
+          })
+        } else {
+          setCardInfo({ hasSavedCard: true })
+        }
+      }
+    } catch {
+      setIsLoggedIn(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    checkAuth()
+  }, [checkAuth])
+
+  function handleBuy(pkg: StandalonePackage) {
+    if (isLoggedIn === false) {
+      router.push(`/login?next=${encodeURIComponent(`/screening/packages`)}`)
+      return
+    }
+    setSelectedPack(pkg)
+  }
+
+  function handleSuccess(creditsAdded: number) {
+    setSelectedPack(null)
+    setSuccessCredits(creditsAdded)
+    // Refresh card info in case a new card was saved
+    checkAuth()
+    // Fetch updated credit balance
+    fetch('/api/screening/credits')
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.data?.remainingCredits != null) {
+          setTotalCredits(json.data.remainingCredits)
+        }
+      })
+      .catch(() => {})
   }
 
   return (
@@ -31,6 +99,30 @@ export default function PackagesPage() {
 
       <section className="py-20 px-6 bg-white">
         <div className="max-w-4xl mx-auto">
+          {/* Post-purchase success banner */}
+          {successCredits !== null && (
+            <div className="mb-8 space-y-4">
+              <AlertBar
+                variant="success"
+                message={`${successCredits} credit${successCredits !== 1 ? 's' : ''} added to your account!${totalCredits != null ? ` You now have ${totalCredits} check${totalCredits !== 1 ? 's' : ''} available.` : ''}`}
+              />
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <Link
+                  href="/screening"
+                  className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-2.5 rounded-lg text-sm transition-colors text-center"
+                >
+                  Screen a tenant now
+                </Link>
+                <Link
+                  href="/dashboard"
+                  className="border border-gray-300 text-gray-700 hover:border-green-500 hover:text-green-600 font-semibold px-6 py-2.5 rounded-lg text-sm transition-colors text-center"
+                >
+                  Back to dashboard
+                </Link>
+              </div>
+            </div>
+          )}
+
           <div className="text-center mb-14">
             <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">
               Screening credit packs
@@ -64,7 +156,7 @@ export default function PackagesPage() {
                 </p>
                 <p className="text-green-600 text-xs font-medium mb-5">{pkg.perCheckDisplay} per check</p>
                 <button
-                  onClick={() => handleBuy(pkg.type)}
+                  onClick={() => handleBuy(pkg)}
                   className={`w-full font-semibold py-2.5 rounded-lg text-sm transition-colors duration-150 ${
                     pkg.type === 'TRIPLE'
                       ? 'bg-green-600 hover:bg-green-700 text-white'
@@ -98,6 +190,18 @@ export default function PackagesPage() {
           </div>
         </div>
       </section>
+
+      {/* Purchase modal */}
+      {selectedPack && (
+        <PackPurchaseModal
+          pack={selectedPack}
+          hasSavedCard={cardInfo.hasSavedCard}
+          savedCardLast4={cardInfo.last4}
+          savedCardBrand={cardInfo.brand}
+          onSuccess={handleSuccess}
+          onClose={() => setSelectedPack(null)}
+        />
+      )}
     </div>
   )
 }

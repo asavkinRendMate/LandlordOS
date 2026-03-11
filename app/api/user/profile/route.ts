@@ -12,7 +12,7 @@ export async function GET() {
     const [dbUser, tenantProfile] = await Promise.all([
       prisma.user.findUnique({
         where: { id: user.id },
-        select: { name: true, email: true, createdAt: true },
+        select: { name: true, email: true, createdAt: true, cardLast4: true, cardBrand: true },
       }),
       prisma.tenant.findFirst({
         where: { userId: user.id },
@@ -26,6 +26,8 @@ export async function GET() {
         email: dbUser?.email ?? user.email,
         createdAt: dbUser?.createdAt ?? null,
         hasTenantProfile: !!tenantProfile,
+        cardLast4: dbUser?.cardLast4 ?? null,
+        cardBrand: dbUser?.cardBrand ?? null,
       },
     })
   } catch (err) {
