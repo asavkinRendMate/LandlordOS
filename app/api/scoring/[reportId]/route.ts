@@ -3,6 +3,63 @@ import { prisma } from '@/lib/prisma'
 import { analyzeStatement } from '@/lib/scoring'
 import { createAuthClient } from '@/lib/supabase/auth'
 
+const FULL_SELECT = {
+  id: true,
+  status: true,
+  totalScore: true,
+  grade: true,
+  aiSummary: true,
+  breakdown: true,
+  appliedRules: true,
+  verificationToken: true,
+  hasUnverifiedFiles: true,
+  statementFiles: true,
+  verificationWarning: true,
+  applicantName: true,
+  jointApplicants: true,
+  validationResults: true,
+  failureReason: true,
+  isLocked: true,
+  monthlyRentPence: true,
+  createdAt: true,
+  updatedAt: true,
+  property: { select: { userId: true, line1: true, line2: true, city: true, postcode: true } },
+  tenant: { select: { name: true, email: true } },
+  invite: { select: { landlordId: true } },
+} as const
+
+const POLLING_SELECT = {
+  id: true,
+  status: true,
+  totalScore: true,
+  grade: true,
+  verificationToken: true,
+  hasUnverifiedFiles: true,
+  statementFiles: true,
+  applicantName: true,
+  failureReason: true,
+} as const
+
+/** Look up report by ID, falling back to inviteId if no direct match */
+async function findReport<T extends Record<string, unknown>>(
+  reportId: string,
+  select: T,
+) {
+  // Try direct report ID first
+  const report = await prisma.financialReport.findUnique({
+    where: { id: reportId },
+    select,
+  })
+  if (report) return report
+
+  // Fallback: reportId may be an invite ID (legacy links)
+  return prisma.financialReport.findFirst({
+    where: { inviteId: reportId },
+    orderBy: { createdAt: 'desc' },
+    select,
+  })
+}
+
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ reportId: string }> },
@@ -15,52 +72,13 @@ export async function GET(
 
     // ── Unauthenticated: return status + score fields for candidate polling ──
     if (!user) {
-      const report = await prisma.financialReport.findUnique({
-        where: { id: reportId },
-        select: {
-          id: true,
-          status: true,
-          totalScore: true,
-          grade: true,
-          verificationToken: true,
-          hasUnverifiedFiles: true,
-          statementFiles: true,
-          applicantName: true,
-          failureReason: true,
-        },
-      })
+      const report = await findReport(reportId, POLLING_SELECT)
       if (!report) return NextResponse.json({ error: 'Report not found' }, { status: 404 })
       return NextResponse.json({ data: report })
     }
 
     // ── Authenticated: return full report if user owns the property ─────────
-    const report = await prisma.financialReport.findUnique({
-      where: { id: reportId },
-      select: {
-        id: true,
-        status: true,
-        totalScore: true,
-        grade: true,
-        aiSummary: true,
-        breakdown: true,
-        appliedRules: true,
-        verificationToken: true,
-        hasUnverifiedFiles: true,
-        statementFiles: true,
-        verificationWarning: true,
-        applicantName: true,
-        jointApplicants: true,
-        validationResults: true,
-        failureReason: true,
-        isLocked: true,
-        monthlyRentPence: true,
-        createdAt: true,
-        updatedAt: true,
-        property: { select: { userId: true, line1: true, line2: true, city: true, postcode: true } },
-        tenant: { select: { name: true, email: true } },
-        invite: { select: { landlordId: true } },
-      },
-    })
+    const report = await findReport(reportId, FULL_SELECT)
 
     if (!report) return NextResponse.json({ error: 'Report not found' }, { status: 404 })
 
