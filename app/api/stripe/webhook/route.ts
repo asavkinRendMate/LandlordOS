@@ -25,6 +25,7 @@ export async function POST(req: Request) {
     switch (event.type) {
       // ── Phase 1: Card setup ───────────────────────────────────────────
       case 'setup_intent.succeeded': {
+        console.log('[stripe/webhook] setup_intent.succeeded received', event.id)
         const setupIntent = event.data.object as Stripe.SetupIntent
         const pmId = typeof setupIntent.payment_method === 'string'
           ? setupIntent.payment_method

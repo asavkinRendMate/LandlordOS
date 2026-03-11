@@ -39,9 +39,17 @@ function SetupForm({ onSuccess, context }: { onSuccess: () => void; context?: st
       return
     }
 
-    // SetupIntent succeeded — webhook will save card details to DB.
-    // Brief delay to let webhook process before UI refreshes.
-    await new Promise((r) => setTimeout(r, 1500))
+    // Poll until webhook has saved the card (up to 5s)
+    for (let i = 0; i < 10; i++) {
+      await new Promise((r) => setTimeout(r, 500))
+      try {
+        const res = await fetch('/api/payment/has-card')
+        const json = await res.json()
+        if (json.data?.hasCard) break
+      } catch {
+        // ignore — keep polling
+      }
+    }
     onSuccess()
   }
 
@@ -76,6 +84,7 @@ export default function PaymentSetupModal({ isOpen, onClose, onSuccess, context 
   const [error, setError] = useState<string | null>(null)
 
   const fetchSetupIntent = useCallback(async () => {
+    setClientSecret(null)
     setLoading(true)
     setError(null)
     try {
@@ -94,10 +103,10 @@ export default function PaymentSetupModal({ isOpen, onClose, onSuccess, context 
   }, [])
 
   useEffect(() => {
-    if (isOpen && !clientSecret) {
+    if (isOpen) {
       fetchSetupIntent()
     }
-  }, [isOpen, clientSecret, fetchSetupIntent])
+  }, [isOpen, fetchSetupIntent])
 
   if (!isOpen) return null
 
