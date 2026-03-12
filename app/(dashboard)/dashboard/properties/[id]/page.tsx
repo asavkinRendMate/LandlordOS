@@ -1497,7 +1497,7 @@ function ContractSection({
             </div>
             {contract.pdfUrl && (
               <button
-                onClick={() => window.open(`/api/contracts/token/${contract.landlordToken}`, '_blank')}
+                onClick={() => window.open(`/sign/contract/${contract.landlordToken}`, '_blank')}
                 className="text-xs text-[#16a34a] hover:text-[#15803d] font-medium transition-colors"
               >
                 View contract

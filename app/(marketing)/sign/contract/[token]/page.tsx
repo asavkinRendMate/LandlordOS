@@ -96,6 +96,31 @@ export default function SignContractPage() {
           </div>
         ) : contract ? (
           <>
+            {/* RRA 2025 Disclaimer */}
+            <div className="bg-amber-50 border border-amber-300 rounded-lg p-4 mb-6 flex gap-3 items-start">
+              <span className="text-amber-500 text-xl mt-0.5">&#9888;&#65039;</span>
+              <div>
+                <p className="font-semibold text-amber-900 text-sm">
+                  This agreement is designed for use from 1 May 2026
+                </p>
+                <p className="text-amber-800 text-sm mt-1">
+                  This tenancy agreement is drafted under the Renters&apos; Rights Act 2025
+                  and creates an Assured Periodic Tenancy. It should not be used for
+                  tenancies starting before 1 May 2026 — existing assured shorthold
+                  tenancy rules apply until that date. If your tenancy starts before
+                  1 May 2026, please use a traditional AST agreement instead.
+                </p>
+                <a
+                  href="https://www.gov.uk/government/collections/renters-reform-bill"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-amber-700 underline text-sm mt-1 inline-block"
+                >
+                  Learn more about the Renters&apos; Rights Act 2025 &rarr;
+                </a>
+              </div>
+            </div>
+
             {/* Contract Info */}
             <div className={`${cardClass} mb-6`}>
               <div className="flex items-center justify-between mb-4">
@@ -133,9 +158,10 @@ export default function SignContractPage() {
             {contract.pdfUrl && (
               <div className="mb-6 rounded-xl overflow-hidden border border-gray-200 bg-white shadow-sm">
                 <iframe
-                  src={contract.pdfUrl}
-                  className="w-full h-[600px]"
-                  title="Tenancy Agreement PDF"
+                  src={`${contract.pdfUrl}#toolbar=1&navpanes=0&view=FitH`}
+                  className="w-full rounded-lg border border-gray-200"
+                  style={{ height: '70vh' }}
+                  title="Tenancy Agreement"
                 />
               </div>
             )}
