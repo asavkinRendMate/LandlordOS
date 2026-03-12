@@ -109,6 +109,16 @@ export const NOTIFICATIONS: Record<string, NotificationDefinition> = {
     templateFn: 'inspectionDayLandlordHtml',
   },
 
+  CONTRACT_FULLY_SIGNED: {
+    id: 'CONTRACT_FULLY_SIGNED',
+    name: 'Contract fully signed',
+    description: 'Sent to both parties when tenancy agreement is signed by landlord and tenant',
+    trigger: 'event',
+    recipient: 'both',
+    status: 'live',
+    templateFn: 'contractFullySignedLandlordHtml',
+  },
+
   DD_PAYMENT_FAILED: {
     id: 'DD_PAYMENT_FAILED',
     name: 'DD payment failed',
@@ -119,6 +129,16 @@ export const NOTIFICATIONS: Record<string, NotificationDefinition> = {
   },
 
   // ── Event-triggered — Tenant ────────────────────────────────────────────────
+
+  CONTRACT_SIGNING_REQUEST: {
+    id: 'CONTRACT_SIGNING_REQUEST',
+    name: 'Contract signing request',
+    description: 'Sent to tenant when landlord creates a tenancy agreement for signing',
+    trigger: 'event',
+    recipient: 'tenant',
+    status: 'live',
+    templateFn: 'contractSigningHtml',
+  },
 
   APPLICATION_RECEIVED: {
     id: 'APPLICATION_RECEIVED',

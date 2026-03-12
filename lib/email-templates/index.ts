@@ -1,6 +1,7 @@
 // All LetSorted email templates — import from '@/lib/email-templates'
 
 export { baseEmailTemplate, ctaButton, infoBox, greyBox, p, muted } from './base'
+export { contractSigningHtml, contractFullySignedLandlordHtml, contractFullySignedTenantHtml } from './contract'
 
 import { baseEmailTemplate, ctaButton, infoBox, greyBox, p, muted } from './base'
 

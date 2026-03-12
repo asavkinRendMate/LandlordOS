@@ -3,6 +3,7 @@
 export type SectionHelpKey =
   | 'documents'
   | 'rooms'
+  | 'contract'
   | 'inspection'
   | 'tenant'
   | 'rent'
@@ -28,6 +29,12 @@ const SECTION_HELP: Record<SectionHelpKey, {
     description: 'Define the rooms in your property. This is used when creating inspection reports.',
     example: 'A 2-bed flat might have: Bedroom 1, Bedroom 2, Living Room, Kitchen, Bathroom, Hallway.',
     role: 'Rooms must be configured before you can create a inspection report. You can reorder and rename them.',
+  },
+  contract: {
+    title: 'Tenancy Agreement',
+    description: 'Create or upload a tenancy agreement for your tenant to sign electronically. Both parties sign via a secure link.',
+    example: 'Generate a legally-reviewed Assured Periodic Tenancy agreement (£9.99) or upload your own contract (free with cover sheet).',
+    role: 'A signed tenancy agreement is required before you can start a property inspection. Both landlord and tenant must sign.',
   },
   inspection: {
     title: 'Property Inspection',

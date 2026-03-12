@@ -119,6 +119,13 @@ const statusColors: Record<string, string> = {
   NOTICE_GIVEN: 'bg-yellow-100 text-yellow-700',
   PARTIAL: 'bg-yellow-100 text-yellow-700',
   MOCK_PAID: 'bg-yellow-100 text-yellow-700',
+  LANDLORD_SIGNED: 'bg-yellow-100 text-yellow-700',
+  TENANT_SIGNED: 'bg-yellow-100 text-yellow-700',
+  // contract
+  PENDING_SIGNATURES: 'bg-blue-100 text-blue-700',
+  PENDING_GENERATION: 'bg-blue-100 text-blue-700',
+  BOTH_SIGNED: 'bg-green-100 text-green-700',
+  VOIDED: 'bg-gray-100 text-gray-600',
 }
 
 function formatStatus(status: string): string {

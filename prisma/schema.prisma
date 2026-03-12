@@ -171,6 +171,7 @@ model Tenancy {
   updatedAt          DateTime      @updatedAt @map("updated_at")
   payments           RentPayment[]
   inspectionSchedule InspectionSchedule?
+  contract           TenancyContract?
 
   @@index([propertyId])
   @@index([tenantId])
@@ -733,6 +734,44 @@ model InspectionPhoto {
   @@index([inspectionId])
   @@index([roomId])
   @@map("inspection_photos")
+}
+
+// ── Tenancy Contract ──────────────────────────────────────────────────────────
+
+enum ContractStatus {
+  PENDING_GENERATION
+  PENDING_SIGNATURES
+  LANDLORD_SIGNED
+  TENANT_SIGNED
+  BOTH_SIGNED
+  VOIDED
+}
+
+enum ContractType {
+  GENERATED
+  UPLOADED
+}
+
+model TenancyContract {
+  id                  String         @id @default(cuid())
+  tenancyId           String         @unique @map("tenancy_id")
+  tenancy             Tenancy        @relation(fields: [tenancyId], references: [id], onDelete: Cascade)
+  type                ContractType
+  status              ContractStatus @default(PENDING_GENERATION)
+  pdfUrl              String?        @map("pdf_url")
+  landlordToken       String         @unique @default(uuid()) @map("landlord_token")
+  tenantToken         String         @unique @default(uuid()) @map("tenant_token")
+  landlordSignedAt    DateTime?      @map("landlord_signed_at")
+  landlordSignedName  String?        @map("landlord_signed_name")
+  landlordSignedIp    String?        @map("landlord_signed_ip")
+  tenantSignedAt      DateTime?      @map("tenant_signed_at")
+  tenantSignedName    String?        @map("tenant_signed_name")
+  tenantSignedIp      String?        @map("tenant_signed_ip")
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+
+  @@index([tenancyId])
+  @@map("tenancy_contracts")
 }
 
 // ── Payment ───────────────────────────────────────────────────────────────────

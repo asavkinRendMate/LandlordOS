@@ -1372,9 +1372,239 @@ function RoomsSection({ propertyId, rooms: initialRooms }: { propertyId: string;
   )
 }
 
+// ── Contract Section ────────────────────────────────────────────────────────
+
+interface ContractData {
+  id: string
+  tenancyId: string
+  type: string
+  status: string
+  pdfUrl: string | null
+  landlordToken: string
+  tenantToken: string
+  landlordSignedAt: string | null
+  landlordSignedName: string | null
+  tenantSignedAt: string | null
+  tenantSignedName: string | null
+}
+
+function ContractSection({
+  tenancyId,
+  onStatusChange,
+}: {
+  tenancyId: string
+  onStatusChange: (status: string | null) => void
+}) {
+  const [contract, setContract] = useState<ContractData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [showGenerate, setShowGenerate] = useState(false)
+  const [showUpload, setShowUpload] = useState(false)
+  const [showHelp, setShowHelp] = useState(false)
+  const [generating, setGenerating] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [uploadFile, setUploadFile] = useState<File | null>(null)
+
+  const fetchContract = useCallback(() => {
+    fetch(`/api/contracts/${tenancyId}`)
+      .then((r) => r.json())
+      .then((json) => {
+        setContract(json.data ?? null)
+        onStatusChange(json.data?.status ?? null)
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [tenancyId, onStatusChange])
+
+  useEffect(() => { fetchContract() }, [fetchContract])
+
+  async function handleGenerate() {
+    setGenerating(true)
+    try {
+      const res = await fetch('/api/contracts/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenancyId }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        showErrorToast({ message: json.error ?? 'Failed to generate contract' })
+        return
+      }
+      setContract(json.data)
+      onStatusChange(json.data.status)
+      setShowGenerate(false)
+    } catch {
+      showErrorToast({ message: 'Something went wrong' })
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  async function handleUpload() {
+    if (!uploadFile) return
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('tenancyId', tenancyId)
+      formData.append('file', uploadFile)
+      const res = await fetch('/api/contracts/upload', { method: 'POST', body: formData })
+      const json = await res.json()
+      if (!res.ok) {
+        showErrorToast({ message: json.error ?? 'Failed to upload contract' })
+        return
+      }
+      setContract(json.data)
+      onStatusChange(json.data.status)
+      setShowUpload(false)
+      setUploadFile(null)
+    } catch {
+      showErrorToast({ message: 'Something went wrong' })
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  async function handleSignAsLandlord() {
+    if (!contract) return
+    window.open(`/sign/contract/${contract.landlordToken}`, '_blank')
+  }
+
+  return (
+    <div className="flex items-start gap-3 mb-5">
+    <div className={`flex-1 min-w-0 ${cardClass}`}>
+      <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium mb-3">Tenancy Agreement</p>
+
+      {loading ? (
+        <div className="flex justify-center py-4"><Spinner size="sm" /></div>
+      ) : !contract ? (
+        <div className="space-y-3">
+          <p className="text-sm text-[#6B7280]">Create a tenancy agreement for your tenant to sign.</p>
+          <div className="flex flex-wrap gap-2">
+            <button onClick={() => setShowGenerate(true)} className={buttonClass}>
+              Generate contract — £9.99
+            </button>
+            <button onClick={() => setShowUpload(true)} className={`${buttonClass} !bg-white !text-[#1A1A1A] border border-gray-200 hover:!bg-gray-50`}>
+              Upload your own
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <UiStatusBadge status={contract.status} />
+              <span className="text-xs text-[#9CA3AF]">{contract.type === 'GENERATED' ? 'Generated' : 'Uploaded'}</span>
+            </div>
+            {contract.pdfUrl && (
+              <button
+                onClick={() => window.open(`/api/contracts/token/${contract.landlordToken}`, '_blank')}
+                className="text-xs text-[#16a34a] hover:text-[#15803d] font-medium transition-colors"
+              >
+                View contract
+              </button>
+            )}
+          </div>
+
+          {/* Signature progress */}
+          <div className="space-y-2 mb-3">
+            <div className="flex items-center gap-2 text-sm">
+              <div className={`w-2 h-2 rounded-full ${contract.landlordSignedAt ? 'bg-green-400' : 'bg-gray-300'}`} />
+              <span className="text-[#6B7280]">
+                Landlord: {contract.landlordSignedAt ? `Signed by ${contract.landlordSignedName}` : 'Awaiting signature'}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <div className={`w-2 h-2 rounded-full ${contract.tenantSignedAt ? 'bg-green-400' : 'bg-gray-300'}`} />
+              <span className="text-[#6B7280]">
+                Tenant: {contract.tenantSignedAt ? `Signed by ${contract.tenantSignedName}` : 'Awaiting signature'}
+              </span>
+            </div>
+          </div>
+
+          {/* Actions */}
+          {contract.status !== 'BOTH_SIGNED' && contract.status !== 'VOIDED' && (
+            <div className="flex flex-wrap gap-2">
+              {!contract.landlordSignedAt && (
+                <button onClick={handleSignAsLandlord} className="text-sm text-[#16a34a] hover:text-[#15803d] font-medium transition-colors">
+                  Sign now
+                </button>
+              )}
+            </div>
+          )}
+
+          {contract.status === 'BOTH_SIGNED' && (
+            <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 rounded-lg px-3 py-2">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              Both parties have signed
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Generate Contract Modal */}
+      {showGenerate && (
+        <Modal isOpen={showGenerate} onClose={() => setShowGenerate(false)} title="Generate Tenancy Agreement">
+          <div className="space-y-4">
+            <p className="text-sm text-[#6B7280]">
+              Generate a legally-reviewed Assured Periodic Tenancy agreement based on your tenancy details.
+            </p>
+            <div className="bg-[#f0fdf4] border border-[#bbf7d0] rounded-lg p-3">
+              <p className="text-sm font-semibold text-[#166534]">£9.99</p>
+              <p className="text-xs text-[#6B7280]">One-time charge to your saved card</p>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={handleGenerate} disabled={generating} className={buttonClass}>
+                {generating ? <Spinner size="sm" /> : 'Generate & send for signing'}
+              </button>
+              <button onClick={() => setShowGenerate(false)} className="text-sm text-[#6B7280] hover:text-[#1A1A1A] transition-colors">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Upload Contract Modal */}
+      {showUpload && (
+        <Modal isOpen={showUpload} onClose={() => setShowUpload(false)} title="Upload Your Own Contract">
+          <div className="space-y-4">
+            <p className="text-sm text-[#6B7280]">
+              Upload your tenancy agreement as a PDF. A LetSorted cover sheet will be prepended for electronic signing.
+            </p>
+            <input
+              type="file"
+              accept=".pdf"
+              onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
+              className={inputClass}
+            />
+            {uploadFile && (
+              <p className="text-xs text-[#6B7280]">{uploadFile.name} ({(uploadFile.size / 1024 / 1024).toFixed(1)}MB)</p>
+            )}
+            <div className="flex gap-2">
+              <button onClick={handleUpload} disabled={!uploadFile || uploading} className={buttonClass}>
+                {uploading ? <Spinner size="sm" /> : 'Upload & send for signing'}
+              </button>
+              <button onClick={() => { setShowUpload(false); setUploadFile(null) }} className="text-sm text-[#6B7280] hover:text-[#1A1A1A] transition-colors">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </div>
+    <div className="pt-3 shrink-0">
+      <SectionHelpButton onClick={() => setShowHelp(true)} />
+    </div>
+    <SectionHelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} section="contract" />
+    </div>
+  )
+}
+
 // ── Inspection Section ───────────────────────────────────────────────────────
 
-function InspectionSection({ propertyId }: { propertyId: string }) {
+function InspectionSection({ propertyId, contractStatus }: { propertyId: string; contractStatus?: string | null }) {
   const [report, setReport] = useState<{ id: string; status: string; pdfUrl: string | null } | null>(null)
   const [loading, setLoading] = useState(true)
   const [showHelp, setShowHelp] = useState(false)
@@ -1444,6 +1674,16 @@ function InspectionSection({ propertyId }: { propertyId: string }) {
             className="text-xs text-[#16a34a] hover:text-[#15803d] font-medium transition-colors"
           >
             Continue
+          </button>
+        </div>
+      ) : contractStatus !== undefined && contractStatus !== 'BOTH_SIGNED' ? (
+        <div className="text-sm text-[#6B7280] space-y-1">
+          <p>A signed tenancy agreement is required before starting a property inspection.</p>
+          <button
+            onClick={() => document.getElementById('contract-section')?.scrollIntoView({ behavior: 'smooth' })}
+            className="text-[#16a34a] hover:text-[#15803d] font-medium transition-colors text-sm"
+          >
+            Set up contract &rarr;
           </button>
         </div>
       ) : (
@@ -2897,6 +3137,7 @@ export default function PropertyPage() {
   const [showEditAddress, setShowEditAddress] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [helpOpen, setHelpOpen] = useState<SectionHelpKey | null>(null)
+  const [contractStatus, setContractStatus] = useState<string | null>(null)
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
 
@@ -2990,8 +3231,15 @@ export default function PropertyPage() {
       {/* ── Rooms ──────────────────────────────────────────────────────────── */}
       <RoomsSection propertyId={property.id} rooms={property.rooms} />
 
+      {/* ── Tenancy Agreement ────────────────────────────────────────────────── */}
+      {activeTenancy && (
+        <div id="contract-section">
+          <ContractSection tenancyId={activeTenancy.id} onStatusChange={setContractStatus} />
+        </div>
+      )}
+
       {/* ── Property Inspection ─────────────────────────────────────────────── */}
-      <InspectionSection propertyId={property.id} />
+      <InspectionSection propertyId={property.id} contractStatus={activeTenancy ? contractStatus : undefined} />
 
       {/* ── Periodic Inspections ─────────────────────────────────────────────── */}
       {activeTenancy && (
