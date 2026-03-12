@@ -3,6 +3,8 @@ import { createAuthClient } from '@/lib/supabase/auth'
 import { prisma } from '@/lib/prisma'
 import { getUnlockPrice } from '@/lib/screening-unlock'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(req: Request) {
   try {
     const supabase = createAuthClient()
