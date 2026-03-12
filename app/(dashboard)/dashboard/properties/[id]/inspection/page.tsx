@@ -443,21 +443,35 @@ export default function InspectionPage() {
       )}
 
       {isAgreed && (
-        <div className="mt-6 bg-green-50 border border-green-200 rounded-xl p-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            <span className="text-sm font-medium text-green-700">Report agreed by both parties</span>
+        <div className="mt-6 bg-green-50 border border-green-200 rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              <span className="text-sm font-medium text-green-700">Report agreed by both parties</span>
+            </div>
+            {report.pdfUrl ? (
+              <a
+                href={`/api/inspections/${report.id}/pdf-url`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-green-700 hover:text-green-800 font-medium"
+              >
+                Download report &rarr;
+              </a>
+            ) : (
+              <button
+                onClick={async () => {
+                  await fetch(`/api/inspections/${report.id}/generate-pdf`, { method: 'POST' }).catch(() => {})
+                  await fetchReport()
+                }}
+                className="text-sm text-gray-400 hover:text-gray-500"
+              >
+                PDF generating… retry?
+              </button>
+            )}
           </div>
-          {report.pdfUrl && (
-            <button
-              onClick={() => window.open(`/api/inspections/${report.id}/pdf`, '_blank')}
-              className="text-sm text-green-700 hover:text-green-800 font-medium"
-            >
-              Download PDF
-            </button>
-          )}
         </div>
       )}
     </div>

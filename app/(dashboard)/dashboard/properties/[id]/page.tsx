@@ -1646,12 +1646,14 @@ function InspectionSection({ propertyId, contractStatus }: { propertyId: string;
           </div>
           <div className="flex gap-2">
             {report.pdfUrl && (
-              <button
-                onClick={() => window.open(`/api/inspections/${report.id}/pdf`, '_blank')}
+              <a
+                href={`/api/inspections/${report.id}/pdf-url`}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-xs text-[#16a34a] hover:text-[#15803d] font-medium transition-colors"
               >
                 Download PDF
-              </button>
+              </a>
             )}
             <button
               onClick={() => router.push(`/dashboard/properties/${propertyId}/inspection?reportId=${report.id}`)}

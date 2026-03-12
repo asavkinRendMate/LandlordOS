@@ -6,7 +6,6 @@ import { getInspectionPhotoUrl } from '@/lib/inspection-storage'
 import { sendEmail } from '@/lib/resend'
 import { inspectionReviewHtml } from '@/lib/email-templates'
 import { env } from '@/lib/env'
-import { generateInspectionPdf } from '@/lib/inspection-pdf'
 import { advanceScheduleIfPeriodic } from '@/lib/inspection-schedule'
 
 export async function GET(_req: Request, { params }: { params: { reportId: string } }) {
@@ -118,11 +117,14 @@ export async function PATCH(req: Request, { params }: { params: { reportId: stri
       data: updateData,
     })
 
-    // Trigger PDF generation when both parties have agreed
+    // Trigger PDF generation when both parties have agreed (fire-and-forget)
     if (updated.status === 'AGREED') {
-      generateInspectionPdf(params.reportId).catch((err) =>
-        console.error('[inspection PDF generation failed]', err),
-      )
+      const baseUrl = env.NEXT_PUBLIC_APP_URL || `https://${process.env.VERCEL_URL}` || 'http://localhost:3000'
+      fetch(`${baseUrl}/api/inspections/${params.reportId}/generate-pdf`, {
+        method: 'POST',
+        headers: { 'x-internal-secret': env.INTERNAL_SECRET ?? '' },
+      }).catch((err) => console.error('[inspection] PDF generation trigger failed:', err))
+
       // Advance periodic inspection schedule
       advanceScheduleIfPeriodic(params.reportId).catch((err) =>
         console.error('[advance schedule failed]', err),

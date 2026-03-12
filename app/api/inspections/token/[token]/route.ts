@@ -40,6 +40,7 @@ export async function GET(_req: Request, { params }: { params: { token: string }
         tenantConfirmedAt: inspection.tenantConfirmedAt,
         landlordConfirmedAt: inspection.landlordConfirmedAt,
         createdAt: inspection.createdAt,
+        hasPdf: !!inspection.pdfUrl,
         property: inspection.property,
         tenant: inspection.tenant,
         photos: photosWithUrls,

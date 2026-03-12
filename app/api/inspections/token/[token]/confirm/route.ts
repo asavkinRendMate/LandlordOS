@@ -3,7 +3,6 @@ import { prisma } from '@/lib/prisma'
 import { sendEmail } from '@/lib/resend'
 import { inspectionTenantResponseHtml } from '@/lib/email-templates'
 import { env } from '@/lib/env'
-import { generateInspectionPdf } from '@/lib/inspection-pdf'
 import { advanceScheduleIfPeriodic } from '@/lib/inspection-schedule'
 
 export async function POST(req: Request, { params }: { params: { token: string } }) {
@@ -53,11 +52,14 @@ export async function POST(req: Request, { params }: { params: { token: string }
       data: updateData,
     })
 
-    // Trigger PDF generation when both parties have agreed
+    // Trigger PDF generation when both parties have agreed (fire-and-forget)
     if (updated.status === 'AGREED') {
-      generateInspectionPdf(inspection.id).catch((err) =>
-        console.error('[inspection PDF generation failed]', err),
-      )
+      const baseUrl = env.NEXT_PUBLIC_APP_URL || `https://${process.env.VERCEL_URL}` || 'http://localhost:3000'
+      fetch(`${baseUrl}/api/inspections/${inspection.id}/generate-pdf`, {
+        method: 'POST',
+        headers: { 'x-internal-secret': env.INTERNAL_SECRET ?? '' },
+      }).catch((err) => console.error('[inspection] PDF generation trigger failed:', err))
+
       // Advance periodic inspection schedule
       advanceScheduleIfPeriodic(inspection.id).catch((err) =>
         console.error('[advance schedule failed]', err),
