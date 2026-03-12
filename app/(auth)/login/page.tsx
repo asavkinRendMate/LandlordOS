@@ -317,7 +317,7 @@ function LoginContent() {
                     ) : (
                       <span>🏠</span>
                     )}
-                    Explore as landlord &rarr;
+                    Explore as landlord →
                   </button>
                   <button
                     type="button"
@@ -330,7 +330,7 @@ function LoginContent() {
                     ) : (
                       <span>👤</span>
                     )}
-                    Explore as tenant &rarr;
+                    Explore as tenant →
                   </button>
                 </div>
                 {demoError && (
