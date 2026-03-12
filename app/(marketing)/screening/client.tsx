@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { STANDALONE_PACKAGES, SUBSCRIBER_PRICING } from '@/lib/screening-pricing'
 
 // ─── FAQ Data ──────────────────────────────────────────────────────────────────
 
@@ -527,6 +528,89 @@ export default function ScreeningPage() {
               </div>
               <h3 className="font-bold text-gray-900 mb-2">Verifiable reports</h3>
               <p className="text-gray-500 text-sm">Each report has a unique link. Tenants can share it with other landlords to prove their financial standing.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Pricing ──────────────────────────────────────────────────────── */}
+      <section className="py-20 px-6 bg-white">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-14">
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">
+              Simple, transparent pricing
+            </h2>
+            <p className="text-gray-400 text-lg">Pay per check. No hidden fees.</p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Column 1 — Subscriber pricing */}
+            <div className="bg-white rounded-2xl border-2 border-green-500 p-7 relative">
+              <span className="absolute -top-3.5 right-6 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full">
+                Best value
+              </span>
+              <p className="text-xs font-bold text-green-600 uppercase tracking-widest mb-5">
+                With a LetSorted account
+              </p>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold text-gray-900 text-sm">First check per tenancy</p>
+                  </div>
+                  <p className="font-bold text-green-600 text-lg">{SUBSCRIBER_PRICING.firstCheckDisplay}</p>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold text-gray-900 text-sm">Each additional candidate</p>
+                  </div>
+                  <p className="font-bold text-green-600 text-lg">{SUBSCRIBER_PRICING.additionalCheckDisplay}</p>
+                </div>
+              </div>
+              <p className="text-xs text-gray-400 mt-5">
+                Cycle resets when property returns to vacant.
+              </p>
+            </div>
+
+            {/* Column 2 — Standalone credit packs */}
+            <div className="bg-white rounded-2xl border-2 border-gray-200 p-7">
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-5">
+                Standalone credit packs
+              </p>
+              <div className="space-y-3">
+                {STANDALONE_PACKAGES.map((pkg) => {
+                  const isBestValue = pkg.type === 'TEN'
+                  return (
+                    <div
+                      key={pkg.type}
+                      className={`flex items-center justify-between rounded-xl px-4 py-3 border ${
+                        isBestValue
+                          ? 'border-green-200 bg-green-50'
+                          : 'border-gray-100 bg-gray-50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <p className="font-semibold text-gray-900 text-sm">
+                          {pkg.credits} {pkg.credits === 1 ? 'check' : 'checks'}
+                        </p>
+                        {pkg.perCheckDisplay && pkg.credits > 1 && (
+                          <span className="text-xs text-gray-400">({pkg.perCheckDisplay} each)</span>
+                        )}
+                        {isBestValue && (
+                          <span className="text-xs font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded-full">
+                            Best value
+                          </span>
+                        )}
+                      </div>
+                      <p className={`font-bold text-lg ${isBestValue ? 'text-green-600' : 'text-gray-900'}`}>
+                        {pkg.priceDisplay}
+                      </p>
+                    </div>
+                  )
+                })}
+              </div>
+              <p className="text-xs text-gray-400 mt-5">
+                No subscription needed. Credits never expire. Buying more adds to your existing balance.
+              </p>
             </div>
           </div>
         </div>

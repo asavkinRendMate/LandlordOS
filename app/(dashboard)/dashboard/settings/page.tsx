@@ -298,7 +298,7 @@ export default function SettingsPage() {
               ) : (
                 <div>
                   <p className="text-xs text-gray-400">
-                    Your first property is always free. Additional properties are £10/mo each.
+                    Your first property is always free. Additional properties are £9.99/mo each.
                   </p>
                 </div>
               )}

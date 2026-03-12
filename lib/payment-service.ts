@@ -24,21 +24,21 @@ export type ChargeReason =
   | 'SCREENING_ADDITIONAL'
   | 'STANDALONE_SCREENING'
   | 'APT_CONTRACT'
-  | 'INVENTORY_REPORT'
+  | 'SECTION_13_NOTICE'
   | 'DISPUTE_PACK'
 
 export const CHARGE_AMOUNTS: Record<ChargeReason, number> = {
   SCREENING_FIRST: 999,       // £9.99
   SCREENING_ADDITIONAL: 149,  // £1.49
   STANDALONE_SCREENING: 1199, // £11.99
-  APT_CONTRACT: 1000,         // £10.00
-  INVENTORY_REPORT: 500,      // £5.00
-  DISPUTE_PACK: 2900,         // £29.00
+  APT_CONTRACT: 999,          // £9.99
+  SECTION_13_NOTICE: 499,     // £4.99
+  DISPUTE_PACK: 2999,         // £29.99
 }
 
 // ── Subscription pricing ─────────────────────────────────────────────────────
 
-const PER_PROPERTY_MONTHLY_PENCE = 1000 // £10.00/mo per additional property
+const PER_PROPERTY_MONTHLY_PENCE = 999 // £9.99/mo per additional property
 
 // ── Card management ──────────────────────────────────────────────────────────
 

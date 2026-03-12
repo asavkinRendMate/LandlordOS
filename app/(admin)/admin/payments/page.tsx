@@ -2,11 +2,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { STANDALONE_PACKAGES, SUBSCRIBER_PRICING } from '@/lib/screening-pricing'
-import { CHARGE_AMOUNTS } from '@/lib/payment-service'
-
-function formatPence(pence: number): string {
-  return `£${(pence / 100).toFixed(2)}`
-}
+import { PAY_PER_USE_LIST } from '@/lib/pay-per-use-pricing'
 
 export default async function AdminPaymentsPage() {
   const cookieStore = await cookies()
@@ -179,41 +175,23 @@ export default async function AdminPaymentsPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                <tr className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900">APT Contract Generation</td>
-                  <td className="px-4 py-3 text-sm text-gray-900 font-mono">
-                    {formatPence(CHARGE_AMOUNTS.APT_CONTRACT)}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-500 font-mono">CHARGE_AMOUNTS</td>
-                  <td className="px-4 py-3">
-                    <StatusBadge status="not_started" label="NOT STARTED" />
-                  </td>
-                </tr>
-                <tr className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900">Inventory Report PDF</td>
-                  <td className="px-4 py-3 text-sm text-gray-900 font-mono">
-                    {formatPence(CHARGE_AMOUNTS.INVENTORY_REPORT)}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-500 font-mono">CHARGE_AMOUNTS</td>
-                  <td className="px-4 py-3">
-                    <StatusBadge status="not_started" label="NOT STARTED" />
-                  </td>
-                </tr>
-                <tr className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900">Dispute Evidence Pack</td>
-                  <td className="px-4 py-3 text-sm text-gray-900 font-mono">
-                    {formatPence(CHARGE_AMOUNTS.DISPUTE_PACK)}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-500 font-mono">CHARGE_AMOUNTS</td>
-                  <td className="px-4 py-3">
-                    <StatusBadge status="not_started" label="NOT STARTED" />
-                  </td>
-                </tr>
+                {PAY_PER_USE_LIST.map((item) => (
+                  <tr key={item.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900">{item.name}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900 font-mono">
+                      {item.displayPrice}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-500 font-mono">PAY_PER_USE</td>
+                    <td className="px-4 py-3">
+                      <StatusBadge status="not_started" label="NOT STARTED" />
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
           <p className="text-xs text-gray-400 mt-2">
-            Values from <code className="bg-gray-100 px-1 py-0.5 rounded">lib/payment-service.ts</code>
+            Values from <code className="bg-gray-100 px-1 py-0.5 rounded">lib/pay-per-use-pricing.ts</code>
           </p>
         </section>
       </div>

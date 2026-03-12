@@ -122,7 +122,7 @@ export default function TermsPage() {
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">5. Subscription and payments</h2>
                 <ul className="list-disc list-outside ml-5 space-y-1.5">
                   <li>Free tier: 1 property, no time limit</li>
-                  <li>Paid tier: £10/month per property for 2 or more properties</li>
+                  <li>Paid tier: £9.99/month per property for 2 or more properties</li>
                   <li>One-time charges: as listed on our pricing page</li>
                   <li>All payments are processed by Stripe</li>
                   <li>No refunds on one-time charges once a document has been generated</li>

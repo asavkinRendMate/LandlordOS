@@ -123,10 +123,10 @@ const proFeatures = [
 ]
 
 const oneOffItems = [
-  { name: 'Screening Check', price: '£9.99', desc: 'First check/month (£1.49 each additional)' },
-  { name: 'APT Contract', price: '£10', desc: 'Legally-reviewed template' },
-  { name: 'Inventory Report', price: '£5', desc: 'AI-assisted condition report' },
-  { name: 'Dispute Pack', price: '£29', desc: 'Evidence bundle for disputes' },
+  { name: 'Screening Check', price: '£9.99', desc: 'First check (£1.49 each additional)' },
+  { name: 'APT Contract', price: '£9.99', desc: 'Legally-reviewed template' },
+  { name: 'Section 13 Notice', price: '£4.99', desc: 'Rent increase notice (RRA 2025)' },
+  { name: 'Dispute Evidence Pack', price: '£29.99', desc: 'Evidence bundle for disputes' },
 ]
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
@@ -706,7 +706,7 @@ export default function LandingPage() {
                 Most popular
               </span>
               <p className="text-xs font-bold text-green-600 uppercase tracking-widest mb-3">Pro</p>
-              <p className="text-5xl font-extrabold text-gray-900">£10</p>
+              <p className="text-5xl font-extrabold text-gray-900">£9.99</p>
               <p className="text-gray-400 text-sm mt-1 mb-7">per property / month · 2+ properties</p>
               <ul className="space-y-3">
                 {proFeatures.map((f) => (

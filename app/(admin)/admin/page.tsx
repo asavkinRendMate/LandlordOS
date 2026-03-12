@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
 type User = {
@@ -60,6 +60,7 @@ function formatStatus(status: string) {
 
 export default function AdminPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [tab, setTab] = useState<'users' | 'properties'>('users')
   const [users, setUsers] = useState<User[]>([])
   const [properties, setProperties] = useState<Property[]>([])
@@ -67,6 +68,8 @@ export default function AdminPage() {
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+
+  const showDevTools = process.env.NODE_ENV === 'development' || searchParams.get('dev') === '1'
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -200,6 +203,13 @@ export default function AdminPage() {
         )}
       </div>
 
+      {/* Developer Tools */}
+      {showDevTools && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-6">
+          <DevTools showToast={showToast} />
+        </div>
+      )}
+
       {/* Delete confirmation modal */}
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -299,6 +309,202 @@ function UsersTable({
           ))}
         </tbody>
       </table>
+    </div>
+  )
+}
+
+function DevTools({ showToast }: { showToast: (message: string, type: 'success' | 'error') => void }) {
+  const [contractTenancyId, setContractTenancyId] = useState('')
+  const [inspectionId, setInspectionId] = useState('')
+  const [resetTenancyId, setResetTenancyId] = useState('')
+  const [contractLoading, setContractLoading] = useState(false)
+  const [inspectionLoading, setInspectionLoading] = useState(false)
+  const [resetLoading, setResetLoading] = useState(false)
+  const [resultUrl, setResultUrl] = useState<string | null>(null)
+  const [inspectionResultUrl, setInspectionResultUrl] = useState<string | null>(null)
+  const [showResetConfirm, setShowResetConfirm] = useState(false)
+
+  async function handleRegenerateContract() {
+    if (!contractTenancyId.trim()) return
+    setContractLoading(true)
+    setResultUrl(null)
+    try {
+      const res = await fetch('/api/admin/dev/regenerate-contract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenancyId: contractTenancyId.trim() }),
+      })
+      const body = await res.json()
+      if (!res.ok) {
+        showToast(body.error || 'Failed to regenerate', 'error')
+        return
+      }
+      setResultUrl(body.pdfUrl)
+      showToast('Contract PDF regenerated', 'success')
+    } catch {
+      showToast('Failed to regenerate contract', 'error')
+    } finally {
+      setContractLoading(false)
+    }
+  }
+
+  async function handleRegenerateInspection() {
+    if (!inspectionId.trim()) return
+    setInspectionLoading(true)
+    setInspectionResultUrl(null)
+    try {
+      const res = await fetch('/api/admin/dev/regenerate-inspection-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inspectionId: inspectionId.trim() }),
+      })
+      const body = await res.json()
+      if (!res.ok) {
+        showToast(body.error || 'Failed to regenerate', 'error')
+        return
+      }
+      setInspectionResultUrl(body.pdfUrl)
+      showToast('Inspection PDF regenerated', 'success')
+    } catch {
+      showToast('Failed to regenerate inspection PDF', 'error')
+    } finally {
+      setInspectionLoading(false)
+    }
+  }
+
+  async function handleResetContract() {
+    if (!resetTenancyId.trim()) return
+    setResetLoading(true)
+    try {
+      const res = await fetch('/api/admin/dev/reset-contract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenancyId: resetTenancyId.trim() }),
+      })
+      const body = await res.json()
+      if (!res.ok) {
+        showToast(body.error || 'Failed to reset', 'error')
+        return
+      }
+      showToast(body.message, 'success')
+      setResetTenancyId('')
+    } catch {
+      showToast('Failed to reset contract', 'error')
+    } finally {
+      setResetLoading(false)
+      setShowResetConfirm(false)
+    }
+  }
+
+  const inputClass = 'flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent'
+  const btnClass = 'px-4 py-2 text-sm font-medium text-white rounded-md disabled:opacity-50 whitespace-nowrap'
+
+  return (
+    <div className="border border-amber-300 bg-amber-50 rounded-lg p-6 mt-6">
+      <h2 className="text-sm font-semibold text-amber-800 uppercase tracking-wide mb-4">Developer Tools</h2>
+
+      <div className="space-y-4">
+        {/* Tool 1: Regenerate Contract PDF */}
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Contract PDF Regeneration</label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Tenancy ID"
+              value={contractTenancyId}
+              onChange={(e) => setContractTenancyId(e.target.value)}
+              className={inputClass}
+            />
+            <button
+              onClick={handleRegenerateContract}
+              disabled={contractLoading || !contractTenancyId.trim()}
+              className={`${btnClass} bg-gray-800 hover:bg-gray-900`}
+            >
+              {contractLoading ? 'Generating...' : 'Regenerate PDF'}
+            </button>
+          </div>
+          {resultUrl && (
+            <p className="mt-1 text-xs text-green-700">
+              Saved to: <code className="bg-green-100 px-1 py-0.5 rounded">{resultUrl}</code>
+            </p>
+          )}
+        </div>
+
+        {/* Tool 2: Regenerate Inspection PDF */}
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Inspection PDF Regeneration</label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Inspection ID"
+              value={inspectionId}
+              onChange={(e) => setInspectionId(e.target.value)}
+              className={inputClass}
+            />
+            <button
+              onClick={handleRegenerateInspection}
+              disabled={inspectionLoading || !inspectionId.trim()}
+              className={`${btnClass} bg-gray-800 hover:bg-gray-900`}
+            >
+              {inspectionLoading ? 'Generating...' : 'Regenerate PDF'}
+            </button>
+          </div>
+          {inspectionResultUrl && (
+            <p className="mt-1 text-xs text-green-700">
+              Saved to: <code className="bg-green-100 px-1 py-0.5 rounded">{inspectionResultUrl}</code>
+            </p>
+          )}
+        </div>
+
+        {/* Tool 3: Reset Contract */}
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Reset Contract (delete + allow regeneration)</label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Tenancy ID"
+              value={resetTenancyId}
+              onChange={(e) => setResetTenancyId(e.target.value)}
+              className={inputClass}
+            />
+            <button
+              onClick={() => setShowResetConfirm(true)}
+              disabled={resetLoading || !resetTenancyId.trim()}
+              className={`${btnClass} bg-red-600 hover:bg-red-700`}
+            >
+              {resetLoading ? 'Resetting...' : 'Reset Contract'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Reset confirmation modal */}
+      {showResetConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+            <h2 className="text-lg font-semibold text-gray-900">Reset contract?</h2>
+            <p className="mt-2 text-sm text-gray-600">
+              This will delete the contract and all signature data for tenancy <code className="bg-gray-100 px-1 py-0.5 rounded text-xs">{resetTenancyId}</code>. This cannot be undone.
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => setShowResetConfirm(false)}
+                disabled={resetLoading}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleResetContract}
+                disabled={resetLoading}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50"
+              >
+                {resetLoading ? 'Deleting...' : 'Delete permanently'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
