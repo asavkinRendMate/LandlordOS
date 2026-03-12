@@ -1,7 +1,7 @@
 /**
  * components/header.ts — Branded page header band.
- * Full-width green band, 36pt tall. Left: logo or "LetSorted", Right: doc type label.
- * Horizontal rule below.
+ * Full-width green band, 56pt tall (10pt padding + 36pt logo + 10pt padding).
+ * Left: logo or "LetSorted", Right: doc type label. Horizontal rule below.
  */
 
 import { PDFPage, PDFImage } from 'pdf-lib'
@@ -34,7 +34,7 @@ export function drawHeader(
 
   // Left: logo image or text fallback
   if (logoImage) {
-    const maxHeight = 22
+    const maxHeight = 36
     const scale = maxHeight / logoImage.height
     const logoWidth = logoImage.width * scale
     const logoX = MARGIN_LEFT + 8
@@ -47,22 +47,23 @@ export function drawHeader(
       height: maxHeight,
     })
   } else {
-    // Fallback: text "LetSorted" in white Helvetica-Bold 13pt
+    // Fallback: text "LetSorted" in white Helvetica-Bold 14pt
     page.drawText('LetSorted', {
       x: MARGIN_LEFT + 12,
-      y: bandY - 24,
-      size: 13,
+      y: bandY - bandHeight / 2 - 5,
+      size: 14,
       font: fonts.bold,
       color: COLORS.white,
     })
   }
 
-  // Doc type label right-aligned
-  const labelWidth = fonts.regular.widthOfTextAtSize(docTypeLabel, 10)
+  // Doc type label right-aligned, vertically centred in band
+  const labelSize = 10
+  const labelWidth = fonts.regular.widthOfTextAtSize(docTypeLabel, labelSize)
   page.drawText(docTypeLabel, {
     x: PAGE_WIDTH - MARGIN_RIGHT - 12 - labelWidth,
-    y: bandY - 23,
-    size: 10,
+    y: bandY - bandHeight / 2 - labelSize / 2,
+    size: labelSize,
     font: fonts.regular,
     color: COLORS.white,
   })

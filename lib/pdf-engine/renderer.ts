@@ -26,10 +26,10 @@ export const MARGIN_RIGHT = 56
 export const CONTENT_WIDTH = PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT // 483
 export const CONTENT_HEIGHT = PAGE_HEIGHT - MARGIN_TOP - MARGIN_BOTTOM // 746
 export const OVERFLOW_THRESHOLD = 80
-export const HEADER_HEIGHT = 36
+export const HEADER_HEIGHT = 56
 export const GAP_AFTER_HEADER = 16
 /** Y coordinate where content begins on pages with a header band */
-export const CONTENT_START_Y = PAGE_HEIGHT - MARGIN_TOP - HEADER_HEIGHT - GAP_AFTER_HEADER // 742
+export const CONTENT_START_Y = PAGE_HEIGHT - MARGIN_TOP - HEADER_HEIGHT - GAP_AFTER_HEADER // 722
 
 // ── Colours ──────────────────────────────────────────────────────────────────
 
@@ -93,9 +93,9 @@ export interface TextStyle {
 
 export const TEXT_STYLES = (fonts: Fonts) => ({
   title: { font: fonts.bold, size: 20, leading: 26, color: COLORS.textPrimary } as TextStyle,
-  sectionHeading: { font: fonts.bold, size: 13, leading: 18, color: COLORS.textPrimary } as TextStyle,
-  subheading: { font: fonts.bold, size: 11, leading: 16, color: COLORS.textPrimary } as TextStyle,
-  body: { font: fonts.regular, size: 10, leading: 15, color: COLORS.textPrimary } as TextStyle,
+  sectionHeading: { font: fonts.bold, size: 11, leading: 16, color: COLORS.textPrimary } as TextStyle,
+  subheading: { font: fonts.bold, size: 10, leading: 15, color: COLORS.textPrimary } as TextStyle,
+  body: { font: fonts.regular, size: 9, leading: 14, color: COLORS.textPrimary } as TextStyle,
   caption: { font: fonts.regular, size: 8, leading: 12, color: COLORS.textSecondary } as TextStyle,
   footer: { font: fonts.regular, size: 8, leading: 12, color: COLORS.textMuted } as TextStyle,
   legal: { font: fonts.regular, size: 7, leading: 11, color: COLORS.textSecondary } as TextStyle,

@@ -198,6 +198,27 @@ export type AptContractData = {
   permittedOccupiers?: string[]
   /** e.g. "Cats and dogs permitted" */
   petClause?: string
+  /** Whether the property is subject to a mortgage */
+  isMortgaged?: boolean
+  /** Maximum number of occupants permitted */
+  maxOccupants?: number
+  /** Which utilities are included in the rent */
+  utilitiesIncluded?: {
+    councilTax?: boolean
+    water?: boolean
+    gas?: boolean
+    electricity?: boolean
+  }
+  /** Rent payment method, e.g. "standing order" */
+  paymentMethod?: string
+  /** ISO datetime landlord signed electronically */
+  landlordSignedAt?: string
+  /** Landlord's IP address at time of signing */
+  landlordSignedIp?: string
+  /** ISO datetime tenant signed electronically (first/primary tenant) */
+  tenantSignedAt?: string
+  /** Tenant's IP address at time of signing */
+  tenantSignedIp?: string
 }
 
 // ─────────────────────────────────────────────

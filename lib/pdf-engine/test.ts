@@ -228,20 +228,23 @@ const aptContractData: AptContractData = {
     },
   ],
   clauses: [
-    { heading: 'Rent', body: 'The tenant shall pay the rent of £1,750.00 per calendar month in advance on or before the 1st day of each month by standing order to the landlord\'s nominated bank account.' },
-    { heading: 'Deposit', body: 'The deposit of £1,750.00 has been protected with the Deposit Protection Service (DPS) under reference DPS-2026-44819. The prescribed information has been provided to the tenant within 30 days of receipt.' },
-    { heading: 'Use of Property', body: 'The property shall be used as a private dwelling only by the tenant and permitted occupiers named in this agreement. The tenant shall not use the property or allow it to be used for any business or commercial purpose.' },
-    { heading: 'Repairs and Maintenance', body: 'The landlord shall keep in repair the structure and exterior of the dwelling, and keep in repair and proper working order the installations for the supply of water, gas, electricity, sanitation, and heating. The tenant shall keep the interior of the property in a clean and reasonable condition and report any disrepair promptly.' },
-    { heading: 'Alterations', body: 'The tenant shall not make any alterations or additions to the property without the prior written consent of the landlord. Any approved alterations must be carried out in a professional manner and in compliance with building regulations.' },
-    { heading: 'Insurance', body: 'The landlord shall insure the building. The tenant is responsible for insuring their own contents.' },
-    { heading: 'Access', body: 'The landlord or their agent may enter the property at reasonable times of the day to inspect its condition or carry out repairs, having given at least 24 hours written notice except in an emergency.' },
-    { heading: 'Ending the Tenancy', body: 'Either party may end this tenancy by giving at least two months\' notice in writing. The landlord may only recover possession through the court using the statutory grounds under the Housing Act 1988 as amended.' },
-    { heading: 'Anti-social Behaviour', body: 'The tenant shall not cause, or allow household members or visitors to cause, nuisance or annoyance to neighbours or others in the locality.' },
-    { heading: 'Pets', body: 'The tenant may keep pets at the property subject to the landlord\'s prior written consent, which shall not be unreasonably withheld. The tenant is responsible for any damage caused by pets.' },
+    { heading: 'Garden Maintenance', body: 'The tenant shall maintain the garden in a tidy condition, keeping the lawn cut and borders weeded during the growing season.' },
+    { heading: 'Smoking', body: 'Smoking is not permitted inside the property. This includes e-cigarettes and vaping devices.' },
+    { heading: 'Bins and Recycling', body: 'The tenant shall ensure refuse and recycling bins are put out for collection on the appropriate days and returned promptly after collection.' },
   ],
   specialConditions: 'The landlord agrees to replace the kitchen boiler by 30 April 2026. The tenant has been granted permission to repaint the second bedroom in a neutral colour.',
   permittedOccupiers: ['Sophie Williams (child, age 8)'],
-  petClause: 'One cat permitted with prior approval granted.',
+  petClause: 'One cat permitted. The tenant must obtain pet damage insurance.',
+  isMortgaged: true,
+  maxOccupants: 4,
+  paymentMethod: 'Standing order',
+  utilitiesIncluded: {
+    water: true,
+  },
+  landlordSignedAt: '2026-03-01T14:32:00Z',
+  landlordSignedIp: '82.45.193.114',
+  tenantSignedAt: '2026-03-01T16:05:00Z',
+  tenantSignedIp: '91.123.44.87',
 }
 
 const section8Data: Section8NoticeData = {
@@ -491,11 +494,15 @@ const coverSheetData: CoverSheetData = {
     'may be used as evidence in any future deposit dispute proceedings.',
 }
 
-// Variant: apt-contract with missing deposit scheme/reference (tests fallback text)
+// Variant: unsigned contract with missing deposit scheme/reference (tests State A + fallback text)
 const aptContractNoDeposit: AptContractData = {
   ...aptContractData,
   depositScheme: undefined,
   depositReference: undefined,
+  landlordSignedAt: undefined,
+  landlordSignedIp: undefined,
+  tenantSignedAt: undefined,
+  tenantSignedIp: undefined,
 }
 
 // ── Runner ───────────────────────────────────────────────────────────────────

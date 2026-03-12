@@ -112,9 +112,9 @@ Header background:        #2D6A4F
 | Role | Font | Size | Leading |
 |------|------|------|---------|
 | Document title | Helvetica-Bold | 20pt | 26pt |
-| Section heading | Helvetica-Bold | 13pt | 18pt |
-| Subheading | Helvetica-Bold | 11pt | 16pt |
-| Body | Helvetica | 10pt | 15pt |
+| Section heading | Helvetica-Bold | 11pt | 16pt |
+| Subheading | Helvetica-Bold | 10pt | 15pt |
+| Body | Helvetica | 9pt | 14pt |
 | Caption / label | Helvetica | 8pt | 12pt |
 | Footer | Helvetica | 8pt | 12pt |
 | Legal / small print | Helvetica | 7pt | 11pt |
