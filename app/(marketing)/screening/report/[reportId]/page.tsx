@@ -1,12 +1,11 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import ScreeningReportDisplay, { type ScoringResult } from '@/components/shared/ScreeningReportDisplay'
 import PaymentSetupModal from '@/components/shared/PaymentSetupModal'
 import ScreeningLayout from '@/components/screening-flow/ScreeningLayout'
-import { usePayment } from '@/hooks/usePayment'
 
 interface InviteListItem {
   id: string
@@ -39,7 +38,8 @@ export default function ReportPage() {
   const [unlockPrice, setUnlockPrice] = useState('£9.99')
   const [unlockMethod, setUnlockMethod] = useState<string>('subscriber')
   const [cardInfo, setCardInfo] = useState<{ last4: string; brand: string } | null>(null)
-  const { showCardModal, requireCard, onCardSaveComplete, closeCardModal } = usePayment()
+  const [showCardModal, setShowCardModal] = useState(false)
+  const pendingAutoUnlockRef = useRef(false)
 
   // ── Fetch report ──────────────────────────────────────────────────────────────────
 
@@ -102,38 +102,50 @@ export default function ReportPage() {
   // ── Unlock ──────────────────────────────────────────────────────────────────────
 
   async function handleUnlock() {
-    requireCard(async () => {
-      try {
-        // Fetch server-side pricing
-        const priceRes = await fetch(`/api/payment/unlock-price?reportId=${reportId}`)
-        const priceJson = await priceRes.json()
+    setError(null)
 
-        if (!priceRes.ok) {
-          setError(priceJson.error || 'Unable to determine price')
-          return
-        }
+    try {
+      // 1. Fetch server-side pricing
+      const priceRes = await fetch(`/api/payment/unlock-price?reportId=${reportId}`)
+      const priceJson = await priceRes.json()
 
-        const data = priceJson.data
-        setUnlockMethod(data.method)
-
-        if (data.method === 'credit_pack') {
-          setUnlockPrice('1 credit')
-        } else {
-          setUnlockPrice(`£${(data.amountPence / 100).toFixed(2)}`)
-        }
-
-        // Fetch card info for confirmation display
-        if (data.method === 'subscriber') {
-          const subRes = await fetch('/api/payment/subscription')
-          const subJson = await subRes.json()
-          if (subJson.data?.card) setCardInfo(subJson.data.card)
-        }
-
-        setShowPriceConfirm(true)
-      } catch {
-        setError('Something went wrong')
+      if (!priceRes.ok) {
+        setError(priceJson.error || 'Unable to determine price')
+        return
       }
-    })
+
+      const data = priceJson.data
+      setUnlockMethod(data.method)
+
+      // 2. Credit pack — no card needed, show confirm directly
+      if (data.method === 'credit_pack') {
+        setUnlockPrice('1 credit')
+        setShowPriceConfirm(true)
+        return
+      }
+
+      // 3. Card-based pricing
+      const price = `£${(data.amountPence / 100).toFixed(2)}`
+      setUnlockPrice(price)
+
+      // Check for saved card
+      const cardRes = await fetch('/api/payment/has-card')
+      const cardJson = await cardRes.json()
+
+      if (cardJson.data?.hasCard) {
+        // Has card → fetch card info for confirmation display
+        const subRes = await fetch('/api/payment/subscription')
+        const subJson = await subRes.json()
+        if (subJson.data?.card) setCardInfo(subJson.data.card)
+        setShowPriceConfirm(true)
+      } else {
+        // No card → open PaymentSetupModal, auto-unlock after card saved
+        pendingAutoUnlockRef.current = true
+        setShowCardModal(true)
+      }
+    } catch {
+      setError('Something went wrong')
+    }
   }
 
   async function confirmUnlock() {
@@ -161,6 +173,19 @@ export default function ReportPage() {
     } finally {
       setUnlocking(false)
     }
+  }
+
+  function handleCardSaved() {
+    setShowCardModal(false)
+    if (pendingAutoUnlockRef.current) {
+      pendingAutoUnlockRef.current = false
+      confirmUnlock()
+    }
+  }
+
+  function handleCardModalClose() {
+    setShowCardModal(false)
+    pendingAutoUnlockRef.current = false
   }
 
   // ── Loading ─────────────────────────────────────────────────────────────────────
@@ -276,9 +301,9 @@ export default function ReportPage() {
 
       <PaymentSetupModal
         isOpen={showCardModal}
-        onClose={closeCardModal}
-        onSuccess={onCardSaveComplete}
-        context="Add a payment method to unlock screening reports."
+        onClose={handleCardModalClose}
+        onSuccess={handleCardSaved}
+        context="Add a payment method to unlock this screening report."
       />
     </ScreeningLayout>
   )

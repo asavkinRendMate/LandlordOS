@@ -1,13 +1,12 @@
 /**
  * Server-side screening unlock pricing logic.
  *
- * Two flows:
- * 1. Property-based (report.propertyId set) → subscriber pricing
- *    - £9.99 first unlock per property cycle, £1.49 each additional
- *    - Cycle resets when property.status → VACANT
- * 2. Standalone (no propertyId) → credit pack (1 credit per unlock)
- *
- * Subscriber with pack credits → subscriber pricing wins, pack untouched.
+ * Priority:
+ * 1. Credit pack (if available) → 1 credit per unlock, no card needed
+ * 2. Property-based → card pricing (£9.99 first / £1.49 additional per cycle)
+ *    Available to ALL authenticated landlords, not just subscribers.
+ *    Cycle resets when property.status → VACANT
+ * 3. Standalone (no propertyId, no credits) → error
  */
 
 import { prisma } from '@/lib/prisma'
@@ -36,69 +35,7 @@ export async function determineUnlockMethod(
     return { type: 'error', message: 'Report is not yet completed' }
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { subscriptionStatus: true },
-  })
-
-  // Property-based flow: subscriber pricing
-  if (report.propertyId) {
-    if (user?.subscriptionStatus === 'ACTIVE') {
-      const property = await prisma.property.findUnique({
-        where: { id: report.propertyId },
-        select: { screeningCycleResetAt: true, createdAt: true },
-      })
-
-      const cycleStart = property?.screeningCycleResetAt ?? property?.createdAt ?? new Date(0)
-
-      // Count payments whose referenceId points to a report for this property
-      const paymentsForProperty = await prisma.payment.findMany({
-        where: {
-          userId,
-          reason: { in: ['SCREENING_FIRST', 'SCREENING_ADDITIONAL'] },
-          status: 'succeeded',
-          createdAt: { gte: cycleStart },
-          referenceId: { not: null },
-        },
-        select: { referenceId: true },
-      })
-
-      let cycleUnlocks = 0
-      if (paymentsForProperty.length > 0) {
-        const reportIds = paymentsForProperty
-          .map((p) => p.referenceId)
-          .filter((id): id is string => id !== null)
-
-        if (reportIds.length > 0) {
-          cycleUnlocks = await prisma.financialReport.count({
-            where: {
-              id: { in: reportIds },
-              propertyId: report.propertyId,
-            },
-          })
-        }
-      }
-
-      if (cycleUnlocks === 0) {
-        return {
-          type: 'subscriber',
-          reason: 'SCREENING_FIRST',
-          amountPence: CHARGE_AMOUNTS.SCREENING_FIRST,
-        }
-      }
-      return {
-        type: 'subscriber',
-        reason: 'SCREENING_ADDITIONAL',
-        amountPence: CHARGE_AMOUNTS.SCREENING_ADDITIONAL,
-      }
-    }
-
-    // Not subscriber — fall through to credit pack
-  }
-
-  // Credit pack flow (standalone or non-subscriber property-based)
-  // Prisma doesn't support field-to-field comparison in where clause,
-  // so we fetch and compare in JS.
+  // Credit pack check first — no card needed, works for any report type
   const packWithCredits = await prisma.screeningPackage.findFirst({
     where: {
       userId,
@@ -111,11 +48,61 @@ export async function determineUnlockMethod(
     return { type: 'credit_pack', packageId: packWithCredits.id }
   }
 
+  // Property-based: card pricing (£9.99/£1.49) for ALL authenticated landlords
+  if (report.propertyId) {
+    const property = await prisma.property.findUnique({
+      where: { id: report.propertyId },
+      select: { screeningCycleResetAt: true, createdAt: true },
+    })
+
+    const cycleStart = property?.screeningCycleResetAt ?? property?.createdAt ?? new Date(0)
+
+    // Count payments whose referenceId points to a report for this property
+    const paymentsForProperty = await prisma.payment.findMany({
+      where: {
+        userId,
+        reason: { in: ['SCREENING_FIRST', 'SCREENING_ADDITIONAL'] },
+        status: 'succeeded',
+        createdAt: { gte: cycleStart },
+        referenceId: { not: null },
+      },
+      select: { referenceId: true },
+    })
+
+    let cycleUnlocks = 0
+    if (paymentsForProperty.length > 0) {
+      const reportIds = paymentsForProperty
+        .map((p) => p.referenceId)
+        .filter((id): id is string => id !== null)
+
+      if (reportIds.length > 0) {
+        cycleUnlocks = await prisma.financialReport.count({
+          where: {
+            id: { in: reportIds },
+            propertyId: report.propertyId,
+          },
+        })
+      }
+    }
+
+    if (cycleUnlocks === 0) {
+      return {
+        type: 'subscriber',
+        reason: 'SCREENING_FIRST',
+        amountPence: CHARGE_AMOUNTS.SCREENING_FIRST,
+      }
+    }
+    return {
+      type: 'subscriber',
+      reason: 'SCREENING_ADDITIONAL',
+      amountPence: CHARGE_AMOUNTS.SCREENING_ADDITIONAL,
+    }
+  }
+
+  // Standalone report without credits
   return {
     type: 'error',
-    message: report.propertyId
-      ? 'Active subscription or credit pack required to unlock reports'
-      : 'Credit pack required to unlock standalone reports',
+    message: 'Credit pack required to unlock standalone reports',
   }
 }
 

@@ -8,6 +8,7 @@ export type SectionHelpKey =
   | 'rent'
   | 'maintenance'
   | 'applications'
+  | 'periodic-inspections'
   | 'more'
 
 const SECTION_HELP: Record<SectionHelpKey, {
@@ -57,6 +58,14 @@ const SECTION_HELP: Record<SectionHelpKey, {
     description: 'Invite prospective tenants to apply for this property and screen their finances with AI.',
     example: 'Enter up to 10 email addresses, toggle financial verification on, send invites \u2014 candidates upload bank statements and you get a scored report.',
     role: 'Full tenant pipeline from application to selection. Once you select a tenant, this section archives automatically.',
+  },
+  'periodic-inspections': {
+    title: 'Periodic Inspections',
+    description:
+      'Schedule regular property inspections to document the condition of your property over time. Inspections create a timestamped photo record for every room — essential evidence if a deposit dispute arises at the end of the tenancy.',
+    example:
+      'A landlord sets up 6-monthly inspections. After 12 months, the check-out shows damaged flooring. The two periodic inspection reports prove the damage occurred in the final 6 months — making the deduction case straightforward.',
+    role: 'landlord',
   },
   more: {
     title: 'Danger Zone',

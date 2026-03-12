@@ -64,9 +64,16 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   }
 }
 
+const UK_POSTCODE_RE = /[A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2}/i
+
 const patchSchema = z.object({
   requireFinancialVerification: z.boolean().optional(),
   bedrooms: z.number().int().min(1).max(10).optional(),
+  name: z.string().min(1).optional(),
+  line1: z.string().min(1).optional(),
+  line2: z.string().optional(),
+  city: z.string().min(1).optional(),
+  postcode: z.string().refine((v) => UK_POSTCODE_RE.test(v.trim()), { message: 'Invalid UK postcode' }).optional(),
 })
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {

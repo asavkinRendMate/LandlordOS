@@ -8,8 +8,8 @@ import DeletePropertyModal from '@/components/properties/DeletePropertyModal'
 import SectionHelpModal, { SectionHelpButton, type SectionHelpKey } from '@/components/properties/SectionHelpModal'
 import TenantDetailsForm, { type TenantFormData } from '@/components/shared/TenantDetailsForm'
 import { type RoomEntry, ROOM_TYPE_LABELS, QUICK_ADD_ROOMS } from '@/lib/room-utils'
-import { inputClass, selectClassCompact, buttonClass } from '@/lib/form-styles'
-import { cardClass, Spinner, StatusBadge as UiStatusBadge } from '@/lib/ui'
+import { inputClass, selectClassCompact, buttonClass, buttonSecondaryClass } from '@/lib/form-styles'
+import { cardClass, Spinner, Modal, AlertBar, StatusBadge as UiStatusBadge } from '@/lib/ui'
 import { showErrorToast } from '@/lib/error-toast'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -117,8 +117,12 @@ interface ComplianceDoc {
 interface Tenancy {
   id: string
   monthlyRent: number | null
+  paymentDay: number | null
   startDate: string | null
   status: string
+  depositAmount: number | null
+  depositScheme: string | null
+  depositRef: string | null
 }
 
 interface PropertyDocument {
@@ -474,113 +478,99 @@ function InvitePreviewModal({
   const costDisplay = `£${(costPence / 100).toFixed(2)}`
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white border border-gray-200 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg max-h-[90vh] flex flex-col overflow-hidden shadow-xl">
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
-          <div>
-            <h2 className="text-[#1A1A1A] font-semibold">Review before sending</h2>
-            <p className="text-sm text-gray-500 mt-0.5">Sending to {count} applicant{s}</p>
-          </div>
-          <button onClick={onClose} className="text-[#9CA3AF] hover:text-[#6B7280] transition-colors">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
+    <Modal isOpen onClose={onClose} title="Review before sending" size="md">
+      <p className="text-sm text-gray-500 -mt-1 mb-5">Sending to {count} applicant{s}</p>
 
-        <div className="overflow-y-auto flex-1 p-5 space-y-5">
-          {/* Email preview */}
-          <div>
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Email preview</p>
-            <div className="relative pointer-events-none opacity-60 select-none bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
-              <span className="absolute top-3 right-3 bg-gray-100 text-gray-400 text-xs px-2 py-0.5 rounded font-medium">Preview</span>
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 bg-[#2D6A4F] rounded-lg flex items-center justify-center">
-                  <span className="text-white text-xs font-bold">LS</span>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-[#2D6A4F]">LetSorted</p>
-                  <p className="text-[10px] text-gray-400">Applications</p>
-                </div>
+      <div className="space-y-5">
+        {/* Email preview */}
+        <div>
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Email preview</p>
+          <div className="relative pointer-events-none opacity-60 select-none bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+            <span className="absolute top-3 right-3 bg-gray-100 text-gray-400 text-xs px-2 py-0.5 rounded font-medium">Preview</span>
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 bg-[#2D6A4F] rounded-lg flex items-center justify-center">
+                <span className="text-white text-xs font-bold">LS</span>
               </div>
-              <div className="border-t border-gray-100 pt-3 space-y-2.5">
-                <p className="text-sm text-gray-700">Hi,</p>
-                <p className="text-sm text-gray-700">You&apos;ve been sent an application link for:</p>
-                <div className="bg-[#f0fdf4] border border-[#bbf7d0] rounded-lg px-3 py-2">
-                  <p className="text-sm font-medium text-[#166534]">{propertyAddress}</p>
-                </div>
-                <p className="text-sm text-gray-700">Click below to submit your application:</p>
-                <div className="bg-[#16a34a] text-white text-center rounded-lg py-2.5 text-sm font-semibold">
-                  Apply now
-                </div>
-                {requiresFinancialCheck && (
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mt-2">
-                    <p className="text-xs text-gray-600">
-                      As part of this application, you&apos;ll be asked to upload bank statements for a financial check.
-                      Your data is processed securely and never shared without your permission.
-                    </p>
-                  </div>
-                )}
-                <p className="text-[11px] text-gray-400 mt-3">
-                  If you weren&apos;t expecting this email, you can safely ignore it.
-                </p>
+              <div>
+                <p className="text-sm font-semibold text-[#2D6A4F]">LetSorted</p>
+                <p className="text-[10px] text-gray-400">Applications</p>
               </div>
             </div>
-          </div>
-
-          {/* Recipients */}
-          <div>
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Recipients</p>
-            <div className="space-y-1">
-              {emails.map((email, i) => (
-                <p key={i} className="text-sm text-gray-700 font-mono">
-                  {email}
-                </p>
-              ))}
-            </div>
-          </div>
-
-          {/* Billing notice */}
-          {requiresFinancialCheck && (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-              <div className="flex items-start gap-2.5">
-                <span className="text-amber-500 shrink-0 mt-0.5">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </span>
-                <div className="text-sm text-amber-800">
-                  <p className="font-medium mb-1">You&apos;ll only be charged when you unlock a completed report — not for invites.</p>
-                  <p className="text-amber-700 text-xs">
-                    If all {count} applicant{s} complete their check, estimated total: {costDisplay}
-                    {count > 1 && <span> (£9.99 first report, £1.49 each additional)</span>}
+            <div className="border-t border-gray-100 pt-3 space-y-2.5">
+              <p className="text-sm text-gray-700">Hi,</p>
+              <p className="text-sm text-gray-700">You&apos;ve been sent an application link for:</p>
+              <div className="bg-[#f0fdf4] border border-[#bbf7d0] rounded-lg px-3 py-2">
+                <p className="text-sm font-medium text-[#166534]">{propertyAddress}</p>
+              </div>
+              <p className="text-sm text-gray-700">Click below to submit your application:</p>
+              <div className="bg-[#16a34a] text-white text-center rounded-lg py-2.5 text-sm font-semibold">
+                Apply now
+              </div>
+              {requiresFinancialCheck && (
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mt-2">
+                  <p className="text-xs text-gray-600">
+                    As part of this application, you&apos;ll be asked to upload bank statements for a financial check.
+                    Your data is processed securely and never shared without your permission.
                   </p>
                 </div>
-              </div>
+              )}
+              <p className="text-[11px] text-gray-400 mt-3">
+                If you weren&apos;t expecting this email, you can safely ignore it.
+              </p>
             </div>
-          )}
+          </div>
         </div>
 
-        {/* Footer actions */}
-        <div className="px-5 py-4 border-t border-gray-100 shrink-0 space-y-2">
-          <button
-            onClick={onConfirm}
-            disabled={sending}
-            className="w-full bg-[#16a34a] hover:bg-[#15803d] disabled:opacity-50 text-white font-semibold rounded-xl py-3 text-sm transition-colors"
-          >
-            {sending ? 'Sending…' : `Send ${count} invite${s}`}
-          </button>
-          <button
-            onClick={onClose}
-            className="w-full text-sm text-[#9CA3AF] hover:text-[#6B7280] transition-colors text-center py-1"
-          >
-            ← Back to edit
-          </button>
+        {/* Recipients */}
+        <div>
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Recipients</p>
+          <div className="space-y-1">
+            {emails.map((email, i) => (
+              <p key={i} className="text-sm text-gray-700 font-mono">
+                {email}
+              </p>
+            ))}
+          </div>
         </div>
+
+        {/* Billing notice */}
+        {requiresFinancialCheck && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+            <div className="flex items-start gap-2.5">
+              <span className="text-amber-500 shrink-0 mt-0.5">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </span>
+              <div className="text-sm text-amber-800">
+                <p className="font-medium mb-1">You&apos;ll only be charged when you unlock a completed report — not for invites.</p>
+                <p className="text-amber-700 text-xs">
+                  If all {count} applicant{s} complete their check, estimated total: {costDisplay}
+                  {count > 1 && <span> (£9.99 first report, £1.49 each additional)</span>}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
-    </div>
+
+      {/* Footer actions */}
+      <div className="mt-5 space-y-2">
+        <button
+          onClick={onConfirm}
+          disabled={sending}
+          className="w-full bg-[#16a34a] hover:bg-[#15803d] disabled:opacity-50 text-white font-semibold rounded-xl py-3 text-sm transition-colors"
+        >
+          {sending ? 'Sending…' : `Send ${count} invite${s}`}
+        </button>
+        <button
+          onClick={onClose}
+          className="w-full text-sm text-[#9CA3AF] hover:text-[#6B7280] transition-colors text-center py-1"
+        >
+          &larr; Back to edit
+        </button>
+      </div>
+    </Modal>
   )
 }
 
@@ -709,12 +699,70 @@ function MarkReceivedForm({ payment, onSaved, onClose }: { payment: RentPayment;
 
 // ── Rent Payments section (landlord) ──────────────────────────────────────────
 
+function SetRentModal({ propertyId, onClose, onSaved }: { propertyId: string; onClose: () => void; onSaved: () => void }) {
+  const [rentStr, setRentStr] = useState('')
+  const [paymentDay, setPaymentDay] = useState(1)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function save() {
+    const rent = parseFloat(rentStr)
+    if (!rent || rent <= 0) { setError('Enter a valid rent amount'); return }
+    setSaving(true)
+    setError(null)
+    const res = await fetch(`/api/properties/${propertyId}/tenancy`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ monthlyRent: Math.round(rent * 100), paymentDay }),
+    })
+    setSaving(false)
+    if (res.ok) { onSaved(); onClose() }
+    else {
+      const json = await res.json().catch(() => ({}))
+      setError(json.error ?? 'Failed to save')
+    }
+  }
+
+  return (
+    <Modal isOpen onClose={onClose} title="Set rent amount & payment day" size="sm">
+      <div className="space-y-4">
+        {error && <AlertBar variant="error" message={error} />}
+        <div>
+          <label className="block text-sm text-[#374151] mb-1.5">Monthly rent (&pound;)</label>
+          <input
+            type="number"
+            step="0.01"
+            min="1"
+            value={rentStr}
+            onChange={(e) => setRentStr(e.target.value)}
+            placeholder="1200"
+            className={inputClass}
+          />
+        </div>
+        <div>
+          <label className="block text-sm text-[#374151] mb-1.5">Payment day</label>
+          <select value={paymentDay} onChange={(e) => setPaymentDay(Number(e.target.value))} className={selectClassCompact}>
+            {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
+              <option key={d} value={d}>{d}{d === 1 ? 'st' : d === 2 ? 'nd' : d === 3 ? 'rd' : 'th'}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex gap-3 pt-2">
+          <button onClick={onClose} className={`${buttonSecondaryClass} flex-1`}>Cancel</button>
+          <button onClick={save} disabled={saving} className={`${buttonClass} flex-1`}>{saving ? 'Saving…' : 'Save'}</button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
 function RentPaymentsSection({ propertyId }: { propertyId: string }) {
   const [payments, setPayments] = useState<RentPayment[]>([])
   const [loading, setLoading] = useState(true)
   const [showHistory, setShowHistory] = useState(false)
   const [openFormId, setOpenFormId] = useState<string | null>(null)
   const [showHelp, setShowHelp] = useState(false)
+  const [showSetRent, setShowSetRent] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -765,16 +813,27 @@ function RentPaymentsSection({ propertyId }: { propertyId: string }) {
 
   if (payments.length === 0) {
     return (
+      <>
       <div className="flex items-start gap-3 mb-5">
       <div className="flex-1 min-w-0 bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4">
         {headerRow}
-        <p className="text-[#9CA3AF] text-sm italic">
+        <p className="text-[#9CA3AF] text-sm">
           Payments will appear once the tenancy has a rent amount and payment day set.
         </p>
+        <button
+          onClick={() => setShowSetRent(true)}
+          className="mt-3 inline-flex items-center gap-1.5 text-sm text-[#16a34a] hover:text-[#15803d] font-medium transition-colors"
+        >
+          Set rent amount &amp; payment day &rarr;
+        </button>
       </div>
       {helpBtn}
       <SectionHelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} section="rent" />
       </div>
+      {showSetRent && (
+        <SetRentModal propertyId={propertyId} onClose={() => setShowSetRent(false)} onSaved={load} />
+      )}
+      </>
     )
   }
 
@@ -1431,6 +1490,7 @@ function PeriodicInspectionSection({ propertyId, tenancyId }: { propertyId: stri
   const [saving, setSaving] = useState(false)
   const [frequency, setFrequency] = useState<3 | 6>(3)
   const [scheduledTime, setScheduledTime] = useState<string>('10:00')
+  const [showHelp, setShowHelp] = useState(false)
   const router = useRouter()
 
   const fetchData = useCallback(async () => {
@@ -1598,6 +1658,10 @@ function PeriodicInspectionSection({ propertyId, tenancyId }: { propertyId: stri
           </div>
         )}
       </div>
+      <div className="pt-3 shrink-0">
+        <SectionHelpButton onClick={() => setShowHelp(true)} />
+      </div>
+      <SectionHelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} section="periodic-inspections" />
     </div>
   )
 }
@@ -1938,102 +2002,86 @@ function AddTenantModal({
     onSuccess(`Invite sent to ${inviteEmail.trim()}`)
   }
 
-  const inputClass =
+  const localInputClass =
     'w-full bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-[#1A1A1A] placeholder-[#9CA3AF] text-sm focus:outline-none focus:border-green-500/60 focus:ring-1 focus:ring-green-500/30 transition-colors'
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="fixed inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-gray-100">
-          <h2 className="text-lg font-semibold text-[#1A1A1A]">Add tenant</h2>
-          <button onClick={onClose} className="text-[#9CA3AF] hover:text-[#6B7280] transition-colors">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex border-b border-gray-100">
-          <button
-            onClick={() => setTab('full')}
-            className={`flex-1 py-3 text-sm font-medium transition-colors ${
-              tab === 'full'
-                ? 'text-[#16a34a] border-b-2 border-[#16a34a]'
-                : 'text-[#9CA3AF] hover:text-[#6B7280]'
-            }`}
-          >
-            Full details
-          </button>
-          <button
-            onClick={() => setTab('invite')}
-            className={`flex-1 py-3 text-sm font-medium transition-colors ${
-              tab === 'invite'
-                ? 'text-[#16a34a] border-b-2 border-[#16a34a]'
-                : 'text-[#9CA3AF] hover:text-[#6B7280]'
-            }`}
-          >
-            Invite only
-          </button>
-        </div>
-
-        {/* Body */}
-        <div className="p-5">
-          {error && (
-            <div className="mb-4 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-red-600 text-sm">
-              {error}
-            </div>
-          )}
-
-          {tab === 'full' ? (
-            <TenantDetailsForm
-              onSubmit={handleFullSubmit}
-              isLoading={loading}
-              submitLabel="Add tenant"
-              variant="light"
-            />
-          ) : (
-            <form onSubmit={handleInviteSubmit} className="space-y-4">
-              <p className="text-[#6B7280] text-sm mb-4">
-                Send an invite email so the tenant can confirm their own details and access their portal.
-              </p>
-              <div>
-                <label className="block text-sm text-[#374151] mb-1.5">Full name</label>
-                <input
-                  value={inviteName}
-                  onChange={(e) => setInviteName(e.target.value)}
-                  placeholder="Jane Smith"
-                  className={inputClass}
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm text-[#374151] mb-1.5">Email</label>
-                <input
-                  type="email"
-                  value={inviteEmail}
-                  onChange={(e) => setInviteEmail(e.target.value)}
-                  placeholder="jane@example.com"
-                  className={inputClass}
-                  required
-                />
-              </div>
-              <div className="pt-2">
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-[#16a34a] hover:bg-[#15803d] disabled:opacity-50 text-white font-semibold rounded-xl py-3 text-sm transition-colors"
-                >
-                  {loading ? 'Sending…' : 'Send invite'}
-                </button>
-              </div>
-            </form>
-          )}
-        </div>
+    <Modal isOpen onClose={onClose} title="Add tenant" size="md">
+      {/* Tabs */}
+      <div className="flex border-b border-gray-100 -mx-5 px-5 -mt-1 mb-5">
+        <button
+          onClick={() => setTab('full')}
+          className={`flex-1 py-3 text-sm font-medium transition-colors ${
+            tab === 'full'
+              ? 'text-[#16a34a] border-b-2 border-[#16a34a]'
+              : 'text-[#9CA3AF] hover:text-[#6B7280]'
+          }`}
+        >
+          Full details
+        </button>
+        <button
+          onClick={() => setTab('invite')}
+          className={`flex-1 py-3 text-sm font-medium transition-colors ${
+            tab === 'invite'
+              ? 'text-[#16a34a] border-b-2 border-[#16a34a]'
+              : 'text-[#9CA3AF] hover:text-[#6B7280]'
+          }`}
+        >
+          Invite only
+        </button>
       </div>
-    </div>
+
+      {error && (
+        <div className="mb-4 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-red-600 text-sm">
+          {error}
+        </div>
+      )}
+
+      {tab === 'full' ? (
+        <TenantDetailsForm
+          onSubmit={handleFullSubmit}
+          isLoading={loading}
+          submitLabel="Add tenant"
+          variant="light"
+        />
+      ) : (
+        <form onSubmit={handleInviteSubmit} className="space-y-4">
+          <p className="text-[#6B7280] text-sm mb-4">
+            Send an invite email so the tenant can confirm their own details and access their portal.
+          </p>
+          <div>
+            <label className="block text-sm text-[#374151] mb-1.5">Full name</label>
+            <input
+              value={inviteName}
+              onChange={(e) => setInviteName(e.target.value)}
+              placeholder="Jane Smith"
+              className={localInputClass}
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm text-[#374151] mb-1.5">Email</label>
+            <input
+              type="email"
+              value={inviteEmail}
+              onChange={(e) => setInviteEmail(e.target.value)}
+              placeholder="jane@example.com"
+              className={localInputClass}
+              required
+            />
+          </div>
+          <div className="pt-2">
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-[#16a34a] hover:bg-[#15803d] disabled:opacity-50 text-white font-semibold rounded-xl py-3 text-sm transition-colors"
+            >
+              {loading ? 'Sending…' : 'Send invite'}
+            </button>
+          </div>
+        </form>
+      )}
+    </Modal>
   )
 }
 
@@ -2210,133 +2258,283 @@ function SelectTenantModal({
   )
   const displayName = selectedInvite.candidateName ?? selectedInvite.email
 
+  const title = step === 1 ? 'Confirm tenant selection' : 'Are you absolutely sure?'
+
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white border border-gray-200 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md max-h-[90vh] flex flex-col overflow-hidden shadow-xl">
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
-          <h2 className="text-[#1A1A1A] font-semibold">
-            {step === 1 ? 'Confirm tenant selection' : 'Are you absolutely sure?'}
-          </h2>
-          <button onClick={onClose} className="text-[#9CA3AF] hover:text-[#6B7280] transition-colors">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        {step === 1 ? (
-          <>
-            <div className="overflow-y-auto flex-1 p-5 space-y-4">
-              {/* Selected tenant (green) */}
-              <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <svg className="w-5 h-5 text-green-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <p className="text-sm font-semibold text-green-800">Selected tenant</p>
-                </div>
-                <p className="text-sm text-green-700 font-medium">{displayName}</p>
-                <p className="text-xs text-green-600">{selectedInvite.email}</p>
-                <p className="text-xs text-green-600 mt-2">
-                  They&apos;ll receive an email with a link to the tenant portal.
-                </p>
+    <Modal isOpen onClose={onClose} title={title} size="md">
+      {step === 1 ? (
+        <>
+          <div className="space-y-4">
+            {/* Selected tenant (green) */}
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <svg className="w-5 h-5 text-green-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="text-sm font-semibold text-green-800">Selected tenant</p>
               </div>
-
-              {/* Rejected applicants (amber) */}
-              {rejectableInvites.length > 0 && (
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <svg className="w-5 h-5 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                    <p className="text-sm font-semibold text-amber-800">
-                      {rejectableInvites.length} other applicant{rejectableInvites.length !== 1 ? 's' : ''} will be notified
-                    </p>
-                  </div>
-                  <div className="space-y-1.5">
-                    {rejectableInvites.map((inv) => (
-                      <div key={inv.inviteId} className="flex items-center gap-2">
-                        <span className="text-xs text-amber-700">{inv.candidateName ?? inv.email}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <p className="text-xs text-amber-600 mt-2">
-                    They&apos;ll receive a polite rejection email — no scores or reasons shared.
-                  </p>
-                </div>
-              )}
+              <p className="text-sm text-green-700 font-medium">{displayName}</p>
+              <p className="text-xs text-green-600">{selectedInvite.email}</p>
+              <p className="text-xs text-green-600 mt-2">
+                They&apos;ll receive an email with a link to the tenant portal.
+              </p>
             </div>
 
-            {/* Footer — Step 1 */}
-            <div className="px-5 py-4 border-t border-gray-100 shrink-0 space-y-2">
-              <button
-                onClick={() => setStep(2)}
-                className="w-full bg-[#16a34a] hover:bg-[#15803d] text-white font-semibold rounded-xl py-3 text-sm transition-colors"
-              >
-                Confirm — select {displayName}
-              </button>
-              <button
-                onClick={onClose}
-                className="w-full bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium rounded-xl py-3 text-sm transition-colors"
-              >
-                Go back
-              </button>
-            </div>
-          </>
-        ) : (
-          <>
-            {/* Step 2: Rose warning */}
-            <div className="overflow-y-auto flex-1 p-5">
-              <div className="bg-rose-50 border border-rose-200 rounded-xl p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <svg className="w-6 h-6 text-rose-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            {/* Rejected applicants (amber) */}
+            {rejectableInvites.length > 0 && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <svg className="w-5 h-5 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
-                  <p className="text-rose-800 font-semibold">This action cannot be undone</p>
+                  <p className="text-sm font-semibold text-amber-800">
+                    {rejectableInvites.length} other applicant{rejectableInvites.length !== 1 ? 's' : ''} will be notified
+                  </p>
                 </div>
-                <p className="text-sm text-rose-700 mb-3">
-                  Selecting <strong>{displayName}</strong> as your tenant will:
+                <div className="space-y-1.5">
+                  {rejectableInvites.map((inv) => (
+                    <div key={inv.inviteId} className="flex items-center gap-2">
+                      <span className="text-xs text-amber-700">{inv.candidateName ?? inv.email}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-amber-600 mt-2">
+                  They&apos;ll receive a polite rejection email — no scores or reasons shared.
                 </p>
-                <ul className="text-sm text-rose-700 space-y-1.5 ml-1">
-                  <li className="flex items-start gap-2">
-                    <span className="mt-1.5 w-1 h-1 rounded-full bg-rose-400 shrink-0" />
-                    Send {displayName} a link to the tenant portal
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="mt-1.5 w-1 h-1 rounded-full bg-rose-400 shrink-0" />
-                    Send rejection emails to all other applicants
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="mt-1.5 w-1 h-1 rounded-full bg-rose-400 shrink-0" />
-                    This cannot be undone — choose carefully
-                  </li>
-                </ul>
               </div>
-            </div>
+            )}
+          </div>
 
-            {/* Footer — Step 2 */}
-            <div className="px-5 py-4 border-t border-gray-100 shrink-0 space-y-2">
-              <button
-                onClick={onConfirm}
-                disabled={selecting}
-                className="w-full bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-semibold rounded-xl py-3 text-sm transition-colors"
-              >
-                {selecting ? 'Processing…' : `Yes, confirm — select ${displayName}`}
-              </button>
-              <button
-                onClick={() => setStep(1)}
-                disabled={selecting}
-                className="w-full bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium rounded-xl py-3 text-sm transition-colors"
-              >
-                Go back
-              </button>
+          {/* Footer — Step 1 */}
+          <div className="mt-5 space-y-2">
+            <button
+              onClick={() => setStep(2)}
+              className="w-full bg-[#16a34a] hover:bg-[#15803d] text-white font-semibold rounded-xl py-3 text-sm transition-colors"
+            >
+              Confirm — select {displayName}
+            </button>
+            <button
+              onClick={onClose}
+              className="w-full bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium rounded-xl py-3 text-sm transition-colors"
+            >
+              Go back
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          {/* Step 2: Rose warning */}
+          <div className="bg-rose-50 border border-rose-200 rounded-xl p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <svg className="w-6 h-6 text-rose-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <p className="text-rose-800 font-semibold">This action cannot be undone</p>
             </div>
-          </>
-        )}
+            <p className="text-sm text-rose-700 mb-3">
+              Selecting <strong>{displayName}</strong> as your tenant will:
+            </p>
+            <ul className="text-sm text-rose-700 space-y-1.5 ml-1">
+              <li className="flex items-start gap-2">
+                <span className="mt-1.5 w-1 h-1 rounded-full bg-rose-400 shrink-0" />
+                Send {displayName} a link to the tenant portal
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-1.5 w-1 h-1 rounded-full bg-rose-400 shrink-0" />
+                Send rejection emails to all other applicants
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-1.5 w-1 h-1 rounded-full bg-rose-400 shrink-0" />
+                This cannot be undone — choose carefully
+              </li>
+            </ul>
+          </div>
+
+          {/* Footer — Step 2 */}
+          <div className="mt-5 space-y-2">
+            <button
+              onClick={onConfirm}
+              disabled={selecting}
+              className="w-full bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-semibold rounded-xl py-3 text-sm transition-colors"
+            >
+              {selecting ? 'Processing…' : `Yes, confirm — select ${displayName}`}
+            </button>
+            <button
+              onClick={() => setStep(1)}
+              disabled={selecting}
+              className="w-full bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium rounded-xl py-3 text-sm transition-colors"
+            >
+              Go back
+            </button>
+          </div>
+        </>
+      )}
+    </Modal>
+  )
+}
+
+// ── Edit Tenancy Modal ────────────────────────────────────────────────────────
+
+function EditTenancyModal({
+  propertyId,
+  tenancy,
+  onClose,
+  onSaved,
+}: {
+  propertyId: string
+  tenancy: Tenancy
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const [rentStr, setRentStr] = useState(tenancy.monthlyRent ? (tenancy.monthlyRent / 100).toString() : '')
+  const [paymentDay, setPaymentDay] = useState(tenancy.paymentDay ?? 1)
+  const [startDate, setStartDate] = useState(tenancy.startDate ? new Date(tenancy.startDate).toISOString().split('T')[0] : '')
+  const [depositStr, setDepositStr] = useState(tenancy.depositAmount ? (tenancy.depositAmount / 100).toString() : '')
+  const [depositScheme, setDepositScheme] = useState(tenancy.depositScheme ?? '')
+  const [depositRef, setDepositRef] = useState(tenancy.depositRef ?? '')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function save() {
+    const rent = parseFloat(rentStr)
+    if (!rent || rent <= 0) { setError('Enter a valid rent amount'); return }
+    if (!startDate) { setError('Start date is required'); return }
+    setSaving(true)
+    setError(null)
+
+    const depositAmount = depositStr ? Math.round(parseFloat(depositStr) * 100) : undefined
+    const res = await fetch(`/api/properties/${propertyId}/tenancy`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        monthlyRent: Math.round(rent * 100),
+        paymentDay,
+        startDate: new Date(startDate).toISOString(),
+        ...(depositAmount !== undefined && { depositAmount }),
+        depositScheme: depositScheme || undefined,
+        depositRef: depositRef || undefined,
+      }),
+    })
+    setSaving(false)
+    if (res.ok) { onSaved(); onClose() }
+    else {
+      const json = await res.json().catch(() => ({}))
+      setError(json.error ?? 'Failed to save')
+    }
+  }
+
+  return (
+    <Modal isOpen onClose={onClose} title="Edit tenancy details" size="md">
+      <div className="space-y-4">
+        {error && <AlertBar variant="error" message={error} />}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm text-[#374151] mb-1.5">Monthly rent (&pound;)</label>
+            <input type="number" step="0.01" min="1" value={rentStr} onChange={(e) => setRentStr(e.target.value)} placeholder="1200" className={inputClass} />
+          </div>
+          <div>
+            <label className="block text-sm text-[#374151] mb-1.5">Payment day</label>
+            <select value={paymentDay} onChange={(e) => setPaymentDay(Number(e.target.value))} className={selectClassCompact}>
+              {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
+                <option key={d} value={d}>{d}{d === 1 ? 'st' : d === 2 ? 'nd' : d === 3 ? 'rd' : 'th'}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm text-[#374151] mb-1.5">Tenancy start date</label>
+          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputClass} />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm text-[#374151] mb-1.5">Deposit amount (&pound;) <span className="text-[#9CA3AF]">(optional)</span></label>
+            <input type="number" step="0.01" min="0" value={depositStr} onChange={(e) => setDepositStr(e.target.value)} placeholder="1200" className={inputClass} />
+          </div>
+          <div>
+            <label className="block text-sm text-[#374151] mb-1.5">Deposit scheme <span className="text-[#9CA3AF]">(optional)</span></label>
+            <input value={depositScheme} onChange={(e) => setDepositScheme(e.target.value)} placeholder="e.g. DPS, TDS" className={inputClass} />
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm text-[#374151] mb-1.5">Deposit reference <span className="text-[#9CA3AF]">(optional)</span></label>
+          <input value={depositRef} onChange={(e) => setDepositRef(e.target.value)} placeholder="Reference number" className={inputClass} />
+        </div>
+        <div className="flex gap-3 pt-2">
+          <button onClick={onClose} className={`${buttonSecondaryClass} flex-1`}>Cancel</button>
+          <button onClick={save} disabled={saving} className={`${buttonClass} flex-1`}>{saving ? 'Saving…' : 'Save'}</button>
+        </div>
       </div>
-    </div>
+    </Modal>
+  )
+}
+
+// ── Edit Address Modal ──────────────────────────────────────────────────────
+
+function EditAddressModal({
+  property,
+  onClose,
+  onSaved,
+}: {
+  property: Property
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const [line1, setLine1] = useState(property.line1)
+  const [line2, setLine2] = useState(property.line2 ?? '')
+  const [city, setCity] = useState(property.city)
+  const [postcode, setPostcode] = useState(property.postcode)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function save() {
+    if (!line1.trim()) { setError('Address line 1 is required'); return }
+    if (!city.trim()) { setError('Town/city is required'); return }
+    if (!postcode.trim()) { setError('Postcode is required'); return }
+    const postcodeRe = /[A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2}/i
+    if (!postcodeRe.test(postcode.trim())) { setError('Enter a valid UK postcode'); return }
+    setSaving(true)
+    setError(null)
+    const res = await fetch(`/api/properties/${property.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ line1: line1.trim(), line2: line2.trim() || undefined, city: city.trim(), postcode: postcode.trim().toUpperCase() }),
+    })
+    setSaving(false)
+    if (res.ok) { onSaved(); onClose() }
+    else {
+      const json = await res.json().catch(() => ({}))
+      setError(json.error ?? 'Failed to save')
+    }
+  }
+
+  return (
+    <Modal isOpen onClose={onClose} title="Edit property address" size="md">
+      <div className="space-y-4">
+        {error && <AlertBar variant="error" message={error} />}
+        <div>
+          <label className="block text-sm text-[#374151] mb-1.5">Address line 1</label>
+          <input value={line1} onChange={(e) => setLine1(e.target.value)} className={inputClass} />
+        </div>
+        <div>
+          <label className="block text-sm text-[#374151] mb-1.5">Address line 2 <span className="text-[#9CA3AF]">(optional)</span></label>
+          <input value={line2} onChange={(e) => setLine2(e.target.value)} className={inputClass} />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm text-[#374151] mb-1.5">Town / city</label>
+            <input value={city} onChange={(e) => setCity(e.target.value)} className={inputClass} />
+          </div>
+          <div>
+            <label className="block text-sm text-[#374151] mb-1.5">Postcode</label>
+            <input value={postcode} onChange={(e) => setPostcode(e.target.value)} className={inputClass} />
+          </div>
+        </div>
+        <div className="flex gap-3 pt-2">
+          <button onClick={onClose} className={`${buttonSecondaryClass} flex-1`}>Cancel</button>
+          <button onClick={save} disabled={saving} className={`${buttonClass} flex-1`}>{saving ? 'Saving…' : 'Save'}</button>
+        </div>
+      </div>
+    </Modal>
   )
 }
 
@@ -2695,6 +2893,8 @@ export default function PropertyPage() {
   const [error, setError] = useState<string | null>(null)
   const [showAddTenant, setShowAddTenant] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [showEditTenancy, setShowEditTenancy] = useState(false)
+  const [showEditAddress, setShowEditAddress] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [helpOpen, setHelpOpen] = useState<SectionHelpKey | null>(null)
 
@@ -2763,10 +2963,26 @@ export default function PropertyPage() {
       <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
         <div>
           <h1 className="text-[#1A1A1A] text-2xl font-bold">{displayName}</h1>
-          {property.name && <p className="text-[#6B7280] text-sm mt-0.5">{address}</p>}
+          <div className="flex items-center gap-2 mt-0.5">
+            <p className="text-[#6B7280] text-sm">{address}</p>
+            <button
+              onClick={() => setShowEditAddress(true)}
+              className="text-xs text-[#9CA3AF] hover:text-[#16a34a] transition-colors"
+            >
+              Edit
+            </button>
+          </div>
         </div>
         <StatusBadge status={property.status} config={statusConfig} />
       </div>
+
+      {showEditAddress && (
+        <EditAddressModal
+          property={property}
+          onClose={() => setShowEditAddress(false)}
+          onSaved={() => { fetchProperty(); showToast('Address updated') }}
+        />
+      )}
 
       {/* ── Compliance & Documents ────────────────────────────────────────── */}
       <ComplianceSection propertyId={property.id} />
@@ -2792,7 +3008,17 @@ export default function PropertyPage() {
         return (
           <div className="flex items-start gap-3 mb-5">
           <div className={`flex-1 min-w-0 bg-white border ${borderCls} rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4 transition-colors`}>
-            <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium mb-3">Tenant</p>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium">Tenant</p>
+              {activeTenancy && currentTenant && (
+                <button
+                  onClick={() => setShowEditTenancy(true)}
+                  className="text-sm px-3 py-1.5 bg-white hover:bg-gray-50 text-gray-700 font-medium rounded-xl transition-colors border border-gray-200"
+                >
+                  Edit
+                </button>
+              )}
+            </div>
 
             {currentTenant ? (
               <div>
@@ -2877,6 +3103,16 @@ export default function PropertyPage() {
             fetchProperty()
             showToast(message)
           }}
+        />
+      )}
+
+      {/* Edit Tenancy Modal */}
+      {showEditTenancy && activeTenancy && (
+        <EditTenancyModal
+          propertyId={property.id}
+          tenancy={activeTenancy}
+          onClose={() => setShowEditTenancy(false)}
+          onSaved={() => { fetchProperty(); showToast('Tenancy details updated') }}
         />
       )}
 

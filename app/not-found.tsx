@@ -5,6 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { Home } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import CrispChat, { openCrispChat } from '@/components/shared/CrispChat'
 
 export default function NotFound() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
@@ -18,14 +19,9 @@ export default function NotFound() {
     })
   }, [])
 
-  function openCrisp() {
-    if (typeof window !== 'undefined' && window.$crisp) {
-      window.$crisp.push(['do', 'chat:open'])
-    }
-  }
-
   return (
     <div className="h-dvh bg-[#F7F8F6] flex flex-col items-center justify-center px-4">
+      <CrispChat />
       {/* Logo */}
       <div className="mb-12">
         <Image src="/logo.svg" alt="LetSorted" width={160} height={53} priority />
@@ -57,7 +53,7 @@ export default function NotFound() {
             {isLoggedIn ? 'Go to Dashboard' : 'Back to Home'}
           </Link>
           <button
-            onClick={openCrisp}
+            onClick={openCrispChat}
             className="text-sm text-gray-400 hover:text-gray-600 transition-colors"
           >
             Need help? Contact support

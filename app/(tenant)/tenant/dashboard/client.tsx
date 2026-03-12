@@ -680,7 +680,11 @@ function MyDocumentsSection({ tenantId }: { tenantId: string }) {
 // ── Check-in Inspection section ───────────────────────────────────────────────
 
 function InspectionSection({ report }: { report: InspectionData }) {
-  const isPending = report.status === 'PENDING' || report.status === 'IN_REVIEW'
+  // Don't show card until landlord sends it for review
+  if (report.status === 'PENDING' || report.status === 'DRAFT') return null
+
+  const needsReview = report.status === 'IN_REVIEW' && !report.tenantConfirmedAt
+  const tenantConfirmed = report.status === 'IN_REVIEW' && !!report.tenantConfirmedAt
   const isDisputed = report.status === 'DISPUTED'
   const isAgreed = report.status === 'AGREED'
 
@@ -704,7 +708,7 @@ function InspectionSection({ report }: { report: InspectionData }) {
       <div className="flex items-start gap-3 p-4 rounded-xl border border-gray-100 bg-gray-50">
         <div className={`w-2.5 h-2.5 rounded-full mt-1 shrink-0 ${indicatorCls}`} />
         <div className="flex-1 min-w-0">
-          {isPending && (
+          {needsReview && (
             <>
               <p className="text-gray-900 text-sm font-medium">Review your inspection report</p>
               <p className="text-gray-500 text-sm mt-1">
@@ -722,20 +726,29 @@ function InspectionSection({ report }: { report: InspectionData }) {
             </>
           )}
 
+          {tenantConfirmed && (
+            <>
+              <p className="text-gray-900 text-sm font-medium">Confirmation submitted</p>
+              <p className="text-gray-500 text-sm mt-1">
+                You&apos;ve confirmed the property condition. Waiting for your landlord to finalise.
+              </p>
+            </>
+          )}
+
           {isDisputed && (
             <>
-              <p className="text-gray-900 text-sm font-medium">Check-in report disputed</p>
+              <p className="text-gray-900 text-sm font-medium">Inspection disputed</p>
               <p className="text-gray-500 text-sm mt-1">
-                You&apos;ve raised a dispute on this report. Your landlord will be in touch.
+                You raised a concern with this inspection report. Your landlord has been notified.
               </p>
             </>
           )}
 
           {isAgreed && (
             <>
-              <p className="text-gray-900 text-sm font-medium">Check-in report confirmed</p>
+              <p className="text-gray-900 text-sm font-medium">Inspection complete</p>
               <p className="text-gray-500 text-sm mt-1">
-                You confirmed the inspection report on {formatDate(report.tenantConfirmedAt!)}.
+                Both parties have confirmed the property condition. Your inspection report has been saved.
               </p>
               {report.hasPdf && (
                 <Link
@@ -745,7 +758,7 @@ function InspectionSection({ report }: { report: InspectionData }) {
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                   </svg>
-                  View report
+                  Download report
                 </Link>
               )}
             </>
