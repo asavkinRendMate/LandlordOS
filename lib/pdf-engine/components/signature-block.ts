@@ -41,7 +41,6 @@ export function drawSignatureBlock(
   ctx.cursorY -= SPACING.labelValueGap
 
   // Signature line
-  const lineY = ctx.cursorY
   drawText(ctx, 'Signature:', styles.caption, { x, maxWidth })
   ctx.cursorY -= 4
   drawLine(ctx.currentPage, x, ctx.cursorY, x + maxWidth * 0.6, ctx.cursorY, {

@@ -7,7 +7,6 @@
 
 import type { Section8NoticeData, Section8Ground } from '../types'
 import {
-  type RenderContext,
   createRenderContext,
   addPage,
   finalize,

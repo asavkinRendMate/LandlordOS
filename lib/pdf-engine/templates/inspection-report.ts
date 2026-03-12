@@ -10,7 +10,6 @@
 
 import type { InspectionReportData } from '../types'
 import {
-  type RenderContext,
   createRenderContext,
   addPage,
   finalize,
@@ -18,10 +17,8 @@ import {
   formatDate,
   formatDateTime,
   MARGIN_LEFT,
-  MARGIN_RIGHT,
   PAGE_WIDTH,
   PAGE_HEIGHT,
-  MARGIN_TOP,
   CONTENT_WIDTH,
   COLORS,
   SPACING,
@@ -29,8 +26,6 @@ import {
   CONDITION_COLORS,
   drawText,
   drawRect,
-  drawLine,
-  ensureSpace,
 } from '../renderer'
 import { drawHeader } from '../components/header'
 import { drawFooter } from '../components/footer'

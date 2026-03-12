@@ -6,7 +6,6 @@
 import type { PDFParty } from '../types'
 import {
   type RenderContext,
-  type Fonts,
   COLORS,
   SPACING,
   TEXT_STYLES,

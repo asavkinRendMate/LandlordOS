@@ -502,6 +502,7 @@ const aptContractNoDeposit: AptContractData = {
 
 type TemplateName = 'inspection-report' | 'screening-report' | 'apt-contract' | 'apt-contract-no-deposit' | 'section-8-notice' | 'section-13-notice' | 'dispute-pack' | 'cover-sheet'
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const ALL_TEMPLATES: Record<TemplateName, { template: TemplateName; data: any }> = {
   'inspection-report': { template: 'inspection-report', data: inspectionData },
   'screening-report': { template: 'screening-report', data: screeningData },
@@ -536,15 +537,18 @@ async function run() {
   for (const [name, request] of Object.entries(templatesToRun)) {
     try {
       console.log(`Generating ${name}...`)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const result = await generatePDF(request as any)
       const outPath = join(OUT_DIR, `${name}.pdf`)
       writeFileSync(outPath, result.buffer)
       console.log(`  ✓ ${name} → ${outPath} (${result.pageCount} pages, ${(result.buffer.length / 1024).toFixed(1)}KB)`)
       passed++
-    } catch (err: any) {
-      console.error(`  ✗ ${name} FAILED:`, err.reason ?? err.message ?? err)
-      if (err.originalError) {
-        console.error('    Original error:', err.originalError.message ?? err.originalError)
+    } catch (err) {
+      const e = err as Record<string, unknown>
+      console.error(`  ✗ ${name} FAILED:`, e.reason ?? e.message ?? err)
+      if (e.originalError) {
+        const orig = e.originalError as Record<string, unknown>
+        console.error('    Original error:', orig.message ?? e.originalError)
       }
       failed++
     }

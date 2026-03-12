@@ -6,9 +6,7 @@
 
 import type { Section13NoticeData } from '../types'
 import {
-  type RenderContext,
   createRenderContext,
-  addPage,
   finalize,
   formatAddress,
   formatDate,

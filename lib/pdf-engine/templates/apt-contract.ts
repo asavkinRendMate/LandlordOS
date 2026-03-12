@@ -12,7 +12,6 @@
 
 import type { AptContractData } from '../types'
 import {
-  type RenderContext,
   createRenderContext,
   addPage,
   finalize,
@@ -28,7 +27,6 @@ import {
   TEXT_STYLES,
   drawText,
   drawRect,
-  drawLine,
   ensureSpace,
 } from '../renderer'
 import { drawHeader } from '../components/header'

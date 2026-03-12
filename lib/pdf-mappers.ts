@@ -87,26 +87,32 @@ export async function buildInspectionPDF(reportId: string): Promise<Buffer> {
   return result.buffer
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function buildPeriodicInspectionPDF(_reportId: string): Promise<Buffer> {
   throw new Error('buildPeriodicInspectionPDF not yet implemented — see lib/pdf-engine/AGENT.md')
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function buildScreeningReportPDF(_reportId: string): Promise<Buffer> {
   throw new Error('buildScreeningReportPDF not yet implemented — see lib/pdf-engine/AGENT.md')
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function buildAptContractPDF(_contractId: string): Promise<Buffer> {
   throw new Error('buildAptContractPDF not yet implemented — see lib/pdf-engine/AGENT.md')
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function buildSection8PDF(_noticeId: string): Promise<Buffer> {
   throw new Error('buildSection8PDF not yet implemented — see lib/pdf-engine/AGENT.md')
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function buildSection13PDF(_noticeId: string): Promise<Buffer> {
   throw new Error('buildSection13PDF not yet implemented — see lib/pdf-engine/AGENT.md')
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function buildDisputePackPDF(_packId: string): Promise<Buffer> {
   throw new Error('buildDisputePackPDF not yet implemented — see lib/pdf-engine/AGENT.md')
 }

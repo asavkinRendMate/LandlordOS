@@ -8,15 +8,10 @@ import {
   MARGIN_LEFT,
   CONTENT_WIDTH,
   COLORS,
-  TEXT_STYLES,
   drawRect,
   drawLine,
-  drawText,
   ensureSpace,
-  wrapText,
-  type TextStyle,
 } from '../renderer'
-import type { RGB } from 'pdf-lib'
 
 export interface TableColumn {
   header: string
@@ -40,8 +35,6 @@ export function drawTable(
   options?: { x?: number; maxWidth?: number; alternateShading?: boolean }
 ): number {
   const x = options?.x ?? MARGIN_LEFT
-  const styles = TEXT_STYLES(ctx.fonts)
-  const rowPadding = 6
   const headerHeight = 22
   const rowHeight = 20
   const alternateShading = options?.alternateShading ?? false
@@ -154,8 +147,6 @@ export function drawKeyValueTable(
   const x = options?.x ?? MARGIN_LEFT
   const maxWidth = options?.maxWidth ?? CONTENT_WIDTH
   const labelWidth = options?.labelWidth ?? 160
-  const valueWidth = maxWidth - labelWidth
-  const styles = TEXT_STYLES(ctx.fonts)
   const rowHeight = 20
   const bordered = options?.bordered ?? false
 

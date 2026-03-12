@@ -7,7 +7,6 @@ import {
   type RenderContext,
   MARGIN_LEFT,
   CONTENT_WIDTH,
-  COLORS,
   SPACING,
   TEXT_STYLES,
   OVERFLOW_THRESHOLD,

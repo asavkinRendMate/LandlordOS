@@ -8,7 +8,6 @@
 
 import type { CoverSheetData } from '../types'
 import {
-  type RenderContext,
   type TextStyle,
   createRenderContext,
   finalize,
@@ -16,15 +15,12 @@ import {
   formatDate,
   formatDateTime,
   MARGIN_LEFT,
-  PAGE_WIDTH,
   CONTENT_WIDTH,
   COLORS,
   SPACING,
-  TEXT_STYLES,
   drawText,
   drawTextRaw,
   drawRect,
-  drawLine,
   measureText,
 } from '../renderer'
 import { drawHeader } from '../components/header'
@@ -55,7 +51,6 @@ export async function renderCoverSheet(data: CoverSheetData): Promise<{ buffer: 
     drawHeader: true,
     skipHeaderOnFirstPage: false,
   })
-  const styles = TEXT_STYLES(ctx.fonts)
   const address = formatAddress(data.propertyAddress)
 
   // ── Reference block (right-aligned, grey text) ────────────────────────────

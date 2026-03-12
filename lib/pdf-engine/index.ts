@@ -14,7 +14,6 @@ import { renderSection8Notice } from './templates/section-8-notice'
 import { renderSection13Notice } from './templates/section-13-notice'
 import { renderDisputePack } from './templates/dispute-pack'
 import { renderCoverSheet } from './templates/cover-sheet'
-import { formatDate } from './renderer'
 
 export async function generatePDF(request: PDFRequest): Promise<PDFResult> {
   try {
@@ -50,19 +49,22 @@ export async function generatePDF(request: PDFRequest): Promise<PDFResult> {
         result = await renderCoverSheet(request.data)
         return { ...result, filename: `cover-sheet-${request.data.referenceId}.pdf` }
 
-      default:
+      default: {
+        const unknownReq = request as { template: string }
         throw {
-          template: (request as any).template,
-          reason: `Unknown template: "${(request as any).template}"`,
+          template: unknownReq.template,
+          reason: `Unknown template: "${unknownReq.template}"`,
         }
+      }
     }
-  } catch (error: any) {
+  } catch (error) {
     // If already a typed error, re-throw
-    if (error && error.template && error.reason) throw error
+    const e = error as Record<string, unknown>
+    if (e && e.template && e.reason) throw error
     // Wrap in typed error
     throw {
       template: request.template,
-      reason: error?.message ?? 'Unknown error during PDF generation',
+      reason: (e?.message as string) ?? 'Unknown error during PDF generation',
       originalError: error,
     }
   }

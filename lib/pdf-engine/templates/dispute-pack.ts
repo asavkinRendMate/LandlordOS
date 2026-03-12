@@ -23,17 +23,14 @@ import {
   formatDateTime,
   formatPence,
   MARGIN_LEFT,
-  MARGIN_RIGHT,
   PAGE_WIDTH,
   PAGE_HEIGHT,
-  MARGIN_TOP,
   CONTENT_WIDTH,
   COLORS,
   SPACING,
   TEXT_STYLES,
   drawText,
   drawRect,
-  drawLine,
   ensureSpace,
 } from '../renderer'
 import { drawHeader } from '../components/header'
@@ -326,7 +323,7 @@ export async function renderDisputePack(data: DisputePackData): Promise<{ buffer
       { header: 'Date', width: 110 },
       { header: 'Actor', width: 80 },
       { header: 'Event', width: 293 },
-    ], data.eventLog.map((e, i) => ({
+    ], data.eventLog.map((e) => ({
       cells: [
         formatDateTime(e.occurredAt),
         e.actor.charAt(0).toUpperCase() + e.actor.slice(1),

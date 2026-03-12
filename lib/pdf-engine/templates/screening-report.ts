@@ -11,7 +11,6 @@
 
 import type { ScreeningReportData } from '../types'
 import {
-  type RenderContext,
   createRenderContext,
   addPage,
   finalize,
@@ -28,7 +27,6 @@ import {
   SEVERITY_COLORS,
   drawText,
   drawRect,
-  drawLine,
   ensureSpace,
 } from '../renderer'
 import { drawHeader } from '../components/header'
@@ -226,7 +224,6 @@ export async function renderScreeningReport(data: ScreeningReportData): Promise<
         })
 
         // Rule name bold
-        const ruleWidth = ctx.fonts.bold.widthOfTextAtSize(flag.rule, 9)
         ctx.currentPage.drawText(flag.rule, {
           x: MARGIN_LEFT + 16,
           y: flagY - 2,

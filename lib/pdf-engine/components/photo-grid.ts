@@ -14,9 +14,7 @@ import {
   CONTENT_WIDTH,
   COLORS,
   SPACING,
-  TEXT_STYLES,
   ensureSpace,
-  drawText,
   drawImage,
   drawPlaceholder,
   drawRect,
@@ -43,7 +41,6 @@ export async function drawPhotoGrid(
 
   const x = options?.x ?? MARGIN_LEFT
   const maxWidth = options?.maxWidth ?? CONTENT_WIDTH
-  const styles = TEXT_STYLES(ctx.fonts)
   const gap = SPACING.photoGridGap
 
   // Fetch all images in parallel
