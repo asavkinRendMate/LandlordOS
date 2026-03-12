@@ -46,7 +46,7 @@ export default function SignContractPage() {
     if (!name.trim()) return
     setSigning(true)
     try {
-      const res = await fetch(`/api/contracts/${token}/sign`, {
+      const res = await fetch(`/api/contracts/token/${token}/sign`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: name.trim() }),
