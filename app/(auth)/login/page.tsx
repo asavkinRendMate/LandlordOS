@@ -3,8 +3,10 @@
 import { Suspense, useState, useRef, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Image from 'next/image'
+import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile'
 import { createClient } from '@/lib/supabase/client'
 import { sendOtpDirect } from '@/lib/supabase/otp'
+import DemoModal from '@/components/DemoModal'
 import Footer from '@/components/shared/Footer'
 
 export default function LoginPage() {
@@ -24,9 +26,13 @@ function LoginContent() {
   const [sent, setSent] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Demo login
-  const [demoLoading, setDemoLoading] = useState(false)
-  const [demoError, setDemoError] = useState<string | null>(null)
+  // Demo modal
+  const [demoOpen, setDemoOpen] = useState(false)
+
+  // Turnstile
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
+  const turnstileRef = useRef<TurnstileInstance | null>(null)
+  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
 
   // OTP code input
   const [code, setCode] = useState(['', '', '', '', '', '', '', ''])
@@ -45,13 +51,24 @@ function LoginContent() {
     setLoading(true)
     setError(null)
 
-    const { error } = await sendOtpDirect(email)
+    try {
+      const res = await fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, turnstileToken: turnstileToken || '' }),
+      })
+      const data = await res.json()
 
-    if (error) {
-      console.error('[login] sendOtp error:', error)
-      setError(error)
-    } else {
-      setSent(true)
+      if (!res.ok || !data.success) {
+        setError(data.error || 'Failed to send code')
+        // Reset Turnstile for retry
+        turnstileRef.current?.reset()
+        setTurnstileToken(null)
+      } else {
+        setSent(true)
+      }
+    } catch {
+      setError('Something went wrong. Please try again.')
     }
     setLoading(false)
   }
@@ -140,6 +157,7 @@ function LoginContent() {
     setLoading(true)
     setError(null)
 
+    // Resend bypasses Turnstile — user already verified on initial send
     const { error } = await sendOtpDirect(email)
 
     if (error) {
@@ -150,43 +168,6 @@ function LoginContent() {
       inputRefs.current[0]?.focus()
     }
     setLoading(false)
-  }
-
-  async function handleDemoLogin() {
-    setDemoLoading(true)
-    setDemoError(null)
-
-    try {
-      // 1. Create isolated demo account with seed data
-      const res = await fetch('/api/demo/create', { method: 'POST' })
-      const json = await res.json()
-
-      if (!res.ok || !json.data) {
-        setDemoError('Demo unavailable — please try again')
-        setDemoLoading(false)
-        return
-      }
-
-      // 2. Sign in with the returned credentials
-      const supabase = createClient()
-      const { error } = await supabase.auth.signInWithPassword({
-        email: json.data.email,
-        password: json.data.password,
-      })
-
-      if (error) {
-        console.error('[login] demo sign-in error:', error.message)
-        setDemoError('Demo unavailable — please try again')
-        setDemoLoading(false)
-        return
-      }
-
-      // 3. Redirect to dashboard (keep loading state so spinner stays)
-      window.location.href = '/dashboard'
-    } catch {
-      setDemoError('Demo unavailable — please try again')
-      setDemoLoading(false)
-    }
   }
 
   return (
@@ -273,8 +254,8 @@ function LoginContent() {
           </div>
         ) : (
           <div className="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-sm">
-            <h1 className="text-gray-900 font-semibold text-xl mb-1">Sign in</h1>
-            <p className="text-gray-500 text-sm mb-4 sm:mb-6">Enter your email to receive a sign-in code.</p>
+            <h1 className="text-gray-900 font-semibold text-xl mb-1">Sign in / Sign up</h1>
+            <p className="text-gray-500 text-sm mb-4 sm:mb-6">Enter your email — we&apos;ll send you a code. No password needed.</p>
 
             <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
               <div>
@@ -292,13 +273,22 @@ function LoginContent() {
                 />
               </div>
 
+              {siteKey && (
+                <Turnstile
+                  ref={turnstileRef}
+                  siteKey={siteKey}
+                  onSuccess={(token) => setTurnstileToken(token)}
+                  options={{ size: 'flexible' }}
+                />
+              )}
+
               {error && (
                 <p className="text-red-600 text-sm">{error}</p>
               )}
 
               <button
                 type="submit"
-                disabled={loading || !email}
+                disabled={loading || !email || (!!siteKey && !turnstileToken)}
                 className="w-full bg-[#16a34a] hover:bg-[#15803d] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-lg py-2.5 text-sm transition-colors"
               >
                 {loading ? 'Sending…' : 'Send code'}
@@ -316,23 +306,14 @@ function LoginContent() {
               </div>
               <button
                 type="button"
-                onClick={handleDemoLogin}
-                disabled={demoLoading}
-                className="w-full flex items-center justify-center gap-2 border border-gray-300 rounded-lg py-2.5 mt-3 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                onClick={() => setDemoOpen(true)}
+                className="w-full flex items-center justify-center gap-2 border border-gray-300 rounded-lg py-2.5 mt-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
               >
-                {demoLoading ? (
-                  <>
-                    <svg className="w-4 h-4 animate-spin text-gray-500" fill="none" viewBox="0 0 24 24"><circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" /><path className="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
-                    Setting up your demo…
-                  </>
-                ) : (
-                  'Explore as landlord \u2192'
-                )}
+                Explore as landlord &#8594;
               </button>
-              {demoError && (
-                <p className="text-gray-400 text-xs text-center mt-2">{demoError}</p>
-              )}
             </div>
+
+            <DemoModal isOpen={demoOpen} onClose={() => setDemoOpen(false)} />
 
             <p className="mt-4 sm:mt-6 text-center text-xs text-gray-400">
               New to LetSorted?{' '}

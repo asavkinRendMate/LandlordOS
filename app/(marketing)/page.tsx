@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
+import DemoModal from '@/components/DemoModal'
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -201,6 +202,9 @@ function IconChevronRight() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function LandingPage() {
+  // Demo modal
+  const [demoOpen, setDemoOpen] = useState(false)
+
   const [email, setEmail] = useState('')
   const [properties, setProperties] = useState('')
   const [submitted, setSubmitted] = useState(false)
@@ -429,13 +433,12 @@ export default function LandingPage() {
           </p>
 
           <div className="hero-2">
-            <a
-              href="#waitlist"
+            <button
+              onClick={() => setDemoOpen(true)}
               className="inline-flex items-center gap-2.5 bg-green-600 hover:bg-green-700 text-white font-bold text-lg px-8 py-4 rounded-xl transition-colors duration-150 shadow-lg shadow-green-200/60"
             >
-              Join the waitlist — it&apos;s free
-              <IconArrowRight />
-            </a>
+              Try for free &rarr;
+            </button>
             <p className="mt-4 text-sm text-gray-400">
               Built for UK self-managing landlords with 1–5 properties.
             </p>
@@ -815,6 +818,9 @@ export default function LandingPage() {
           )}
         </div>
       </section>
+
+      {/* ── Demo modal ─────────────────────────────────────────────────────── */}
+      <DemoModal isOpen={demoOpen} onClose={() => setDemoOpen(false)} />
 
       {/* ── Screenshot lightbox ────────────────────────────────────────────── */}
       {lightboxSrc && (
