@@ -36,10 +36,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Payment method not found' }, { status: 400 })
     }
 
+    // Extract card details — fall back for non-card PMs (e.g. Link)
     const card = pm.card
-    if (!card) {
-      return NextResponse.json({ error: 'No card details on payment method' }, { status: 400 })
-    }
+    const last4 = card?.last4 ?? pm.link?.email?.slice(-4) ?? '····'
+    const brand = card?.brand ?? pm.type ?? 'card'
+    const expiry = card
+      ? `${String(card.exp_month).padStart(2, '0')}/${String(card.exp_year).slice(-2)}`
+      : '—'
 
     // Ensure Stripe customer exists
     const dbUser = await prisma.user.findUnique({
@@ -70,9 +73,9 @@ export async function POST(req: Request) {
       data: {
         stripePaymentMethodId: pm.id,
         paymentMethodStatus: 'SAVED',
-        cardLast4: card.last4,
-        cardBrand: card.brand ?? 'card',
-        cardExpiry: `${String(card.exp_month).padStart(2, '0')}/${String(card.exp_year).slice(-2)}`,
+        cardLast4: last4,
+        cardBrand: brand,
+        cardExpiry: expiry,
       },
     })
 
