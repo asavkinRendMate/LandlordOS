@@ -42,11 +42,21 @@ export async function POST(req: Request) {
     }
 
     // Ensure user row exists (created by DB trigger on first sign-in, but race-safe)
-    await prisma.user.upsert({
+    const dbUser = await prisma.user.upsert({
       where: { id: user.id },
       create: { id: user.id, email: user.email! },
       update: {},
+      select: { paymentMethodStatus: true, stripePaymentMethodId: true },
     })
+
+    // 2nd+ property requires a saved payment method (check both DB flag AND actual Stripe PM)
+    const existingCount = await prisma.property.count({ where: { userId: user.id } })
+    if (existingCount >= 1 && (dbUser.paymentMethodStatus !== 'SAVED' || !dbUser.stripePaymentMethodId)) {
+      return NextResponse.json(
+        { error: 'PAYMENT_METHOD_REQUIRED' },
+        { status: 402 },
+      )
+    }
 
     // Create property + seed 4 blank compliance docs in a transaction
     const property = await prisma.$transaction(async (tx) => {
@@ -83,25 +93,9 @@ export async function POST(req: Request) {
       return prop
     })
 
-    // Check if subscription action is needed (2+ properties)
-    const propertyCount = await prisma.property.count({
-      where: { userId: user.id },
-    })
-
+    // Update subscription if 2+ properties (card is guaranteed at this point)
+    const propertyCount = existingCount + 1
     if (propertyCount > 1) {
-      const dbUser = await prisma.user.findUnique({
-        where: { id: user.id },
-        select: { paymentMethodStatus: true },
-      })
-
-      if (dbUser?.paymentMethodStatus !== 'SAVED') {
-        return NextResponse.json(
-          { data: property, requiresCard: true, propertyCount },
-          { status: 201 },
-        )
-      }
-
-      // Has card — update subscription automatically
       await createOrUpdateSubscription(user.id, propertyCount)
     }
 
