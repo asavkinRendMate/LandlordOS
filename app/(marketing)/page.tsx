@@ -149,23 +149,6 @@ function IconCheck({ className = '' }: { className?: string }) {
   )
 }
 
-function IconArrowRight({ size = 18 }: { size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M5 12h14M12 5l7 7-7 7" />
-    </svg>
-  )
-}
-
 function IconChevronDown() {
   return (
     <svg
