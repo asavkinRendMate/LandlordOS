@@ -28,6 +28,7 @@ model User {
   id             String     @id
   email          String     @unique
   name           String?
+  isDemo         Boolean    @default(false) @map("is_demo")
   createdAt      DateTime   @default(now()) @map("created_at")
 
   // ── Payment / Stripe placeholders ──────────────────────────────────────────

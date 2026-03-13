@@ -12,6 +12,12 @@ interface SendEmailOptions {
 }
 
 export async function sendEmail({ to, subject, html, from = FROM }: SendEmailOptions) {
+  // Never send real emails to demo accounts
+  if (to.endsWith('@demo.letsorted.co.uk')) {
+    console.log('[Email — demo skip]', { to, subject })
+    return { success: true }
+  }
+
   if (!resend) {
     console.log('[Email — dev fallback]', { to, subject, html })
     return { success: true }

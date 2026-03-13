@@ -6,6 +6,7 @@ import NameModalGate from '@/components/dashboard/NameModalGate'
 import PostHogIdentify from '@/components/shared/PostHogIdentify'
 import CrispChat from '@/components/shared/CrispChat'
 import UpgradeBanner from '@/components/dashboard/UpgradeBanner'
+import DemoBanner from '@/components/dashboard/DemoBanner'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = createAuthClient()
@@ -28,10 +29,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
   // Check if landlord needs to set their name (new user, no name, not a tenant-only user)
   const dbUser = await prisma.user.findUnique({
     where: { id: user.id },
-    select: { name: true, subscriptionStatus: true },
+    select: { name: true, subscriptionStatus: true, isDemo: true },
   }).catch(() => null)
 
-  const needsName = !tenantProfile && (!dbUser?.name || dbUser.name.trim().length === 0)
+  const isDemo = dbUser?.isDemo ?? false
+  const needsName = !isDemo && !tenantProfile && (!dbUser?.name || dbUser.name.trim().length === 0)
 
   return (
     <DashboardShell
@@ -39,6 +41,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       hasTenantProfile={!!tenantProfile}
       openMaintenanceCount={openMaintenanceCount}
     >
+      {isDemo && <DemoBanner />}
       <UpgradeBanner subscriptionStatus={dbUser?.subscriptionStatus ?? 'NONE'} />
       <PostHogIdentify userId={user.id} />
       <CrispChat user={{ email: user.email!, name: dbUser?.name, id: user.id }} role="landlord" />

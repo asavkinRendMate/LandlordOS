@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAuthClient } from '@/lib/supabase/auth'
+import { prisma } from '@/lib/prisma'
 import { stripe, getOrCreateStripeCustomer } from '@/lib/stripe'
 
 export async function POST() {
@@ -8,6 +9,15 @@ export async function POST() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Demo accounts cannot add real payment methods
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { isDemo: true },
+    })
+    if (dbUser?.isDemo) {
+      return NextResponse.json({ error: 'Payment methods are not available in demo mode' }, { status: 403 })
     }
 
     const customerId = await getOrCreateStripeCustomer(user.id, user.email!)

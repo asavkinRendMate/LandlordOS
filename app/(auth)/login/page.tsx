@@ -7,14 +7,6 @@ import { createClient } from '@/lib/supabase/client'
 import { sendOtpDirect } from '@/lib/supabase/otp'
 import Footer from '@/components/shared/Footer'
 
-// Demo credentials — inlined at build time, empty string if unset
-const demoLandlordEmail = process.env.NEXT_PUBLIC_DEMO_LANDLORD_EMAIL ?? ''
-const demoLandlordPassword = process.env.NEXT_PUBLIC_DEMO_LANDLORD_PASSWORD ?? ''
-const demoTenantEmail = process.env.NEXT_PUBLIC_DEMO_TENANT_EMAIL ?? ''
-const demoTenantPassword = process.env.NEXT_PUBLIC_DEMO_TENANT_PASSWORD ?? ''
-const showDemo = demoLandlordEmail.length > 0 && demoLandlordPassword.length > 0
-  && demoTenantEmail.length > 0 && demoTenantPassword.length > 0
-
 export default function LoginPage() {
   return (
     <Suspense>
@@ -33,7 +25,7 @@ function LoginContent() {
   const [error, setError] = useState<string | null>(null)
 
   // Demo login
-  const [demoLoading, setDemoLoading] = useState<'landlord' | 'tenant' | null>(null)
+  const [demoLoading, setDemoLoading] = useState(false)
   const [demoError, setDemoError] = useState<string | null>(null)
 
   // OTP code input
@@ -160,25 +152,40 @@ function LoginContent() {
     setLoading(false)
   }
 
-  async function handleDemoLogin(role: 'landlord' | 'tenant') {
-    setDemoLoading(role)
+  async function handleDemoLogin() {
+    setDemoLoading(true)
     setDemoError(null)
 
-    const demoEmail = role === 'landlord' ? demoLandlordEmail : demoTenantEmail
-    const demoPassword = role === 'landlord' ? demoLandlordPassword : demoTenantPassword
+    try {
+      // 1. Create isolated demo account with seed data
+      const res = await fetch('/api/demo/create', { method: 'POST' })
+      const json = await res.json()
 
-    const supabase = createClient()
-    const { error } = await supabase.auth.signInWithPassword({
-      email: demoEmail,
-      password: demoPassword,
-    })
+      if (!res.ok || !json.data) {
+        setDemoError('Demo unavailable — please try again')
+        setDemoLoading(false)
+        return
+      }
 
-    if (error) {
-      console.error(`[login] demo ${role} error:`, error.message)
+      // 2. Sign in with the returned credentials
+      const supabase = createClient()
+      const { error } = await supabase.auth.signInWithPassword({
+        email: json.data.email,
+        password: json.data.password,
+      })
+
+      if (error) {
+        console.error('[login] demo sign-in error:', error.message)
+        setDemoError('Demo unavailable — please try again')
+        setDemoLoading(false)
+        return
+      }
+
+      // 3. Redirect to dashboard (keep loading state so spinner stays)
+      window.location.href = '/dashboard'
+    } catch {
       setDemoError('Demo unavailable — please try again')
-      setDemoLoading(null)
-    } else {
-      window.location.href = role === 'landlord' ? '/dashboard' : '/tenant/dashboard'
+      setDemoLoading(false)
     }
   }
 
@@ -298,46 +305,34 @@ function LoginContent() {
               </button>
             </form>
 
-            {showDemo && (
-              <div className="mt-4 sm:mt-6">
-                <div className="flex items-center gap-3 mb-3 sm:mb-4">
-                  <div className="flex-1 h-px bg-gray-200" />
-                  <span className="text-xs text-gray-400">or try a demo</span>
-                  <div className="flex-1 h-px bg-gray-200" />
+            <div className="mt-4 sm:mt-6">
+              <div className="relative my-2">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-200" />
                 </div>
-                <div className="grid gap-3">
-                  <button
-                    type="button"
-                    onClick={() => handleDemoLogin('landlord')}
-                    disabled={demoLoading !== null}
-                    className="flex items-center justify-center gap-1.5 border border-gray-300 rounded-lg py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {demoLoading === 'landlord' ? (
-                      <svg className="w-4 h-4 animate-spin text-gray-500" fill="none" viewBox="0 0 24 24"><circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" /><path className="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
-                    ) : (
-                      <span>🏠</span>
-                    )}
-                    Explore as landlord →
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDemoLogin('tenant')}
-                    disabled={demoLoading !== null}
-                    className="flex items-center justify-center gap-1.5 border border-gray-300 rounded-lg py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {demoLoading === 'tenant' ? (
-                      <svg className="w-4 h-4 animate-spin text-gray-500" fill="none" viewBox="0 0 24 24"><circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" /><path className="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
-                    ) : (
-                      <span>👤</span>
-                    )}
-                    Explore as tenant →
-                  </button>
+                <div className="relative flex justify-center text-sm">
+                  <span className="bg-white px-3 text-xs text-gray-400">or try a demo</span>
                 </div>
-                {demoError && (
-                  <p className="text-gray-400 text-xs text-center mt-2">{demoError}</p>
-                )}
               </div>
-            )}
+              <button
+                type="button"
+                onClick={handleDemoLogin}
+                disabled={demoLoading}
+                className="w-full flex items-center justify-center gap-2 border border-gray-300 rounded-lg py-2.5 mt-3 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {demoLoading ? (
+                  <>
+                    <svg className="w-4 h-4 animate-spin text-gray-500" fill="none" viewBox="0 0 24 24"><circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" /><path className="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                    Setting up your demo…
+                  </>
+                ) : (
+                  'Explore as landlord \u2192'
+                )}
+              </button>
+              {demoError && (
+                <p className="text-gray-400 text-xs text-center mt-2">{demoError}</p>
+              )}
+            </div>
 
             <p className="mt-4 sm:mt-6 text-center text-xs text-gray-400">
               New to LetSorted?{' '}
