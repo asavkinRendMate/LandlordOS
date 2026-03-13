@@ -6,6 +6,7 @@ import Link from 'next/link'
 import ScreeningReportDisplay, { type ScoringResult } from '@/components/shared/ScreeningReportDisplay'
 import PaymentSetupModal from '@/components/shared/PaymentSetupModal'
 import ScreeningLayout from '@/components/screening-flow/ScreeningLayout'
+import DemoUpsell from '@/components/shared/DemoUpsell'
 
 interface InviteListItem {
   id: string
@@ -40,6 +41,8 @@ export default function ReportPage() {
   const [cardInfo, setCardInfo] = useState<{ last4: string; brand: string } | null>(null)
   const [showCardModal, setShowCardModal] = useState(false)
   const pendingAutoUnlockRef = useRef(false)
+  const [isDemo, setIsDemo] = useState(false)
+  const [showDemoUpsell, setShowDemoUpsell] = useState(false)
 
   // ── Fetch report ──────────────────────────────────────────────────────────────────
 
@@ -99,9 +102,19 @@ export default function ReportPage() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
+  useEffect(() => {
+    fetch('/api/user/profile').then((r) => r.json()).then((j) => {
+      if (j.data?.isDemo) setIsDemo(true)
+    }).catch(() => {})
+  }, [])
+
   // ── Unlock ──────────────────────────────────────────────────────────────────────
 
   async function handleUnlock() {
+    if (isDemo) {
+      setShowDemoUpsell(true)
+      return
+    }
     setError(null)
 
     try {
@@ -266,6 +279,13 @@ export default function ReportPage() {
             showVerificationLink={!isLocked}
             unlockPriceDisplay={unlockPrice}
           />
+
+          {/* Demo upsell */}
+          {showDemoUpsell && (
+            <div className="mt-4">
+              <DemoUpsell />
+            </div>
+          )}
 
           {/* Price confirmation */}
           {showPriceConfirm && (

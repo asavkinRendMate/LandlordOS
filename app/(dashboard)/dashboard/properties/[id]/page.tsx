@@ -11,6 +11,7 @@ import { type RoomEntry, ROOM_TYPE_LABELS, QUICK_ADD_ROOMS } from '@/lib/room-ut
 import { inputClass, selectClassCompact, buttonClass, buttonSecondaryClass } from '@/lib/form-styles'
 import { cardClass, Spinner, Modal, AlertBar, StatusBadge as UiStatusBadge } from '@/lib/ui'
 import { showErrorToast } from '@/lib/error-toast'
+import DemoUpsell from '@/components/shared/DemoUpsell'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -1403,6 +1404,13 @@ function ContractSection({
   const [generating, setGenerating] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [uploadFile, setUploadFile] = useState<File | null>(null)
+  const [isDemo, setIsDemo] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/user/profile').then((r) => r.json()).then((j) => {
+      if (j.data?.isDemo) setIsDemo(true)
+    }).catch(() => {})
+  }, [])
 
   const fetchContract = useCallback(() => {
     fetch(`/api/contracts/${tenancyId}`)
@@ -1550,18 +1558,24 @@ function ContractSection({
             <p className="text-sm text-[#6B7280]">
               Generate a legally-reviewed Assured Periodic Tenancy agreement based on your tenancy details.
             </p>
-            <div className="bg-[#f0fdf4] border border-[#bbf7d0] rounded-lg p-3">
-              <p className="text-sm font-semibold text-[#166534]">£9.99</p>
-              <p className="text-xs text-[#6B7280]">One-time charge to your saved card</p>
-            </div>
-            <div className="flex gap-2">
-              <button onClick={handleGenerate} disabled={generating} className={buttonClass}>
-                {generating ? <Spinner size="sm" /> : 'Generate & send for signing'}
-              </button>
-              <button onClick={() => setShowGenerate(false)} className="text-sm text-[#6B7280] hover:text-[#1A1A1A] transition-colors">
-                Cancel
-              </button>
-            </div>
+            {isDemo ? (
+              <DemoUpsell />
+            ) : (
+              <>
+                <div className="bg-[#f0fdf4] border border-[#bbf7d0] rounded-lg p-3">
+                  <p className="text-sm font-semibold text-[#166534]">£9.99</p>
+                  <p className="text-xs text-[#6B7280]">One-time charge to your saved card</p>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={handleGenerate} disabled={generating} className={buttonClass}>
+                    {generating ? <Spinner size="sm" /> : 'Generate & send for signing'}
+                  </button>
+                  <button onClick={() => setShowGenerate(false)} className="text-sm text-[#6B7280] hover:text-[#1A1A1A] transition-colors">
+                    Cancel
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </Modal>
       )}

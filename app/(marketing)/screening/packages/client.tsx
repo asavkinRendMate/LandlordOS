@@ -22,6 +22,7 @@ export default function PackagesClient() {
   const [selectedPack, setSelectedPack] = useState<StandalonePackage | null>(null)
   const [successCredits, setSuccessCredits] = useState<number | null>(null)
   const [totalCredits, setTotalCredits] = useState<number | null>(null)
+  const [isDemo, setIsDemo] = useState(false)
 
   // Check auth + card info on mount
   const checkAuth = useCallback(async () => {
@@ -33,19 +34,20 @@ export default function PackagesClient() {
       }
       setIsLoggedIn(true)
       const json = await res.json()
-      if (json.data?.hasCard) {
-        // Fetch card details
-        const profileRes = await fetch('/api/user/profile')
-        if (profileRes.ok) {
-          const profileJson = await profileRes.json()
+      // Always fetch profile for isDemo check + card details
+      const profileRes = await fetch('/api/user/profile')
+      if (profileRes.ok) {
+        const profileJson = await profileRes.json()
+        if (profileJson.data?.isDemo) setIsDemo(true)
+        if (json.data?.hasCard) {
           setCardInfo({
             hasSavedCard: true,
             last4: profileJson.data?.cardLast4,
             brand: profileJson.data?.cardBrand,
           })
-        } else {
-          setCardInfo({ hasSavedCard: true })
         }
+      } else if (json.data?.hasCard) {
+        setCardInfo({ hasSavedCard: true })
       }
     } catch {
       setIsLoggedIn(false)
@@ -198,6 +200,7 @@ export default function PackagesClient() {
           hasSavedCard={cardInfo.hasSavedCard}
           savedCardLast4={cardInfo.last4}
           savedCardBrand={cardInfo.brand}
+          isDemo={isDemo}
           onSuccess={handleSuccess}
           onClose={() => setSelectedPack(null)}
         />

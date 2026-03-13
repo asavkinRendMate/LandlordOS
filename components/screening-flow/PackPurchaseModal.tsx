@@ -6,6 +6,7 @@ import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-
 import { Modal, Spinner } from '@/lib/ui'
 import { buttonClass, buttonSecondaryClass } from '@/lib/form-styles'
 import type { StandalonePackage } from '@/lib/screening-pricing'
+import DemoUpsell from '@/components/shared/DemoUpsell'
 
 const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
   ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
@@ -16,6 +17,7 @@ interface PackPurchaseModalProps {
   hasSavedCard: boolean
   savedCardLast4?: string
   savedCardBrand?: string
+  isDemo?: boolean
   onSuccess: (creditsAdded: number) => void
   onClose: () => void
 }
@@ -189,6 +191,7 @@ export default function PackPurchaseModal({
   hasSavedCard,
   savedCardLast4,
   savedCardBrand,
+  isDemo,
   onSuccess,
   onClose,
 }: PackPurchaseModalProps) {
@@ -197,7 +200,7 @@ export default function PackPurchaseModal({
   const [error, setError] = useState<string | null>(null)
 
   const fetchClientSecret = useCallback(async () => {
-    if (hasSavedCard) return // Saved card flow doesn't need a clientSecret upfront
+    if (isDemo || hasSavedCard) return // Demo users and saved card flow don't need a clientSecret
     setLoading(true)
     setError(null)
     try {
@@ -221,7 +224,7 @@ export default function PackPurchaseModal({
     } finally {
       setLoading(false)
     }
-  }, [hasSavedCard, pack.type])
+  }, [isDemo, hasSavedCard, pack.type])
 
   useEffect(() => {
     fetchClientSecret()
@@ -229,7 +232,11 @@ export default function PackPurchaseModal({
 
   return (
     <Modal isOpen onClose={onClose} title="Buy screening credits">
-      {hasSavedCard ? (
+      {isDemo ? (
+        <div className="p-5">
+          <DemoUpsell />
+        </div>
+      ) : hasSavedCard ? (
         <SavedCardConfirm
           pack={pack}
           cardLast4={savedCardLast4}
