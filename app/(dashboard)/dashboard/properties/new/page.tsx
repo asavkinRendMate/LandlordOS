@@ -426,13 +426,22 @@ export default function NewPropertyPage() {
   const [error, setError] = useState<string | null>(null)
   const [showPaymentModal, setShowPaymentModal] = useState(false)
 
-  async function createPropertyWithRooms(data: PropertyValues, rooms: RoomEntry[]): Promise<{ id: string; requiresCard?: boolean } | null> {
+  // Tracks which callback to run after card is saved (vacant or tenant flow)
+  const [pendingAfterCard, setPendingAfterCard] = useState<'vacant' | 'tenant' | null>(null)
+  const [pendingTenantValues, setPendingTenantValues] = useState<TenantValues | null>(null)
+
+  async function createPropertyWithRooms(data: PropertyValues, rooms: RoomEntry[]): Promise<string | 'PAYMENT_REQUIRED' | null> {
     const res = await fetch('/api/properties', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     })
     const json = await res.json()
+
+    if (res.status === 402 && json.error === 'PAYMENT_METHOD_REQUIRED') {
+      return 'PAYMENT_REQUIRED'
+    }
+
     if (!res.ok) { setError(json.error ?? 'Failed to create property'); return null }
 
     const propertyId = json.data.id as string
@@ -450,15 +459,7 @@ export default function NewPropertyPage() {
       }
     }
 
-    return { id: propertyId, requiresCard: json.requiresCard }
-  }
-
-  async function handleSubscriptionAfterCard() {
-    setShowPaymentModal(false)
-    try {
-      await fetch('/api/payment/subscription/update', { method: 'POST' })
-    } catch { /* subscription update is best-effort */ }
-    router.push('/dashboard')
+    return propertyId
   }
 
   function handleStep1(values: PropertyValues) {
@@ -476,12 +477,12 @@ export default function NewPropertyPage() {
     setSubmitting(true); setError(null)
     const result = await createPropertyWithRooms(propertyData, roomsData)
     setSubmitting(false)
-    if (!result) return
-    if (result.requiresCard) {
+    if (result === 'PAYMENT_REQUIRED') {
+      setPendingAfterCard('vacant')
       setShowPaymentModal(true)
-    } else {
-      router.push('/dashboard')
+      return
     }
+    if (result) router.push('/dashboard')
   }
 
   async function handleStep4(tenantValues: TenantValues) {
@@ -489,6 +490,13 @@ export default function NewPropertyPage() {
     setSubmitting(true); setError(null)
 
     const result = await createPropertyWithRooms(propertyData, roomsData)
+    if (result === 'PAYMENT_REQUIRED') {
+      setSubmitting(false)
+      setPendingAfterCard('tenant')
+      setPendingTenantValues(tenantValues)
+      setShowPaymentModal(true)
+      return
+    }
     if (!result) { setSubmitting(false); return }
 
     const monthlyRent = Math.round(parseFloat(tenantValues.monthlyRentStr) * 100)
@@ -496,7 +504,7 @@ export default function NewPropertyPage() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        propertyId: result.id,
+        propertyId: result,
         tenantName: tenantValues.tenantName,
         tenantEmail: tenantValues.tenantEmail,
         tenantPhone: tenantValues.tenantPhone || undefined,
@@ -512,11 +520,7 @@ export default function NewPropertyPage() {
       setError(json.error ?? 'Failed to save tenant details')
       return
     }
-    if (result.requiresCard) {
-      setShowPaymentModal(true)
-    } else {
-      router.push('/dashboard')
-    }
+    router.push('/dashboard')
   }
 
   const totalSteps = 4
@@ -575,9 +579,18 @@ export default function NewPropertyPage() {
 
       <PaymentSetupModal
         isOpen={showPaymentModal}
-        onClose={() => { setShowPaymentModal(false); router.push('/dashboard') }}
-        onSuccess={handleSubscriptionAfterCard}
-        context="A payment method is required to manage multiple properties (£10/mo per additional property)."
+        onClose={() => { setShowPaymentModal(false); setPendingAfterCard(null); setPendingTenantValues(null) }}
+        onSuccess={async () => {
+          setShowPaymentModal(false)
+          if (pendingAfterCard === 'vacant') {
+            await handleVacant()
+          } else if (pendingAfterCard === 'tenant' && pendingTenantValues) {
+            await handleStep4(pendingTenantValues)
+          }
+          setPendingAfterCard(null)
+          setPendingTenantValues(null)
+        }}
+        context="A payment method is required for managing multiple properties. Your card won't be charged until your next billing date."
       />
     </div>
   )
