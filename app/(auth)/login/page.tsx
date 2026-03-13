@@ -305,7 +305,7 @@ function LoginContent() {
                   <span className="text-xs text-gray-400">or try a demo</span>
                   <div className="flex-1 h-px bg-gray-200" />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-3">
                   <button
                     type="button"
                     onClick={() => handleDemoLogin('landlord')}
