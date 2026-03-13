@@ -15,7 +15,13 @@ interface Props {
   context?: string
 }
 
-function SetupForm({ onSuccess, context }: { onSuccess: () => void; context?: string }) {
+function SetupForm({
+  onConfirmed,
+  context,
+}: {
+  onConfirmed: (setupIntentId: string) => void
+  context?: string
+}) {
   const stripe = useStripe()
   const elements = useElements()
   const [saving, setSaving] = useState(false)
@@ -46,20 +52,9 @@ function SetupForm({ onSuccess, context }: { onSuccess: () => void; context?: st
       return
     }
 
-    // Save card immediately via our API (no webhook dependency)
-    const saveRes = await fetch('/api/payment/save-card', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ setupIntentId: setupIntent.id }),
-    })
-
-    if (!saveRes.ok) {
-      setError('Card was verified but could not be saved. Please try again.')
-      setSaving(false)
-      return
-    }
-
-    onSuccess()
+    // Signal parent to unmount Elements immediately (prevents terminal state error)
+    // then save the card server-side
+    onConfirmed(setupIntent.id)
   }
 
   return (
@@ -90,10 +85,12 @@ function SetupForm({ onSuccess, context }: { onSuccess: () => void; context?: st
 export default function PaymentSetupModal({ isOpen, onClose, onSuccess, context }: Props) {
   const [clientSecret, setClientSecret] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const fetchSetupIntent = useCallback(async () => {
     setClientSecret(null)
+    setSaving(false)
     setLoading(true)
     setError(null)
     try {
@@ -115,15 +112,40 @@ export default function PaymentSetupModal({ isOpen, onClose, onSuccess, context 
     if (isOpen) {
       fetchSetupIntent()
     } else {
-      // Clear stale clientSecret so Elements never re-renders with a terminal SetupIntent
       setClientSecret(null)
+      setSaving(false)
     }
   }, [isOpen, fetchSetupIntent])
+
+  // Called by SetupForm right after confirmSetup succeeds.
+  // Clears clientSecret to unmount Elements BEFORE Stripe detects terminal state.
+  // Then saves card server-side and calls onSuccess.
+  async function handleConfirmed(setupIntentId: string) {
+    // Unmount Elements immediately
+    setClientSecret(null)
+    setSaving(true)
+
+    const saveRes = await fetch('/api/payment/save-card', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ setupIntentId }),
+    })
+
+    if (!saveRes.ok) {
+      setError('Card was verified but could not be saved. Please try again.')
+      setSaving(false)
+      return
+    }
+
+    setSaving(false)
+    onSuccess()
+  }
 
   if (!isOpen) return null
 
   function handleClose() {
     setClientSecret(null)
+    setSaving(false)
     setError(null)
     onClose()
   }
@@ -143,13 +165,14 @@ export default function PaymentSetupModal({ isOpen, onClose, onSuccess, context 
           </button>
         </div>
 
-        {loading && (
-          <div className="flex justify-center py-12">
+        {(loading || saving) && (
+          <div className="flex flex-col items-center justify-center py-12 gap-3">
             <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+            {saving && <p className="text-sm text-[#6B7280]">Saving your card...</p>}
           </div>
         )}
 
-        {error && !loading && (
+        {error && !loading && !saving && (
           <div className="p-5 space-y-3">
             <p className="text-red-500 text-sm">{error}</p>
             <button
@@ -161,7 +184,7 @@ export default function PaymentSetupModal({ isOpen, onClose, onSuccess, context 
           </div>
         )}
 
-        {clientSecret && stripePromise && !loading && (
+        {clientSecret && stripePromise && !loading && !saving && (
           <Elements
             stripe={stripePromise}
             options={{
@@ -176,11 +199,11 @@ export default function PaymentSetupModal({ isOpen, onClose, onSuccess, context 
               },
             }}
           >
-            <SetupForm onSuccess={onSuccess} context={context} />
+            <SetupForm onConfirmed={handleConfirmed} context={context} />
           </Elements>
         )}
 
-        {!stripePromise && !loading && (
+        {!stripePromise && !loading && !saving && (
           <div className="p-5">
             <p className="text-red-500 text-sm">
               Payment setup is not available. Please contact support.
