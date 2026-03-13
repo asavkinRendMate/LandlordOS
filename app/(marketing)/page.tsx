@@ -420,7 +420,7 @@ export default function LandingPage() {
               onClick={() => setDemoOpen(true)}
               className="inline-flex items-center gap-2.5 bg-green-600 hover:bg-green-700 text-white font-bold text-lg px-8 py-4 rounded-xl transition-colors duration-150 shadow-lg shadow-green-200/60"
             >
-              Try for free &rarr;
+              Try For Free &rarr;
             </button>
             <p className="mt-4 text-sm text-gray-400">
               Built for UK self-managing landlords with 1–5 properties.
