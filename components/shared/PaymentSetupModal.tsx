@@ -39,17 +39,25 @@ function SetupForm({ onSuccess, context }: { onSuccess: () => void; context?: st
       return
     }
 
-    // Poll until webhook has saved the card (up to 5s)
-    for (let i = 0; i < 10; i++) {
+    // Poll until webhook has saved the card (up to 15s)
+    let cardConfirmed = false
+    for (let i = 0; i < 30; i++) {
       await new Promise((r) => setTimeout(r, 500))
       try {
         const res = await fetch('/api/payment/has-card')
         const json = await res.json()
-        if (json.data?.hasCard) break
+        if (json.data?.hasCard) { cardConfirmed = true; break }
       } catch {
         // ignore — keep polling
       }
     }
+
+    if (!cardConfirmed) {
+      setError('Card was confirmed but took too long to save. Please try again.')
+      setSaving(false)
+      return
+    }
+
     onSuccess()
   }
 
@@ -105,6 +113,9 @@ export default function PaymentSetupModal({ isOpen, onClose, onSuccess, context 
   useEffect(() => {
     if (isOpen) {
       fetchSetupIntent()
+    } else {
+      // Clear stale clientSecret so Elements never re-renders with a terminal SetupIntent
+      setClientSecret(null)
     }
   }, [isOpen, fetchSetupIntent])
 
