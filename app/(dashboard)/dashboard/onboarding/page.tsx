@@ -7,6 +7,7 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import TenantDetailsForm, { type TenantFormData } from '@/components/shared/TenantDetailsForm'
+import PaymentSetupModal from '@/components/shared/PaymentSetupModal'
 import { suggestRooms, type RoomEntry, ROOM_TYPE_LABELS, QUICK_ADD_ROOMS } from '@/lib/room-utils'
 import { inputClass, selectClass, selectClassCompact } from '@/lib/form-styles'
 
@@ -478,14 +479,23 @@ export default function OnboardingPage() {
   const [createdPortalToken, setCreatedPortalToken] = useState<string | undefined>()
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
+  // Tracks which callback to run after card is saved (vacant or tenant flow)
+  const [pendingAfterCard, setPendingAfterCard] = useState<'vacant' | 'tenant' | null>(null)
+  const [pendingTenantValues, setPendingTenantValues] = useState<TenantFormData | null>(null)
 
-  async function createPropertyWithRooms(data: PropertyValues, rooms: RoomEntry[]): Promise<string | null> {
+  async function createPropertyWithRooms(data: PropertyValues, rooms: RoomEntry[]): Promise<string | 'PAYMENT_REQUIRED' | null> {
     const res = await fetch('/api/properties', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     })
     const json = await res.json()
+
+    if (res.status === 402 && json.error === 'PAYMENT_METHOD_REQUIRED') {
+      return 'PAYMENT_REQUIRED'
+    }
+
     if (!res.ok) { setError(json.error ?? 'Failed to create property'); return null }
 
     const propertyId = json.data.id as string
@@ -521,6 +531,11 @@ export default function OnboardingPage() {
     setSubmitting(true); setError(null)
     const id = await createPropertyWithRooms(propertyData, roomsData)
     setSubmitting(false)
+    if (id === 'PAYMENT_REQUIRED') {
+      setPendingAfterCard('vacant')
+      setShowPaymentModal(true)
+      return
+    }
     if (id) { setCreatedPropertyId(id); setStep(5) }
   }
 
@@ -529,6 +544,13 @@ export default function OnboardingPage() {
     setSubmitting(true); setError(null)
 
     const propertyId = await createPropertyWithRooms(propertyData, roomsData)
+    if (propertyId === 'PAYMENT_REQUIRED') {
+      setSubmitting(false)
+      setPendingAfterCard('tenant')
+      setPendingTenantValues(tenantValues)
+      setShowPaymentModal(true)
+      return
+    }
     if (!propertyId) { setSubmitting(false); return }
     setCreatedPropertyId(propertyId)
 
@@ -559,6 +581,17 @@ export default function OnboardingPage() {
 
     if (tenancyJson.data?.portalToken) setCreatedPortalToken(tenancyJson.data.portalToken)
     setStep(5)
+  }
+
+  async function handleCardSaved() {
+    setShowPaymentModal(false)
+    if (pendingAfterCard === 'vacant') {
+      await handleVacant()
+    } else if (pendingAfterCard === 'tenant' && pendingTenantValues) {
+      await handleStep4(pendingTenantValues)
+    }
+    setPendingAfterCard(null)
+    setPendingTenantValues(null)
   }
 
   const content = step <= 4 ? stepContent[step] : null
@@ -623,6 +656,13 @@ export default function OnboardingPage() {
           )}
         </div>
       </div>
+
+      <PaymentSetupModal
+        isOpen={showPaymentModal}
+        onClose={() => { setShowPaymentModal(false); setPendingAfterCard(null); setPendingTenantValues(null) }}
+        onSuccess={handleCardSaved}
+        context="A payment method is required for managing multiple properties. Your card won't be charged until your next billing date."
+      />
 
     </div>
   )
