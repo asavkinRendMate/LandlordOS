@@ -543,6 +543,34 @@ export default function LandingPage() {
                           sizes="(max-width: 768px) 100vw, (max-width: 1280px) 45vw, 33vw"
                         />
                       </button>
+                    ) : step.slug === 'move-in' ? (
+                      <button
+                        type="button"
+                        onClick={() => setLightboxSrc('/screenshots/move-in.png')}
+                        className="relative w-full aspect-[4/3] overflow-hidden cursor-zoom-in"
+                      >
+                        <Image
+                          src="/screenshots/move-in.png"
+                          alt="Move them in properly — contracts, deposits and compliance"
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 768px) 100vw, (max-width: 1280px) 45vw, 33vw"
+                        />
+                      </button>
+                    ) : step.slug === 'property-management' ? (
+                      <button
+                        type="button"
+                        onClick={() => setLightboxSrc('/screenshots/manage-property.png')}
+                        className="relative w-full aspect-[4/3] overflow-hidden cursor-zoom-in"
+                      >
+                        <Image
+                          src="/screenshots/manage-property.png"
+                          alt="Manage without the chaos — property dashboard overview"
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 768px) 100vw, (max-width: 1280px) 45vw, 33vw"
+                        />
+                      </button>
                     ) : (
                       <div
                         className="w-full aspect-[4/3] flex items-center justify-center"
