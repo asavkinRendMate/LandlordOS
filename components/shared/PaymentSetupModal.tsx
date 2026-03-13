@@ -28,8 +28,9 @@ function SetupForm({ onSuccess, context }: { onSuccess: () => void; context?: st
     setSaving(true)
     setError(null)
 
-    const { error: submitError } = await stripe.confirmSetup({
+    const { setupIntent, error: submitError } = await stripe.confirmSetup({
       elements,
+      confirmParams: { return_url: window.location.href },
       redirect: 'if_required',
     })
 
@@ -39,21 +40,21 @@ function SetupForm({ onSuccess, context }: { onSuccess: () => void; context?: st
       return
     }
 
-    // Poll until webhook has saved the card (up to 15s)
-    let cardConfirmed = false
-    for (let i = 0; i < 30; i++) {
-      await new Promise((r) => setTimeout(r, 500))
-      try {
-        const res = await fetch('/api/payment/has-card')
-        const json = await res.json()
-        if (json.data?.hasCard) { cardConfirmed = true; break }
-      } catch {
-        // ignore — keep polling
-      }
+    if (!setupIntent || setupIntent.status !== 'succeeded') {
+      setError('Card verification did not complete. Please try again.')
+      setSaving(false)
+      return
     }
 
-    if (!cardConfirmed) {
-      setError('Card was confirmed but took too long to save. Please try again.')
+    // Save card immediately via our API (no webhook dependency)
+    const saveRes = await fetch('/api/payment/save-card', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ setupIntentId: setupIntent.id }),
+    })
+
+    if (!saveRes.ok) {
+      setError('Card was verified but could not be saved. Please try again.')
       setSaving(false)
       return
     }
