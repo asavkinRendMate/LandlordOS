@@ -128,6 +128,23 @@ const featureGroups = [
   },
 ]
 
+type CellValue = 'check' | 'cross' | string
+
+const comparisonRows: { feature: string; paper: CellValue; typical: CellValue; letsorted: CellValue; isPrice?: boolean }[] = [
+  { feature: 'Compliance document tracking', paper: 'cross', typical: 'check', letsorted: 'check' },
+  { feature: 'Expiry reminders', paper: 'cross', typical: 'check', letsorted: 'check' },
+  { feature: 'Rent tracking', paper: 'Manual', typical: 'check', letsorted: 'check' },
+  { feature: 'Tenant portal', paper: 'cross', typical: 'Sometimes', letsorted: 'check' },
+  { feature: 'Maintenance tracking', paper: 'WhatsApp / email', typical: 'Basic', letsorted: 'check' },
+  { feature: "Awaab's Law compliance", paper: 'cross', typical: 'cross', letsorted: 'check' },
+  { feature: 'RRA 2025 compliant contracts', paper: 'cross', typical: 'cross', letsorted: 'check' },
+  { feature: 'Digital contract signing', paper: 'cross', typical: 'cross', letsorted: 'check' },
+  { feature: 'AI tenant screening', paper: 'cross', typical: 'cross', letsorted: 'check' },
+  { feature: 'Move-in inspection reports', paper: 'cross', typical: 'cross', letsorted: 'check' },
+  { feature: 'Tenant sign-off on inspections', paper: 'cross', typical: 'cross', letsorted: 'check' },
+  { feature: 'Price for 1 property', paper: 'Free*', typical: '£20–50/mo', letsorted: 'Free forever', isPrice: true },
+]
+
 const freeFeatures = [
   'Full compliance tracking',
   'Maintenance ticket system',
@@ -202,6 +219,40 @@ function IconChevronRight() {
       <polyline points="9 6 15 12 9 18" />
     </svg>
   )
+}
+
+// ─── Comparison cell ──────────────────────────────────────────────────────────
+
+function ComparisonCell({ value, bold, isLetSorted }: { value: CellValue; bold?: boolean; isLetSorted?: boolean }) {
+  if (value === 'check') {
+    return (
+      <span className={`inline-flex items-center justify-center ${isLetSorted ? 'text-green-600' : 'text-green-500'}`}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="20 6 9 17 4 12" />
+        </svg>
+      </span>
+    )
+  }
+  if (value === 'cross') {
+    return (
+      <span className="inline-flex items-center justify-center text-gray-300">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+      </span>
+    )
+  }
+  // Text values: "Manual", "Sometimes", "Basic", price strings
+  const isAmber = value === 'Manual' || value === 'Sometimes'
+  const color = isLetSorted && bold
+    ? 'text-green-700 font-bold'
+    : bold
+      ? 'font-bold text-gray-900'
+      : isAmber
+        ? 'text-amber-600'
+        : 'text-gray-400'
+  return <span className={`text-sm ${color}`}>{value}</span>
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -680,6 +731,64 @@ export default function LandingPage({ updates }: { updates: LandingUpdate[] }) {
           <p className="reveal text-center text-gray-400 text-sm mt-10">
             And yes — we keep you fully compliant with the new Renters&apos; Rights Act automatically.
             So you don&apos;t have to think about it.
+          </p>
+        </div>
+      </section>
+
+      {/* ── Comparison table section ──────────────────────────────────────── */}
+      <section className="py-20 px-6 bg-gray-50">
+        <div className="max-w-4xl mx-auto">
+          <div className="reveal text-center mb-14">
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">
+              Why landlords choose LetSorted
+            </h2>
+            <p className="text-gray-400 text-lg">
+              See how we compare to the alternatives
+            </p>
+          </div>
+
+          <div className="reveal overflow-x-auto -mx-6 px-6">
+            <table className="w-full min-w-[600px] text-sm">
+              <thead>
+                <tr>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-900 w-[40%]" />
+                  <th className="py-3 px-4 font-semibold text-gray-500 text-center">
+                    Paper &amp; Spreadsheets
+                  </th>
+                  <th className="py-3 px-4 font-semibold text-gray-500 text-center">
+                    Typical Property Software
+                  </th>
+                  <th className="py-3 px-4 font-semibold text-white text-center bg-green-600 rounded-t-xl">
+                    LetSorted
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {comparisonRows.map((row, i) => (
+                  <tr
+                    key={row.feature}
+                    className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
+                  >
+                    <td className={`py-3 px-4 text-gray-700 ${row.isPrice ? 'font-semibold' : ''}`}>
+                      {row.feature}
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      <ComparisonCell value={row.paper} bold={row.isPrice} />
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      <ComparisonCell value={row.typical} bold={row.isPrice} />
+                    </td>
+                    <td className={`py-3 px-4 text-center bg-green-50/60 ${i === comparisonRows.length - 1 ? 'rounded-b-xl' : ''}`}>
+                      <ComparisonCell value={row.letsorted} bold={row.isPrice} isLetSorted />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <p className="reveal text-center text-gray-400 text-xs mt-6 max-w-xl mx-auto">
+            *Spreadsheets are free but cost time, missed compliance deadlines, and potentially &pound;30,000+ in fines.
           </p>
         </div>
       </section>
