@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createAuthClient } from '@/lib/supabase/auth'
 import { prisma } from '@/lib/prisma'
+import { addToOnboardingSequence } from '@/lib/mailerlite'
 
 export async function GET() {
   try {
@@ -53,11 +54,24 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
     }
 
+    // Check if this is the first time setting name (new user onboarding)
+    const existing = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { name: true },
+    })
+    const isFirstNameSet = !existing?.name
+
     const updated = await prisma.user.upsert({
       where: { id: user.id },
       update: { name: parsed.data.name.trim() },
       create: { id: user.id, email: user.email!, name: parsed.data.name.trim() },
     })
+
+    // Fire and forget — add to MailerLite onboarding on first name set
+    if (isFirstNameSet) {
+      addToOnboardingSequence({ email: user.email!, name: updated.name, id: user.id })
+        .catch((err) => console.error('[MailerLite]', err))
+    }
 
     return NextResponse.json({ data: { name: updated.name } })
   } catch (err) {

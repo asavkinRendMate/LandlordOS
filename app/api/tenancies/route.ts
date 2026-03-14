@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createAuthClient } from '@/lib/supabase/auth'
 import { prisma } from '@/lib/prisma'
+import { updateSubscriber } from '@/lib/mailerlite'
 
 const schema = z.object({
   propertyId: z.string().min(1),
@@ -81,6 +82,10 @@ export async function POST(req: Request) {
         },
       })
     })
+
+    // Fire and forget — update landlord's MailerLite subscriber
+    updateSubscriber(user.email!, { has_tenant: true })
+      .catch((err) => console.error('[MailerLite]', err))
 
     return NextResponse.json({ data: tenancy }, { status: 201 })
   } catch (err) {

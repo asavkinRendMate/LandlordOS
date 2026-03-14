@@ -6,6 +6,7 @@ import { contractFullySignedLandlordHtml, contractFullySignedTenantHtml } from '
 import { env } from '@/lib/env'
 import { buildAptContractPDF } from '@/lib/pdf-mappers'
 import { uploadFile } from '@/lib/storage-url'
+import { updateSubscriber } from '@/lib/mailerlite'
 
 const schema = z.object({
   name: z.string().min(1).max(200),
@@ -122,6 +123,12 @@ export async function POST(req: Request, { params }: { params: { token: string }
           }),
         })
       }
+    }
+
+    // Fire and forget — update landlord's MailerLite subscriber
+    if (newStatus === 'BOTH_SIGNED' && contract.tenancy.property.user?.email) {
+      updateSubscriber(contract.tenancy.property.user.email, { has_signed_contract: true })
+        .catch((err) => console.error('[MailerLite]', err))
     }
 
     // Fire-and-forget PDF regeneration when both parties have signed

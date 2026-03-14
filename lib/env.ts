@@ -24,6 +24,10 @@ const schema = z.object({
 
   // Internal secret for fire-and-forget API calls (e.g. PDF generation)
   INTERNAL_SECRET: z.string().min(1).optional(),
+
+  // MailerLite (onboarding email sequence)
+  MAILERLITE_API_KEY: z.string().optional(),
+  MAILERLITE_GROUP_ID: z.string().optional(),
 })
 
 // Throws at startup if any required variable is missing or malformed.
@@ -52,4 +56,6 @@ export const env = schema.parse({
   SENTRY_ORG: process.env.SENTRY_ORG,
   SENTRY_PROJECT: process.env.SENTRY_PROJECT,
   INTERNAL_SECRET: process.env.INTERNAL_SECRET,
+  MAILERLITE_API_KEY: process.env.MAILERLITE_API_KEY,
+  MAILERLITE_GROUP_ID: process.env.MAILERLITE_GROUP_ID,
 })

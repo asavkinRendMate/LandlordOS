@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { ComplianceDocType } from '@prisma/client'
 import { createOrUpdateSubscription } from '@/lib/payment-service'
 import { canAddProperty } from '@/lib/subscription-guard'
+import { updateSubscriber } from '@/lib/mailerlite'
 
 const schema = z.object({
   name: z.string().optional(),
@@ -98,6 +99,12 @@ export async function POST(req: Request) {
     if (propertyCount > 1) {
       await createOrUpdateSubscription(user.id, propertyCount)
     }
+
+    // Fire and forget — update MailerLite subscriber
+    updateSubscriber(user.email!, {
+      has_property: true,
+      property_count: propertyCount,
+    }).catch((err) => console.error('[MailerLite]', err))
 
     return NextResponse.json({ data: property }, { status: 201 })
   } catch (err) {

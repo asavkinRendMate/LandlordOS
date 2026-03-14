@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { sendOtpDirect } from '@/lib/supabase/otp'
+import { updateSubscriber } from '@/lib/mailerlite'
 
 // ── GET — fetch tenant data by token ─────────────────────────────────────────
 
@@ -68,6 +69,17 @@ export async function POST(req: Request, { params }: { params: { token: string }
         data: { status: 'ACTIVE' },
       }),
     ])
+
+    // Fire and forget — update landlord's MailerLite subscriber
+    prisma.property.findUnique({
+      where: { id: tenant.propertyId },
+      select: { user: { select: { email: true } } },
+    }).then((prop) => {
+      if (prop?.user?.email) {
+        updateSubscriber(prop.user.email, { has_tenant: true })
+          .catch((err) => console.error('[MailerLite]', err))
+      }
+    }).catch((err) => console.error('[MailerLite]', err))
 
     // Send sign-in code via Supabase Auth (direct API, no PKCE code_challenge)
     const { error } = await sendOtpDirect(tenant.email)

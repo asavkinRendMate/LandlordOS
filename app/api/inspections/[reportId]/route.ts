@@ -7,6 +7,7 @@ import { sendEmail } from '@/lib/resend'
 import { inspectionReviewHtml } from '@/lib/email-templates'
 import { env } from '@/lib/env'
 import { advanceScheduleIfPeriodic } from '@/lib/inspection-schedule'
+import { updateSubscriber } from '@/lib/mailerlite'
 
 export async function GET(_req: Request, { params }: { params: { reportId: string } }) {
   try {
@@ -116,6 +117,12 @@ export async function PATCH(req: Request, { params }: { params: { reportId: stri
       where: { id: params.reportId },
       data: updateData,
     })
+
+    // Fire and forget — update landlord's MailerLite subscriber
+    if (updated.status === 'AGREED') {
+      updateSubscriber(user.email!, { has_inspection: true })
+        .catch((err) => console.error('[MailerLite]', err))
+    }
 
     // Trigger PDF generation when both parties have agreed (fire-and-forget)
     if (updated.status === 'AGREED') {
