@@ -11,6 +11,7 @@ const config: Config = {
   theme: {
   	extend: {
   		colors: {
+  			'accent-amber': 'var(--color-accent-amber)',
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
   			card: {

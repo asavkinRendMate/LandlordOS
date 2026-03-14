@@ -33,17 +33,17 @@ const painPoints = [
   {
     icon: '⚖️',
     title: 'Without Section 21, you need evidence',
-    body: 'Since 1 May 2026, the only way to end a tenancy is through court. Judges need proof — a signed contract, rent records, inspection reports. Landlords on spreadsheets arrive with nothing.',
+    body: <>Since <span className="text-accent-amber font-bold">1 May 2026</span>, the only way to end a tenancy is through <span className="text-accent-amber font-bold">court</span>. Judges need proof — a signed contract, rent records, inspection reports. Landlords on spreadsheets arrive with nothing.</>,
   },
   {
     icon: '📸',
     title: 'Deposit disputes are won on evidence',
-    body: "95% of deposit disputes come down to one question: what was the condition at move-in? Without a signed, timestamped inspection report, the adjudicator sides with the tenant.",
+    body: <><span className="text-accent-amber font-bold">95%</span> of deposit disputes come down to one question: what was the condition at move-in? Without a signed, timestamped inspection report, the adjudicator sides with the tenant.</>,
   },
   {
     icon: '⏰',
     title: 'Compliance failures are expensive',
-    body: "Gas Safety, EICR, EPC — missing certificates mean up to £30,000 in fines and an invalid Section 8 notice. You can't evict a tenant if your compliance is out of date.",
+    body: <>Gas Safety, EICR, EPC — missing certificates mean up to <span className="text-accent-amber font-bold">£30,000</span> in fines and an invalid Section 8 notice. You can&apos;t evict a tenant if your compliance is out of date.</>,
   },
   {
     icon: '💬',
@@ -428,7 +428,7 @@ export default function LandingPage({ updates }: { updates: LandingUpdate[] }) {
           </h1>
 
           <p className="hero-1 text-xl text-gray-500 leading-relaxed mb-10 max-w-2xl mx-auto">
-            Section 21 is gone. Evictions now require proof — in court. LetSorted automatically builds the complete evidence trail every landlord needs: signed contracts, inspection reports, rent records, and a one-click dispute pack.
+            Section 21 is <span className="text-accent-amber font-bold">gone</span>. Evictions now require proof — in court. LetSorted automatically builds the complete evidence trail every landlord needs: signed contracts, inspection reports, rent records, and a one-click dispute pack.
           </p>
 
           <div className="hero-2">
