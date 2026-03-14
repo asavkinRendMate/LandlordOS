@@ -17,6 +17,9 @@ const font = Plus_Jakarta_Sans({
 export const metadata: Metadata = {
   title: 'LetSorted',
   description: "UK landlord management built for the Renters' Rights Act 2025.",
+  icons: {
+    icon: [{ url: '/favicon.ico', sizes: '48x48', type: 'image/x-icon' }],
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
