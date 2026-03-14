@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getSignedUrl } from '@/lib/storage'
 
 export async function GET(_req: Request, { params }: { params: { token: string } }) {
   try {
@@ -36,16 +35,6 @@ export async function GET(_req: Request, { params }: { params: { token: string }
     })
     const landlordName = property?.user?.name ?? property?.user?.email ?? 'Landlord'
 
-    // Generate signed URL for the PDF
-    let pdfSignedUrl: string | null = null
-    if (contract.pdfUrl) {
-      try {
-        pdfSignedUrl = await getSignedUrl(contract.pdfUrl, 3600)
-      } catch {
-        // PDF not available
-      }
-    }
-
     return NextResponse.json({
       data: {
         id: contract.id,
@@ -58,7 +47,7 @@ export async function GET(_req: Request, { params }: { params: { token: string }
         landlordSignedName: contract.landlordSignedName,
         tenantSignedAt: contract.tenantSignedAt,
         tenantSignedName: contract.tenantSignedName,
-        pdfUrl: pdfSignedUrl,
+        pdfUrl: !!contract.pdfUrl,
         property: contract.tenancy.property,
         createdAt: contract.createdAt,
       },

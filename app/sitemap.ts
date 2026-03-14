@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next'
 import { getAllGuides } from '@/lib/guides'
+import { getAllUpdates } from '@/lib/updates'
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://letsorted.co.uk'
 
@@ -80,6 +81,17 @@ export default function sitemap(): MetadataRoute.Sitemap {
       url: `${BASE_URL}/features/tenancy-renewal`,
       lastModified: now,
       changeFrequency: 'monthly',
+      priority: 0.7,
+    },
+
+    // ── Updates ────────────────────────────────────────────────────────────────
+    {
+      url: `${BASE_URL}/updates`,
+      lastModified: (() => {
+        const latest = getAllUpdates()[0]
+        return latest ? new Date(latest.date) : now
+      })(),
+      changeFrequency: 'weekly',
       priority: 0.7,
     },
 

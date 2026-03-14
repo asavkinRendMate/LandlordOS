@@ -17,7 +17,7 @@ interface ContractData {
   landlordSignedName: string | null
   tenantSignedAt: string | null
   tenantSignedName: string | null
-  pdfUrl: string | null
+  pdfUrl: boolean
   property: { line1: string; line2?: string; city: string; postcode: string; name?: string }
   createdAt: string
 }
@@ -158,7 +158,7 @@ export default function SignContractPage() {
             {contract.pdfUrl && (
               <div className="mb-6 rounded-xl overflow-hidden border border-gray-200 bg-white shadow-sm">
                 <iframe
-                  src={`${contract.pdfUrl}#toolbar=1&navpanes=0&view=FitH`}
+                  src={`/api/contracts/token/${token}/pdf-url`}
                   className="w-full rounded-lg border border-gray-200"
                   style={{ height: '70vh' }}
                   title="Tenancy Agreement"

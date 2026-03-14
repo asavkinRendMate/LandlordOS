@@ -342,3 +342,31 @@ export function PageHeader({ title, action }: PageHeaderProps) {
     </div>
   )
 }
+
+// ── UnderlineTabs ────────────────────────────────────────────────────────────
+
+interface UnderlineTabsProps {
+  tabs: Array<{ key: string; label: string }>
+  active: string
+  onChange: (key: string) => void
+}
+
+export function UnderlineTabs({ tabs, active, onChange }: UnderlineTabsProps) {
+  return (
+    <div className="flex gap-4 border-b border-gray-100">
+      {tabs.map((tab) => (
+        <button
+          key={tab.key}
+          onClick={() => onChange(tab.key)}
+          className={`pb-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
+            tab.key === active
+              ? 'text-[#1A1A1A] border-[#16a34a]'
+              : 'text-[#9CA3AF] border-transparent hover:text-[#6B7280]'
+          }`}
+        >
+          {tab.label}
+        </button>
+      ))}
+    </div>
+  )
+}

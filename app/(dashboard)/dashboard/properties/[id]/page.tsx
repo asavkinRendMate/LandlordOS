@@ -9,7 +9,8 @@ import SectionHelpModal, { SectionHelpButton, type SectionHelpKey } from '@/comp
 import TenantDetailsForm, { type TenantFormData } from '@/components/shared/TenantDetailsForm'
 import { type RoomEntry, ROOM_TYPE_LABELS, QUICK_ADD_ROOMS } from '@/lib/room-utils'
 import { inputClass, selectClassCompact, buttonClass, buttonSecondaryClass } from '@/lib/form-styles'
-import { cardClass, Spinner, Modal, AlertBar, StatusBadge as UiStatusBadge } from '@/lib/ui'
+import { cardClass, Spinner, Modal, AlertBar, StatusBadge as UiStatusBadge, UnderlineTabs } from '@/lib/ui'
+import SegmentedControl from '@/components/ui/SegmentedControl'
 import { showErrorToast } from '@/lib/error-toast'
 import DemoUpsell from '@/components/shared/DemoUpsell'
 
@@ -936,7 +937,7 @@ function RentPaymentsSection({ propertyId }: { propertyId: string }) {
 
 // ── Compliance & Documents section ────────────────────────────────────────────
 
-function ComplianceSection({ propertyId }: { propertyId: string }) {
+function ComplianceSection({ propertyId, embedded }: { propertyId: string; embedded?: boolean }) {
   const [docs, setDocs] = useState<PropertyDocument[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -966,9 +967,8 @@ function ComplianceSection({ propertyId }: { propertyId: string }) {
 
   const requiredTypes = ['GAS_SAFETY', 'EPC', 'EICR', 'HOW_TO_RENT']
 
-  return (
-    <div className="flex items-start gap-3 mb-5">
-    <div className="flex-1 min-w-0 bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4">
+  const sectionContent = (
+    <>
       <div className="flex items-center justify-between mb-4">
         <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium">Property Documents</p>
         <button
@@ -1078,6 +1078,15 @@ function ComplianceSection({ propertyId }: { propertyId: string }) {
         documentTypes={Object.entries(DOC_TYPE_LABELS).map(([value, label]) => ({ value, label }))}
         expiryDateTypes={['GAS_SAFETY', 'EPC', 'EICR']}
       />
+    </>
+  )
+
+  if (embedded) return sectionContent
+
+  return (
+    <div className="flex items-start gap-3 mb-5">
+    <div className="flex-1 min-w-0 bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4">
+      {sectionContent}
     </div>
     <div className="pt-3 shrink-0">
       <SectionHelpButton onClick={() => setShowHelp(true)} />
@@ -1115,7 +1124,7 @@ const MAINT_STATUS_BADGE: Record<string, string> = {
 
 const roomInputClass = `${inputClass} min-w-0`
 
-function RoomsSection({ propertyId, rooms: initialRooms }: { propertyId: string; rooms: PropertyRoom[] }) {
+function RoomsSection({ propertyId, rooms: initialRooms, embedded }: { propertyId: string; rooms: PropertyRoom[]; embedded?: boolean }) {
   const [rooms, setRooms] = useState<PropertyRoom[]>(initialRooms)
   const [editing, setEditing] = useState(false)
   const [editRooms, setEditRooms] = useState<RoomEntry[]>([])
@@ -1220,9 +1229,8 @@ function RoomsSection({ propertyId, rooms: initialRooms }: { propertyId: string;
   // Display bedroom count from saved rooms in read mode
   const savedBedroomCount = rooms.filter((r) => r.type === 'BEDROOM').length
 
-  return (
-    <div className="flex items-start gap-3 mb-5">
-    <div className="flex-1 min-w-0 bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4">
+  const sectionContent = (
+    <>
       <div className="flex items-center justify-between mb-3">
         <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium">Rooms</p>
         {!editing && (
@@ -1364,6 +1372,15 @@ function RoomsSection({ propertyId, rooms: initialRooms }: { propertyId: string;
       ) : (
         <p className="text-sm text-[#9CA3AF]">No rooms configured yet.</p>
       )}
+    </>
+  )
+
+  if (embedded) return sectionContent
+
+  return (
+    <div className="flex items-start gap-3 mb-5">
+    <div className="flex-1 min-w-0 bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4">
+      {sectionContent}
     </div>
     <div className="pt-3 shrink-0">
       <SectionHelpButton onClick={() => setShowHelp(true)} />
@@ -1392,9 +1409,11 @@ interface ContractData {
 function ContractSection({
   tenancyId,
   onStatusChange,
+  embedded,
 }: {
   tenancyId: string
   onStatusChange: (status: string | null) => void
+  embedded?: boolean
 }) {
   const [contract, setContract] = useState<ContractData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -1477,9 +1496,8 @@ function ContractSection({
     window.open(`/sign/contract/${contract.landlordToken}`, '_blank')
   }
 
-  return (
-    <div className="flex items-start gap-3 mb-5">
-    <div className={`flex-1 min-w-0 ${cardClass}`}>
+  const sectionContent = (
+    <>
       <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium mb-3">Tenancy Agreement</p>
 
       {loading ? (
@@ -1607,6 +1625,15 @@ function ContractSection({
           </div>
         </Modal>
       )}
+    </>
+  )
+
+  if (embedded) return sectionContent
+
+  return (
+    <div className="flex items-start gap-3 mb-5">
+    <div className={`flex-1 min-w-0 ${cardClass}`}>
+      {sectionContent}
     </div>
     <div className="pt-3 shrink-0">
       <SectionHelpButton onClick={() => setShowHelp(true)} />
@@ -1618,9 +1645,11 @@ function ContractSection({
 
 // ── Inspection Section ───────────────────────────────────────────────────────
 
-function InspectionSection({ propertyId, contractStatus }: { propertyId: string; contractStatus?: string | null }) {
+function InspectionSection({ propertyId, contractStatus, embedded }: { propertyId: string; contractStatus?: string | null; embedded?: boolean }) {
   const [report, setReport] = useState<{ id: string; status: string; pdfUrl: string | null } | null>(null)
   const [loading, setLoading] = useState(true)
+  const [creating, setCreating] = useState(false)
+  const [createError, setCreateError] = useState<string | null>(null)
   const [showHelp, setShowHelp] = useState(false)
   const router = useRouter()
 
@@ -1635,21 +1664,30 @@ function InspectionSection({ propertyId, contractStatus }: { propertyId: string;
   }, [propertyId])
 
   async function createReport() {
-    const res = await fetch('/api/inspections', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ propertyId }),
-    })
-    if (res.ok) {
-      const json = await res.json()
-      router.push(`/dashboard/properties/${propertyId}/inspection?reportId=${json.data.id}`)
+    setCreating(true)
+    setCreateError(null)
+    try {
+      const res = await fetch('/api/inspections', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ propertyId }),
+      })
+      if (res.ok) {
+        const json = await res.json()
+        router.push(`/dashboard/properties/${propertyId}/inspection?reportId=${json.data.id}`)
+      } else {
+        setCreateError('Failed to create report. Please try again.')
+        setCreating(false)
+      }
+    } catch {
+      setCreateError('Failed to create report. Please try again.')
+      setCreating(false)
     }
   }
 
-  return (
-    <div className="flex items-start gap-3 mb-5">
-    <div className={`flex-1 min-w-0 ${cardClass}`}>
-      <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium mb-3">Property Inspection</p>
+  const sectionContent = (
+    <>
+      <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium mb-3">Move-in Inspection</p>
 
       {loading ? (
         <div className="flex justify-center py-4"><Spinner size="sm" /></div>
@@ -1703,14 +1741,32 @@ function InspectionSection({ propertyId, contractStatus }: { propertyId: string;
           </button>
         </div>
       ) : (
-        <button onClick={createReport}
-          className="inline-flex items-center gap-1.5 text-sm text-[#16a34a] hover:text-[#15803d] font-medium transition-colors">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Create inspection report
-        </button>
+        <div>
+          <button onClick={createReport} disabled={creating}
+            className="inline-flex items-center gap-1.5 text-sm text-[#16a34a] hover:text-[#15803d] font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+            {creating ? (
+              <><Spinner size="sm" /> Creating...</>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Create inspection report
+              </>
+            )}
+          </button>
+          {createError && <p className="text-xs text-red-600 mt-2">{createError}</p>}
+        </div>
       )}
+    </>
+  )
+
+  if (embedded) return sectionContent
+
+  return (
+    <div className="flex items-start gap-3 mb-5">
+    <div className={`flex-1 min-w-0 ${cardClass}`}>
+      {sectionContent}
     </div>
     <div className="pt-3 shrink-0">
       <SectionHelpButton onClick={() => setShowHelp(true)} />
@@ -1739,7 +1795,7 @@ interface InspectionScheduleData {
   nextDueDate: string
 }
 
-function PeriodicInspectionSection({ propertyId, tenancyId }: { propertyId: string; tenancyId: string }) {
+function PeriodicInspectionSection({ propertyId, tenancyId, embedded }: { propertyId: string; tenancyId: string; embedded?: boolean }) {
   const [schedule, setSchedule] = useState<InspectionScheduleData | null>(null)
   const [inspections, setInspections] = useState<PeriodicInspection[]>([])
   const [loading, setLoading] = useState(true)
@@ -1814,9 +1870,8 @@ function PeriodicInspectionSection({ propertyId, tenancyId }: { propertyId: stri
     setSaving(false)
   }
 
-  return (
-    <div className="flex items-start gap-3 mb-5">
-      <div className={`flex-1 min-w-0 ${cardClass}`}>
+  const sectionContent = (
+    <>
         <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium mb-3">Periodic Inspections</p>
 
         {loading ? (
@@ -1913,6 +1968,15 @@ function PeriodicInspectionSection({ propertyId, tenancyId }: { propertyId: stri
             )}
           </div>
         )}
+    </>
+  )
+
+  if (embedded) return sectionContent
+
+  return (
+    <div className="flex items-start gap-3 mb-5">
+      <div className={`flex-1 min-w-0 ${cardClass}`}>
+        {sectionContent}
       </div>
       <div className="pt-3 shrink-0">
         <SectionHelpButton onClick={() => setShowHelp(true)} />
@@ -1928,7 +1992,7 @@ const MAINT_STATUS_LABEL: Record<string, string> = {
   OPEN: 'Open', IN_PROGRESS: 'In progress', RESOLVED: 'Resolved',
 }
 
-function PropertyMaintenanceSection({ propertyId }: { propertyId: string }) {
+function PropertyMaintenanceSection({ propertyId, embedded }: { propertyId: string; embedded?: boolean }) {
   const [requests, setRequests] = useState<MaintenanceRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [showHelp, setShowHelp] = useState(false)
@@ -1940,9 +2004,8 @@ function PropertyMaintenanceSection({ propertyId }: { propertyId: string }) {
       .finally(() => setLoading(false))
   }, [propertyId])
 
-  return (
-    <div className="flex items-start gap-3 mb-5">
-    <div className="flex-1 min-w-0 bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4">
+  const sectionContent = (
+    <>
       <div className="flex items-center justify-between mb-3">
         <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium">Maintenance</p>
         <a
@@ -1954,7 +2017,7 @@ function PropertyMaintenanceSection({ propertyId }: { propertyId: string }) {
       </div>
       {loading ? (
         <div className="flex justify-center py-4">
-          <div className="w-5 h-5 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+          <Spinner size="sm" />
         </div>
       ) : requests.length === 0 ? (
         <p className="text-[#9CA3AF] text-sm italic">No open maintenance requests</p>
@@ -1983,6 +2046,15 @@ function PropertyMaintenanceSection({ propertyId }: { propertyId: string }) {
           ))}
         </div>
       )}
+    </>
+  )
+
+  if (embedded) return sectionContent
+
+  return (
+    <div className="flex items-start gap-3 mb-5">
+    <div className="flex-1 min-w-0 bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4">
+      {sectionContent}
     </div>
     <div className="pt-3 shrink-0">
       <SectionHelpButton onClick={() => setShowHelp(true)} />
@@ -2802,12 +2874,14 @@ function ApplicationsSection({
   applyLink,
   onRefresh,
   historyOnly = false,
+  embedded,
 }: {
   property: Property
   candidates: Tenant[]
   applyLink: string
   onRefresh: () => void
   historyOnly?: boolean
+  embedded?: boolean
 }) {
   const [emails, setEmails] = useState<string[]>([''])
   const [requireFinancial, setRequireFinancial] = useState(property.requireFinancialVerification)
@@ -2899,6 +2973,50 @@ function ApplicationsSection({
     const totalApplicants = mergedList.length
     if (totalApplicants === 0) return null
 
+    const historyContent = (
+      <>
+        <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium mb-3">Past applicants</p>
+        <div className="space-y-0">
+          {mergedList.map((inv) => {
+            const badge = UNIFIED_BADGE[inv.status]
+            return (
+              <div key={inv.inviteId} className="py-2.5 border-b border-gray-100 last:border-0">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm text-[#1A1A1A] font-medium">{inv.candidateName ?? inv.email}</span>
+                      <span className={`text-[10px] font-medium rounded px-1.5 py-0.5 ${badge.cls}`}>
+                        {badge.label}
+                      </span>
+                      {inv.status === 'complete' && inv.totalScore != null && (
+                        <span className={`text-xs font-semibold ${scoreTextColour(inv.grade)}`}>
+                          {inv.totalScore}/100
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-[#9CA3AF] mt-0.5">
+                      {inv.candidateName ? inv.email : null}
+                      {inv.sentAt ? `${inv.candidateName ? ' · ' : ''}Invited ${formatDate(inv.sentAt)}` : null}
+                    </p>
+                  </div>
+                  {inv.status === 'complete' && inv.reportId && (
+                    <Link
+                      href={`/screening/report/${inv.reportId}`}
+                      className="px-3 py-1.5 text-xs font-medium text-[#16a34a] bg-white border border-[#16a34a] rounded-md hover:bg-[#f0fdf4] transition-colors shrink-0"
+                    >
+                      View report
+                    </Link>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </>
+    )
+
+    if (embedded) return historyContent
+
     return (
       <div className="flex items-start gap-3 mb-5">
       <div className="flex-1 min-w-0 bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4">
@@ -2922,42 +3040,7 @@ function ApplicationsSection({
 
         {expanded && (
           <div className="mt-3 border-t border-gray-100 pt-3">
-            <div className="space-y-0">
-              {mergedList.map((inv) => {
-                const badge = UNIFIED_BADGE[inv.status]
-                return (
-                  <div key={inv.inviteId} className="py-2.5 border-b border-gray-100 last:border-0">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm text-[#1A1A1A] font-medium">{inv.candidateName ?? inv.email}</span>
-                          <span className={`text-[10px] font-medium rounded px-1.5 py-0.5 ${badge.cls}`}>
-                            {badge.label}
-                          </span>
-                          {inv.status === 'complete' && inv.totalScore != null && (
-                            <span className={`text-xs font-semibold ${scoreTextColour(inv.grade)}`}>
-                              {inv.totalScore}/100
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-[#9CA3AF] mt-0.5">
-                          {inv.candidateName ? inv.email : null}
-                          {inv.sentAt ? `${inv.candidateName ? ' · ' : ''}Invited ${formatDate(inv.sentAt)}` : null}
-                        </p>
-                      </div>
-                      {inv.status === 'complete' && inv.reportId && (
-                        <Link
-                          href={`/screening/report/${inv.reportId}`}
-                          className="px-3 py-1.5 text-xs font-medium text-[#16a34a] bg-white border border-[#16a34a] rounded-md hover:bg-[#f0fdf4] transition-colors shrink-0"
-                        >
-                          View report
-                        </Link>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+            {historyContent}
           </div>
         )}
       </div>
@@ -2969,9 +3052,8 @@ function ApplicationsSection({
     )
   }
 
-  return (
-    <div className="flex items-start gap-3 mb-5">
-    <div className="flex-1 min-w-0 bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4">
+  const normalContent = (
+    <>
       <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium mb-3">Applications</p>
 
       {/* Application link */}
@@ -3130,6 +3212,15 @@ function ApplicationsSection({
           selecting={selecting}
         />
       )}
+    </>
+  )
+
+  if (embedded) return normalContent
+
+  return (
+    <div className="flex items-start gap-3 mb-5">
+    <div className="flex-1 min-w-0 bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4">
+      {normalContent}
     </div>
     <div className="pt-3 shrink-0">
       <SectionHelpButton onClick={() => setShowHelp(true)} />
@@ -3139,152 +3230,227 @@ function ApplicationsSection({
   )
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────────
+// ── Inline tenancy terms form ────────────────────────────────────────────────
 
-export default function PropertyPage() {
-  const { id } = useParams<{ id: string }>()
-  const router = useRouter()
-  const [property, setProperty] = useState<Property | null>(null)
-  const [loading, setLoading] = useState(true)
+function TenancyTermsForm({
+  propertyId,
+  tenancy,
+  onSaved,
+}: {
+  propertyId: string
+  tenancy: Tenancy
+  onSaved: () => void
+}) {
+  const [rentStr, setRentStr] = useState(tenancy.monthlyRent ? (tenancy.monthlyRent / 100).toString() : '')
+  const [paymentDay, setPaymentDay] = useState(tenancy.paymentDay ?? 1)
+  const [startDate, setStartDate] = useState(tenancy.startDate ? new Date(tenancy.startDate).toISOString().split('T')[0] : '')
+  const [depositStr, setDepositStr] = useState(tenancy.depositAmount ? (tenancy.depositAmount / 100).toString() : '')
+  const [depositScheme, setDepositScheme] = useState(tenancy.depositScheme ?? '')
+  const [depositRef, setDepositRef] = useState(tenancy.depositRef ?? '')
+  const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
+
+  async function save() {
+    const rent = parseFloat(rentStr)
+    if (!rent || rent <= 0) { setError('Enter a valid rent amount'); return }
+    if (!startDate) { setError('Start date is required'); return }
+    setSaving(true)
+    setError(null)
+    setSuccess(false)
+
+    const depositAmount = depositStr ? Math.round(parseFloat(depositStr) * 100) : undefined
+    const res = await fetch(`/api/properties/${propertyId}/tenancy`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        monthlyRent: Math.round(rent * 100),
+        paymentDay,
+        startDate: new Date(startDate).toISOString(),
+        ...(depositAmount !== undefined && { depositAmount }),
+        depositScheme: depositScheme || undefined,
+        depositRef: depositRef || undefined,
+      }),
+    })
+    setSaving(false)
+    if (res.ok) { setSuccess(true); onSaved(); setTimeout(() => setSuccess(false), 2000) }
+    else {
+      const json = await res.json().catch(() => ({}))
+      setError(json.error ?? 'Failed to save')
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      {error && <AlertBar variant="error" message={error} />}
+      {success && <AlertBar variant="success" message="Tenancy details updated" />}
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm text-[#374151] mb-1.5">Monthly rent (&pound;)</label>
+          <input type="number" step="0.01" min="1" value={rentStr} onChange={(e) => setRentStr(e.target.value)} placeholder="1200" className={inputClass} />
+        </div>
+        <div>
+          <label className="block text-sm text-[#374151] mb-1.5">Payment day</label>
+          <select value={paymentDay} onChange={(e) => setPaymentDay(Number(e.target.value))} className={selectClassCompact}>
+            {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
+              <option key={d} value={d}>{d}{d === 1 ? 'st' : d === 2 ? 'nd' : d === 3 ? 'rd' : 'th'}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <div>
+        <label className="block text-sm text-[#374151] mb-1.5">Tenancy start date</label>
+        <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputClass} />
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm text-[#374151] mb-1.5">Deposit amount (&pound;) <span className="text-[#9CA3AF]">(optional)</span></label>
+          <input type="number" step="0.01" min="0" value={depositStr} onChange={(e) => setDepositStr(e.target.value)} placeholder="1200" className={inputClass} />
+        </div>
+        <div>
+          <label className="block text-sm text-[#374151] mb-1.5">Deposit scheme <span className="text-[#9CA3AF]">(optional)</span></label>
+          <input value={depositScheme} onChange={(e) => setDepositScheme(e.target.value)} placeholder="e.g. DPS, TDS" className={inputClass} />
+        </div>
+      </div>
+      <div>
+        <label className="block text-sm text-[#374151] mb-1.5">Deposit reference <span className="text-[#9CA3AF]">(optional)</span></label>
+        <input value={depositRef} onChange={(e) => setDepositRef(e.target.value)} placeholder="Reference number" className={inputClass} />
+      </div>
+      <div className="pt-1">
+        <button onClick={save} disabled={saving} className={buttonClass}>{saving ? 'Saving…' : 'Save changes'}</button>
+      </div>
+    </div>
+  )
+}
+
+// ── Property section wrapper (Documents + Rooms) ─────────────────────────────
+
+function PropertySectionWrapper({ propertyId, rooms }: { propertyId: string; rooms: PropertyRoom[] }) {
+  const [tab, setTab] = useState<'documents' | 'rooms'>('documents')
+  const [showHelp, setShowHelp] = useState(false)
+
+  const helpKey: SectionHelpKey = tab === 'documents' ? 'documents' : 'rooms'
+
+  return (
+    <div className="flex items-start gap-3 mb-5">
+      <div className={`flex-1 min-w-0 ${cardClass}`}>
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium">Property</p>
+        </div>
+        <UnderlineTabs
+          tabs={[
+            { key: 'documents', label: 'Documents' },
+            { key: 'rooms', label: 'Rooms' },
+          ]}
+          active={tab}
+          onChange={(k) => setTab(k as 'documents' | 'rooms')}
+        />
+        <div className="mt-4">
+          {tab === 'documents' && <ComplianceSection propertyId={propertyId} embedded />}
+          {tab === 'rooms' && <RoomsSection propertyId={propertyId} rooms={rooms} embedded />}
+        </div>
+      </div>
+      <div className="pt-3 shrink-0">
+        <SectionHelpButton onClick={() => setShowHelp(true)} blinkKey={tab} />
+      </div>
+      <SectionHelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} section={helpKey} />
+    </div>
+  )
+}
+
+// ── Tenancy section wrapper ──────────────────────────────────────────────────
+
+function TenancySectionWrapper({
+  property,
+  activeTenancy,
+  currentTenant,
+  invitedTenant,
+  activeTenant,
+  candidates,
+  applyLink,
+  portalLink,
+  contractStatus,
+  onRefresh,
+  onContractStatusChange,
+}: {
+  property: Property
+  activeTenancy: Tenancy | null
+  currentTenant: Tenant | null
+  invitedTenant: Tenant | undefined
+  activeTenant: Tenant | undefined
+  candidates: Tenant[]
+  applyLink: string
+  portalLink: string | null
+  contractStatus: string | null
+  onRefresh: () => void
+  onContractStatusChange: (status: string | null) => void
+}) {
+  const hasTenantSelected = !!(activeTenant || invitedTenant)
+
+  // State A: no active tenant — segmented control
+  const [tenancyMode, setTenancyMode] = useState<'have' | 'find'>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem(`tenancy_mode_${property.id}`)
+      if (stored === 'have' || stored === 'find') return stored
+    }
+    return 'find'
+  })
+
+  // State B: active tenant — tabs
+  const [tenantTab, setTenantTab] = useState<'tenant' | 'terms' | 'agreement' | 'history'>('tenant')
   const [showAddTenant, setShowAddTenant] = useState(false)
-  const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const [showEditTenancy, setShowEditTenancy] = useState(false)
-  const [showEditAddress, setShowEditAddress] = useState(false)
+  const [showHelp, setShowHelp] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
-  const [helpOpen, setHelpOpen] = useState<SectionHelpKey | null>(null)
-  const [contractStatus, setContractStatus] = useState<string | null>(null)
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
+  function handleTenancyModeChange(mode: string) {
+    const m = mode as 'have' | 'find'
+    setTenancyMode(m)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`tenancy_mode_${property.id}`, m)
+    }
+  }
 
-  const fetchProperty = useCallback(() => {
-    fetch(`/api/properties/${id}`)
-      .then((r) => r.json())
-      .then((json) => {
-        if (json.error) setError(json.error)
-        else setProperty(json.data)
-      })
-      .catch(() => setError('Failed to load property'))
-      .finally(() => setLoading(false))
-  }, [id])
-
-  useEffect(() => { fetchProperty() }, [fetchProperty])
-
-  function showToast(message: string) {
+  function showInlineToast(message: string) {
     setToast(message)
     setTimeout(() => setToast(null), 3000)
   }
 
-  if (loading) {
+  // Help key depends on state
+  const helpKey: SectionHelpKey = hasTenantSelected
+    ? (tenantTab === 'tenant' ? 'tenant'
+      : tenantTab === 'terms' ? 'tenancy-terms'
+      : tenantTab === 'agreement' ? 'contract'
+      : 'tenancy-history')
+    : (tenancyMode === 'have' ? 'tenancy-add' : 'tenancy-find')
+
+  const blinkKey = hasTenantSelected ? tenantTab : tenancyMode
+
+  // ── State B: active tenant ──
+  if (hasTenantSelected) {
+    const r2rSt = currentTenant ? tenantDocStatus(currentTenant.documents, 'RIGHT_TO_RENT') : 'missing'
+    const borderCls = !currentTenant ? 'border-black/[0.06]'
+      : (r2rSt === 'missing' || r2rSt === 'expired') ? 'border-red-300'
+      : TENANT_STRIP_TYPES.some((t) => tenantDocStatus(currentTenant.documents, t) !== 'valid') ? 'border-orange-300'
+      : 'border-green-300'
+
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="w-7 h-7 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    )
-  }
-
-  if (error || !property) {
-    return (
-      <div className="p-8 text-center">
-        <p className="text-[#6B7280]">{error ?? 'Property not found'}</p>
-        <button onClick={() => router.back()} className="mt-4 text-sm text-[#16a34a] hover:text-[#15803d]">← Back</button>
-      </div>
-    )
-  }
-
-  const address = [property.line1, property.line2, property.city, property.postcode].filter(Boolean).join(', ')
-  const displayName = property.name ?? property.line1
-  const inviteToken = property.tenants.find((t) => t.status === 'INVITED' || t.status === 'TENANT')?.inviteToken
-  const activeTenant = property.tenants.find((t) => t.status === 'TENANT')
-  const invitedTenant = property.tenants.find((t) => t.status === 'INVITED')
-  const currentTenant = activeTenant ?? invitedTenant
-  const candidates = property.tenants.filter((t) => t.status === 'CANDIDATE')
-  const applyLink = `${appUrl}/apply/${property.id}`
-  const portalLink = inviteToken ? `${appUrl}/tenant/join/${inviteToken}` : null
-  const activeTenancy = property.tenancies[0] ?? null
-  // Tenant selected = collapse applications section (show as expandable history)
-  const hasTenantSelected = !!(activeTenant || invitedTenant)
-
-  return (
-    <div className="p-4 lg:p-8 max-w-[50rem]">
-
-      {/* Back */}
-      <Link href="/dashboard/properties" className="inline-flex items-center gap-1 text-sm text-[#9CA3AF] hover:text-[#6B7280] transition-colors mb-6">
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-        </svg>
-        All properties
-      </Link>
-
-      {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
-        <div>
-          <h1 className="text-[#1A1A1A] text-2xl font-bold">{displayName}</h1>
-          <div className="flex items-center gap-2 mt-0.5">
-            <p className="text-[#6B7280] text-sm">{address}</p>
-            <button
-              onClick={() => setShowEditAddress(true)}
-              className="text-xs text-[#9CA3AF] hover:text-[#16a34a] transition-colors"
-            >
-              Edit
-            </button>
+      <div className="flex items-start gap-3 mb-5">
+        <div className={`flex-1 min-w-0 bg-white border ${borderCls} rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4 transition-colors`}>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium">Tenancy</p>
           </div>
-        </div>
-        <StatusBadge status={property.status} config={statusConfig} />
-      </div>
-
-      {showEditAddress && (
-        <EditAddressModal
-          property={property}
-          onClose={() => setShowEditAddress(false)}
-          onSaved={() => { fetchProperty(); showToast('Address updated') }}
-        />
-      )}
-
-      {/* ── Compliance & Documents ────────────────────────────────────────── */}
-      <ComplianceSection propertyId={property.id} />
-
-      {/* ── Rooms ──────────────────────────────────────────────────────────── */}
-      <RoomsSection propertyId={property.id} rooms={property.rooms} />
-
-      {/* ── Tenancy Agreement ────────────────────────────────────────────────── */}
-      {activeTenancy && (
-        <div id="contract-section">
-          <ContractSection tenancyId={activeTenancy.id} onStatusChange={setContractStatus} />
-        </div>
-      )}
-
-      {/* ── Property Inspection ─────────────────────────────────────────────── */}
-      <InspectionSection propertyId={property.id} contractStatus={activeTenancy ? contractStatus : undefined} />
-
-      {/* ── Periodic Inspections ─────────────────────────────────────────────── */}
-      {activeTenancy && (
-        <PeriodicInspectionSection propertyId={property.id} tenancyId={activeTenancy.id} />
-      )}
-
-      {/* ── Tenant section ──────────────────────────────────────────────────── */}
-      {(() => {
-        const r2rSt = currentTenant ? tenantDocStatus(currentTenant.documents, 'RIGHT_TO_RENT') : 'missing'
-        const borderCls = !currentTenant ? 'border-black/[0.06]'
-          : (r2rSt === 'missing' || r2rSt === 'expired') ? 'border-red-300'
-          : TENANT_STRIP_TYPES.some((t) => tenantDocStatus(currentTenant.documents, t) !== 'valid') ? 'border-orange-300'
-          : 'border-green-300'
-        return (
-          <div className="flex items-start gap-3 mb-5">
-          <div className={`flex-1 min-w-0 bg-white border ${borderCls} rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4 transition-colors`}>
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium">Tenant</p>
-              {activeTenancy && currentTenant && (
-                <button
-                  onClick={() => setShowEditTenancy(true)}
-                  className="text-sm px-3 py-1.5 bg-white hover:bg-gray-50 text-gray-700 font-medium rounded-xl transition-colors border border-gray-200"
-                >
-                  Edit
-                </button>
-              )}
-            </div>
-
-            {currentTenant ? (
+          <UnderlineTabs
+            tabs={[
+              { key: 'tenant', label: 'Tenant' },
+              { key: 'terms', label: 'Terms' },
+              { key: 'agreement', label: 'Agreement' },
+              { key: 'history', label: 'History' },
+            ]}
+            active={tenantTab}
+            onChange={(k) => setTenantTab(k as 'tenant' | 'terms' | 'agreement' | 'history')}
+          />
+          <div className="mt-4">
+            {tenantTab === 'tenant' && currentTenant && (
               <div>
                 <Link
                   href={`/dashboard/properties/${property.id}/tenant/${currentTenant.id}`}
@@ -3323,7 +3489,64 @@ export default function PropertyPage() {
                   </div>
                 )}
               </div>
-            ) : (
+            )}
+
+            {tenantTab === 'terms' && activeTenancy && (
+              <TenancyTermsForm
+                propertyId={property.id}
+                tenancy={activeTenancy}
+                onSaved={onRefresh}
+              />
+            )}
+            {tenantTab === 'terms' && !activeTenancy && (
+              <p className="text-[#9CA3AF] text-sm">No active tenancy to edit.</p>
+            )}
+
+            {tenantTab === 'agreement' && activeTenancy && (
+              <ContractSection tenancyId={activeTenancy.id} onStatusChange={onContractStatusChange} embedded />
+            )}
+            {tenantTab === 'agreement' && !activeTenancy && (
+              <p className="text-[#9CA3AF] text-sm">Create a tenancy first to manage the agreement.</p>
+            )}
+
+            {tenantTab === 'history' && (
+              <ApplicationsSection
+                property={property}
+                candidates={candidates}
+                applyLink={applyLink}
+                onRefresh={onRefresh}
+                historyOnly
+                embedded
+              />
+            )}
+          </div>
+        </div>
+        <div className="pt-3 shrink-0">
+          <SectionHelpButton onClick={() => setShowHelp(true)} blinkKey={blinkKey} />
+        </div>
+        <SectionHelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} section={helpKey} />
+      </div>
+    )
+  }
+
+  // ── State A: no active tenant — segmented control ──
+  return (
+    <>
+      <div className="flex items-start gap-3 mb-5">
+        <div className={`flex-1 min-w-0 ${cardClass}`}>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium">Tenancy</p>
+          </div>
+          <SegmentedControl
+            options={[
+              { value: 'have', label: 'I have a tenant' },
+              { value: 'find', label: 'Finding a tenant' },
+            ]}
+            value={tenancyMode}
+            onChange={handleTenancyModeChange}
+          />
+          <div className="mt-4">
+            {tenancyMode === 'have' && (
               <button
                 onClick={() => setShowAddTenant(true)}
                 className="inline-flex items-center gap-1.5 text-sm text-[#16a34a] hover:text-[#15803d] font-medium transition-colors"
@@ -3334,28 +3557,22 @@ export default function PropertyPage() {
                 Add tenant
               </button>
             )}
+            {tenancyMode === 'find' && (
+              <ApplicationsSection
+                property={property}
+                candidates={candidates}
+                applyLink={applyLink}
+                onRefresh={onRefresh}
+                embedded
+              />
+            )}
           </div>
-          <div className="pt-3 shrink-0">
-            <SectionHelpButton onClick={() => setHelpOpen('tenant')} />
-          </div>
-          </div>
-        )
-      })()}
-
-      {/* ── Rent Payments section ───────────────────────────────────────────── */}
-      {activeTenancy && <RentPaymentsSection propertyId={property.id} />}
-
-      {/* ── Maintenance section ──────────────────────────────────────────────── */}
-      <PropertyMaintenanceSection propertyId={property.id} />
-
-      {/* ── Applications section ─────────────────────────────────────────────── */}
-      <ApplicationsSection
-        property={property}
-        candidates={candidates}
-        applyLink={applyLink}
-        onRefresh={fetchProperty}
-        historyOnly={hasTenantSelected}
-      />
+        </div>
+        <div className="pt-3 shrink-0">
+          <SectionHelpButton onClick={() => setShowHelp(true)} blinkKey={blinkKey} />
+        </div>
+        <SectionHelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} section={helpKey} />
+      </div>
 
       {/* Add Tenant Modal */}
       {showAddTenant && (
@@ -3364,25 +3581,208 @@ export default function PropertyPage() {
           onClose={() => setShowAddTenant(false)}
           onSuccess={(message) => {
             setShowAddTenant(false)
-            fetchProperty()
-            showToast(message)
+            onRefresh()
+            showInlineToast(message)
           }}
         />
       )}
 
-      {/* Edit Tenancy Modal */}
-      {showEditTenancy && activeTenancy && (
-        <EditTenancyModal
-          propertyId={property.id}
-          tenancy={activeTenancy}
-          onClose={() => setShowEditTenancy(false)}
-          onSaved={() => { fetchProperty(); showToast('Tenancy details updated') }}
+      {/* Toast */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-50 bg-[#1A1A1A] text-white px-4 py-3 rounded-xl shadow-lg text-sm font-medium animate-in fade-in slide-in-from-bottom-2">
+          {toast}
+        </div>
+      )}
+    </>
+  )
+}
+
+// ── Property condition wrapper (Maintenance + Move-in + Periodic) ────────────
+
+function PropertyConditionWrapper({
+  propertyId,
+  activeTenancy,
+  contractStatus,
+}: {
+  propertyId: string
+  activeTenancy: Tenancy | null
+  contractStatus: string | null
+}) {
+  const [tab, setTab] = useState<'maintenance' | 'move-in' | 'periodic'>('maintenance')
+  const [showHelp, setShowHelp] = useState(false)
+
+  const helpKey: SectionHelpKey = tab === 'maintenance' ? 'maintenance'
+    : tab === 'move-in' ? 'inspection'
+    : 'periodic-inspections'
+
+  const tabs = [
+    { key: 'maintenance', label: 'Maintenance' },
+    { key: 'move-in', label: 'Move-in' },
+    ...(activeTenancy ? [{ key: 'periodic', label: 'Periodic' }] : []),
+  ]
+
+  return (
+    <div className="flex items-start gap-3 mb-5">
+      <div className={`flex-1 min-w-0 ${cardClass}`}>
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium">Property Condition</p>
+        </div>
+        <UnderlineTabs
+          tabs={tabs}
+          active={tab}
+          onChange={(k) => setTab(k as 'maintenance' | 'move-in' | 'periodic')}
+        />
+        <div className="mt-4">
+          {tab === 'maintenance' && <PropertyMaintenanceSection propertyId={propertyId} embedded />}
+          {tab === 'move-in' && (
+            <InspectionSection
+              propertyId={propertyId}
+              contractStatus={activeTenancy ? contractStatus : undefined}
+              embedded
+            />
+          )}
+          {tab === 'periodic' && activeTenancy && (
+            <PeriodicInspectionSection propertyId={propertyId} tenancyId={activeTenancy.id} embedded />
+          )}
+        </div>
+      </div>
+      <div className="pt-3 shrink-0">
+        <SectionHelpButton onClick={() => setShowHelp(true)} blinkKey={tab} />
+      </div>
+      <SectionHelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} section={helpKey} />
+    </div>
+  )
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
+export default function PropertyPage() {
+  const { id } = useParams<{ id: string }>()
+  const router = useRouter()
+  const [property, setProperty] = useState<Property | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [showEditAddress, setShowEditAddress] = useState(false)
+  const [toast, setToast] = useState<string | null>(null)
+  const [helpOpen, setHelpOpen] = useState<SectionHelpKey | null>(null)
+  const [contractStatus, setContractStatus] = useState<string | null>(null)
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
+
+  const fetchProperty = useCallback(() => {
+    fetch(`/api/properties/${id}`)
+      .then((r) => r.json())
+      .then((json) => {
+        if (json.error) setError(json.error)
+        else setProperty(json.data)
+      })
+      .catch(() => setError('Failed to load property'))
+      .finally(() => setLoading(false))
+  }, [id])
+
+  useEffect(() => { fetchProperty() }, [fetchProperty])
+
+  function showToast(message: string) {
+    setToast(message)
+    setTimeout(() => setToast(null), 3000)
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Spinner size="md" />
+      </div>
+    )
+  }
+
+  if (error || !property) {
+    return (
+      <div className="p-8 text-center">
+        <p className="text-[#6B7280]">{error ?? 'Property not found'}</p>
+        <button onClick={() => router.back()} className="mt-4 text-sm text-[#16a34a] hover:text-[#15803d]">← Back</button>
+      </div>
+    )
+  }
+
+  const address = [property.line1, property.line2, property.city, property.postcode].filter(Boolean).join(', ')
+  const displayName = property.name ?? property.line1
+  const inviteToken = property.tenants.find((t) => t.status === 'INVITED' || t.status === 'TENANT')?.inviteToken
+  const activeTenant = property.tenants.find((t) => t.status === 'TENANT')
+  const invitedTenant = property.tenants.find((t) => t.status === 'INVITED')
+  const currentTenant = activeTenant ?? invitedTenant
+  const candidates = property.tenants.filter((t) => t.status === 'CANDIDATE')
+  const applyLink = `${appUrl}/apply/${property.id}`
+  const portalLink = inviteToken ? `${appUrl}/tenant/join/${inviteToken}` : null
+  const activeTenancy = property.tenancies[0] ?? null
+
+  return (
+    <div className="p-4 lg:p-8 max-w-[50rem]">
+
+      {/* Back */}
+      <Link href="/dashboard/properties" className="inline-flex items-center gap-1 text-sm text-[#9CA3AF] hover:text-[#6B7280] transition-colors mb-6">
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+        </svg>
+        All properties
+      </Link>
+
+      {/* Header */}
+      <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
+        <div>
+          <h1 className="text-[#1A1A1A] text-2xl font-bold">{displayName}</h1>
+          <div className="flex items-center gap-2 mt-0.5">
+            <p className="text-[#6B7280] text-sm">{address}</p>
+            <button
+              onClick={() => setShowEditAddress(true)}
+              className="text-xs text-[#9CA3AF] hover:text-[#16a34a] transition-colors"
+            >
+              Edit
+            </button>
+          </div>
+        </div>
+        <StatusBadge status={property.status} config={statusConfig} />
+      </div>
+
+      {showEditAddress && (
+        <EditAddressModal
+          property={property}
+          onClose={() => setShowEditAddress(false)}
+          onSaved={() => { fetchProperty(); showToast('Address updated') }}
         />
       )}
 
+      {/* ── 1. Property (Documents + Rooms) ────────────────────────────────── */}
+      <PropertySectionWrapper propertyId={property.id} rooms={property.rooms} />
+
+      {/* ── 2. Tenancy (State A or B) ──────────────────────────────────────── */}
+      <TenancySectionWrapper
+        property={property}
+        activeTenancy={activeTenancy}
+        currentTenant={currentTenant ?? null}
+        invitedTenant={invitedTenant}
+        activeTenant={activeTenant}
+        candidates={candidates}
+        applyLink={applyLink}
+        portalLink={portalLink}
+        contractStatus={contractStatus}
+        onRefresh={fetchProperty}
+        onContractStatusChange={setContractStatus}
+      />
+
+      {/* ── 3. Rent Payments (unchanged) ───────────────────────────────────── */}
+      {activeTenancy && <RentPaymentsSection propertyId={property.id} />}
+
+      {/* ── 4. Property Condition (Maintenance + Move-in + Periodic) ────────── */}
+      <PropertyConditionWrapper
+        propertyId={property.id}
+        activeTenancy={activeTenancy}
+        contractStatus={contractStatus}
+      />
+
       {/* ── More section ──────────────────────────────────────────────────── */}
       <div className="flex items-start gap-3 mb-5">
-      <div className="flex-1 min-w-0 bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04),_0_4px_12px_rgba(0,0,0,0.04)] p-4">
+      <div className={`flex-1 min-w-0 ${cardClass}`}>
         <p className="text-xs text-[#9CA3AF] uppercase tracking-wide font-medium mb-3">More</p>
         <button
           onClick={() => setShowDeleteModal(true)}
@@ -3409,11 +3809,11 @@ export default function PropertyPage() {
         />
       )}
 
-      {/* Section help modal (for inline sections like Tenant) */}
+      {/* Section help modal (for More section) */}
       <SectionHelpModal
         isOpen={helpOpen !== null}
         onClose={() => setHelpOpen(null)}
-        section={helpOpen ?? 'tenant'}
+        section={helpOpen ?? 'more'}
       />
 
       {/* Toast */}

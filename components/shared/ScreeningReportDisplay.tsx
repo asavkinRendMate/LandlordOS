@@ -1,5 +1,7 @@
 'use client'
 
+import { Spinner } from '@/lib/ui'
+
 // ── Types ───────────────────────────────────────────────────────────────────────
 
 export interface ScoringResult {
@@ -169,9 +171,11 @@ export default function ScreeningReportDisplay({
             <button
               onClick={onUnlock}
               disabled={unlocking}
-              className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold py-3 rounded-lg text-sm transition-colors"
+              className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold py-3 rounded-lg text-sm transition-colors flex items-center justify-center gap-2"
             >
-              {unlocking ? 'Unlocking...' : `Unlock full report — ${unlockPriceDisplay}`}
+              {unlocking
+                ? <><Spinner size="sm" color="white" /> Processing...</>
+                : `Unlock full report — ${unlockPriceDisplay}`}
             </button>
           )}
 

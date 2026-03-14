@@ -16,7 +16,7 @@ import {
 } from '../renderer'
 
 /**
- * Draw a signature block: name, signature line (or image), date, witness line.
+ * Draw a signature block: name, signature line (or image), date.
  * Returns Y after block.
  */
 export function drawSignatureBlock(
@@ -59,15 +59,6 @@ export function drawSignatureBlock(
     })
     ctx.cursorY -= SPACING.blockGap
   }
-
-  // Witness line
-  ctx.cursorY -= SPACING.labelValueGap
-  drawText(ctx, 'Witness:', styles.caption, { x, maxWidth })
-  ctx.cursorY -= 4
-  drawLine(ctx.currentPage, x, ctx.cursorY, x + maxWidth * 0.6, ctx.cursorY, {
-    color: COLORS.borderStrong,
-  })
-  ctx.cursorY -= SPACING.blockGap
 
   return ctx.cursorY
 }

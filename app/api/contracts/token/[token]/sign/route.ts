@@ -4,6 +4,8 @@ import { prisma } from '@/lib/prisma'
 import { sendEmail } from '@/lib/resend'
 import { contractFullySignedLandlordHtml, contractFullySignedTenantHtml } from '@/lib/email-templates/contract'
 import { env } from '@/lib/env'
+import { buildAptContractPDF } from '@/lib/pdf-mappers'
+import { createServerClient } from '@/lib/supabase/server'
 
 const schema = z.object({
   name: z.string().min(1).max(200),
@@ -120,6 +122,33 @@ export async function POST(req: Request, { params }: { params: { token: string }
           }),
         })
       }
+    }
+
+    // Fire-and-forget PDF regeneration when both parties have signed
+    if (newStatus === 'BOTH_SIGNED') {
+      const tenancyId = contract.tenancyId
+      void (async () => {
+        try {
+          const pdfBuffer = await buildAptContractPDF(tenancyId)
+          const storagePath = `contracts/${tenancyId}/contract.pdf`
+          const supabase = createServerClient()
+          const { error: uploadError } = await supabase.storage.from('documents').upload(storagePath, pdfBuffer, {
+            contentType: 'application/pdf',
+            upsert: true,
+          })
+          if (uploadError) {
+            console.error('[contracts/sign] PDF regeneration upload failed:', uploadError)
+            return
+          }
+          await prisma.tenancyContract.update({
+            where: { id: contract.id },
+            data: { pdfUrl: storagePath },
+          })
+          console.log('[contracts/sign] PDF regenerated with signatures for', tenancyId)
+        } catch (err) {
+          console.error('[contracts/sign] PDF regeneration failed:', err)
+        }
+      })()
     }
 
     return NextResponse.json({

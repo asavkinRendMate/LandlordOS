@@ -110,7 +110,17 @@ export async function buildAptContractPDF(tenancyId: string): Promise<Buffer> {
         include: { user: { select: { name: true, email: true } } },
       },
       tenant: { select: { name: true, email: true, phone: true } },
-      contract: { select: { id: true } },
+      contract: {
+        select: {
+          id: true,
+          landlordSignedAt: true,
+          landlordSignedName: true,
+          landlordSignedIp: true,
+          tenantSignedAt: true,
+          tenantSignedName: true,
+          tenantSignedIp: true,
+        },
+      },
     },
   })
 
@@ -151,6 +161,10 @@ export async function buildAptContractPDF(tenancyId: string): Promise<Buffer> {
       },
     ],
     clauses,
+    landlordSignedAt: tenancy.contract?.landlordSignedAt?.toISOString() ?? undefined,
+    landlordSignedIp: tenancy.contract?.landlordSignedIp ?? undefined,
+    tenantSignedAt: tenancy.contract?.tenantSignedAt?.toISOString() ?? undefined,
+    tenantSignedIp: tenancy.contract?.tenantSignedIp ?? undefined,
   }
 
   const result = await generatePDF({ template: 'apt-contract', data })

@@ -116,6 +116,7 @@ export default function ReportPage() {
       return
     }
     setError(null)
+    setUnlocking(true)
 
     try {
       // 1. Fetch server-side pricing
@@ -124,6 +125,7 @@ export default function ReportPage() {
 
       if (!priceRes.ok) {
         setError(priceJson.error || 'Unable to determine price')
+        setUnlocking(false)
         return
       }
 
@@ -133,6 +135,7 @@ export default function ReportPage() {
       // 2. Credit pack — no card needed, show confirm directly
       if (data.method === 'credit_pack') {
         setUnlockPrice('1 credit')
+        setUnlocking(false)
         setShowPriceConfirm(true)
         return
       }
@@ -150,14 +153,17 @@ export default function ReportPage() {
         const subRes = await fetch('/api/payment/subscription')
         const subJson = await subRes.json()
         if (subJson.data?.card) setCardInfo(subJson.data.card)
+        setUnlocking(false)
         setShowPriceConfirm(true)
       } else {
         // No card → open PaymentSetupModal, auto-unlock after card saved
+        setUnlocking(false)
         pendingAutoUnlockRef.current = true
         setShowCardModal(true)
       }
     } catch {
       setError('Something went wrong')
+      setUnlocking(false)
     }
   }
 

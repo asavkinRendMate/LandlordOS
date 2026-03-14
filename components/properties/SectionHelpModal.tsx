@@ -11,6 +11,10 @@ export type SectionHelpKey =
   | 'applications'
   | 'periodic-inspections'
   | 'more'
+  | 'tenancy-add'
+  | 'tenancy-find'
+  | 'tenancy-terms'
+  | 'tenancy-history'
 
 const SECTION_HELP: Record<SectionHelpKey, {
   title: string
@@ -74,6 +78,30 @@ const SECTION_HELP: Record<SectionHelpKey, {
       'A landlord sets up 6-monthly inspections. After 12 months, the check-out shows damaged flooring. The two periodic inspection reports prove the damage occurred in the final 6 months — making the deduction case straightforward.',
     role: 'landlord',
   },
+  'tenancy-add': {
+    title: 'Add a Tenant',
+    description: 'Add an existing tenant to this property by entering their details or sending them an invite.',
+    example: 'Use "Full details" if you have the tenant\'s info ready, or "Invite only" to let them fill in their own details via the tenant portal.',
+    role: 'Once added, the tenant gets access to their portal where they can view documents, report maintenance, and track payments.',
+  },
+  'tenancy-find': {
+    title: 'Find a Tenant',
+    description: 'Invite prospective tenants to apply for this property and screen their finances with AI.',
+    example: 'Enter up to 10 email addresses, toggle financial verification on, send invites \u2014 candidates upload bank statements and you get a scored report.',
+    role: 'Full tenant pipeline from application to selection. Once you select a tenant, this section updates automatically.',
+  },
+  'tenancy-terms': {
+    title: 'Tenancy Terms',
+    description: 'View and edit the financial and contractual terms of this tenancy.',
+    example: 'Update the monthly rent, payment day, start date, or deposit details at any time.',
+    role: 'Keeping these details accurate ensures rent tracking and compliance alerts work correctly.',
+  },
+  'tenancy-history': {
+    title: 'Application History',
+    description: 'A read-only record of all past applicants for this property.',
+    example: 'See who applied, their screening scores, and when they were invited.',
+    role: 'Useful for reference if you need to review past applications or check screening results.',
+  },
   more: {
     title: 'Danger Zone',
     description: 'Deleting a property is permanent and cannot be undone. You will lose access to all historical data associated with this property.',
@@ -127,11 +155,12 @@ export default function SectionHelpModal({ isOpen, onClose, section }: SectionHe
   )
 }
 
-export function SectionHelpButton({ onClick }: { onClick: () => void }) {
+export function SectionHelpButton({ onClick, blinkKey }: { onClick: () => void; blinkKey?: string | number }) {
   return (
     <button
+      key={blinkKey}
       onClick={onClick}
-      className="shrink-0 w-8 h-8 rounded-full border border-gray-200 bg-white text-gray-400 hover:text-gray-600 hover:border-gray-300 flex items-center justify-center text-sm font-medium cursor-pointer transition-colors"
+      className="shrink-0 w-8 h-8 rounded-full border border-gray-200 bg-white text-gray-400 hover:text-gray-600 hover:border-gray-300 flex items-center justify-center text-sm font-medium cursor-pointer transition-colors blink-help"
     >
       i
     </button>
