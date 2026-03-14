@@ -1,3 +1,6 @@
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 import Footer from '@/components/shared/Footer'
 import CrispChat from '@/components/shared/CrispChat'
 

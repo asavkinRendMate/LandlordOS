@@ -52,6 +52,17 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(destination, request.url))
   }
 
+  // Prevent Cloudflare / CDN caching on authenticated or dynamic pages
+  if (
+    path.startsWith('/dashboard') ||
+    path.startsWith('/tenant') ||
+    path.startsWith('/sign') ||
+    path.startsWith('/apply') ||
+    path.startsWith('/admin')
+  ) {
+    supabaseResponse.headers.set('Cache-Control', 'no-store, private')
+  }
+
   return supabaseResponse
 }
 

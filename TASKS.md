@@ -239,6 +239,19 @@ Biggest blocker for monetisation. Card setup is live, but charges and subscripti
 
 ---
 
+## Security — Pending
+
+- [ ] Contract signing page (/sign/contract/[token]) — require
+  auth or email verification before showing signing UI.
+  Current: page is publicly accessible via UUID token (security
+  by obscurity). Proposed fix: if no active session, show OTP
+  email verification step first. If session exists and email
+  matches tenancy tenant email — proceed directly.
+  Priority: medium (UUID token is 122-bit entropy, low practical
+  risk, but auth is cleaner). Defer until after launch.
+
+---
+
 ## Lower Priority / Future
 
 ### GoCardless Direct Debit
