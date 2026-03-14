@@ -36,3 +36,21 @@ Every rule below is non-negotiable. Violating any of them is a bug.
 30. Never modify `lib/pdf-engine/types.ts` field names or remove fields — additive changes only
 31. Never write PDF rendering logic outside `lib/pdf-engine/`
 32. Never pass Prisma model instances into `generatePDF` — map to plain payload first (via pdf-mappers.ts)
+
+---
+
+## Environment Variables — NEVER touch existing values
+
+NEVER modify, overwrite, delete or replace existing values
+in .env.local or any .env* file.
+
+When asked to add new environment variables:
+- ONLY append new lines at the bottom
+- Never touch existing lines
+- Never replace placeholder-looking values — they may be real keys
+- Never regenerate or recreate .env.local from scratch
+
+If you need to show the user what to add, output the lines
+as a code block in your response — do not write them to the file.
+
+This rule has no exceptions.

@@ -108,6 +108,7 @@ function updateGAConsent() {
 
 function loadFBPixel() {
   if (!FB_ID || document.getElementById('fb-pixel')) return
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') return
 
   const script = document.createElement('script')
   script.id = 'fb-pixel'
