@@ -144,7 +144,7 @@ const ONBOARDING_STEPS: Array<{ key: string; label: string; comingSoon?: boolean
   { key: 'rightToRent', label: 'Upload Right to Rent documents' },
   { key: 'deposit', label: 'Deposit protection' },
   { key: 'rentSetup', label: 'Rent payment setup' },
-  { key: 'tenancyAgreement', label: 'Tenancy agreement', comingSoon: true },
+  { key: 'tenancyAgreement', label: 'Tenancy agreement' },
 ]
 
 function OnboardingChecklist({ state }: { state: Record<string, boolean> | null }) {
@@ -673,6 +673,150 @@ function MyDocumentsSection({ tenantId }: { tenantId: string }) {
         preselectedType={uploadPreselectedType}
         title="Upload Your Document"
       />
+    </div>
+  )
+}
+
+// ── Contract section ──────────────────────────────────────────────────────────
+
+interface ContractData {
+  status: string
+  contractType: string
+  tenantSignedAt: string | null
+  landlordSignedAt: string | null
+  signingToken: string
+  hasPdf: boolean
+}
+
+function ContractSection() {
+  const [contract, setContract] = useState<ContractData | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/tenant/contract')
+      .then((r) => r.json())
+      .then((json) => {
+        if (json.data?.status) setContract(json.data)
+      })
+      .finally(() => setLoading(false))
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-100 p-5">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center text-green-600">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <h2 className="text-gray-900 font-semibold">Tenancy Agreement</h2>
+        </div>
+        <div className="flex justify-center py-3">
+          <div className="w-5 h-5 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+        </div>
+      </div>
+    )
+  }
+
+  // State A: no contract
+  if (!contract) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-100 p-5">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center text-green-600">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <h2 className="text-gray-900 font-semibold">Tenancy Agreement</h2>
+        </div>
+        <p className="text-sm text-gray-500">
+          Your landlord hasn&apos;t sent a tenancy agreement yet.
+        </p>
+      </div>
+    )
+  }
+
+  const needsTenantSignature =
+    !contract.tenantSignedAt &&
+    (contract.status === 'PENDING_SIGNATURES' || contract.status === 'LANDLORD_SIGNED')
+
+  const tenantSignedWaiting =
+    !!contract.tenantSignedAt && contract.status === 'TENANT_SIGNED'
+
+  const fullySigned = contract.status === 'BOTH_SIGNED'
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 p-5">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center text-green-600">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        </div>
+        <h2 className="text-gray-900 font-semibold">Tenancy Agreement</h2>
+      </div>
+
+      {/* State B: needs tenant signature */}
+      {needsTenantSignature && (
+        <div className="flex items-start gap-3">
+          <div className="rounded-full bg-amber-100 p-2 shrink-0">
+            <svg className="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            </svg>
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-medium text-gray-900">
+              Your signature is required
+            </p>
+            <p className="text-sm text-gray-500 mt-0.5">
+              Your landlord has sent a tenancy agreement for you to sign.
+            </p>
+            <a
+              href={`/sign/contract/${contract.signingToken}`}
+              className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-green-700 hover:text-green-900 transition-colors"
+            >
+              Review and sign →
+            </a>
+          </div>
+        </div>
+      )}
+
+      {/* State C: fully signed */}
+      {fullySigned && (
+        <div>
+          <div className="flex items-center gap-2 text-green-700">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="text-sm font-medium">Agreement signed by both parties</span>
+          </div>
+          {contract.hasPdf && (
+            <a
+              href="/api/tenant/contract/pdf-url"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1 transition-colors"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Download PDF
+            </a>
+          )}
+        </div>
+      )}
+
+      {/* State D: tenant signed, waiting for landlord */}
+      {tenantSignedWaiting && (
+        <div className="flex items-center gap-2 text-sm text-gray-600">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>You&apos;ve signed — waiting for your landlord&apos;s signature.</span>
+        </div>
+      )}
     </div>
   )
 }
@@ -1505,6 +1649,9 @@ export default function TenantDashboardClient({ tenant, property, inspection, pe
 
           {/* My Documents */}
           <MyDocumentsSection tenantId={tenant.id} />
+
+          {/* Tenancy Agreement */}
+          <ContractSection />
 
           {/* Move-in Inspection */}
           {inspection && <InspectionSection report={inspection} />}
