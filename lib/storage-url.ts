@@ -6,7 +6,7 @@ import { createServerClient } from '@/lib/supabase/server'
  * Rules:
  *  - NEVER store signed URLs in the database — store only storage paths.
  *  - ALWAYS generate a fresh signed URL at request time with getSignedUrl().
- *  - Signed URL expiry: 3600s (1 hour) — enough for a single session.
+ *  - Signed URL expiry: 86400s (24 hours) by default.
  */
 
 const DEFAULT_BUCKET = 'documents'
@@ -44,7 +44,7 @@ function extractStoragePath(bucket: string, value: string): string {
 export async function getSignedUrl(
   bucket: string,
   path: string,
-  expiresIn = 3600,
+  expiresIn = 86400,
 ): Promise<string> {
   const storagePath = extractStoragePath(bucket, path)
   const supabase = createServerClient()
