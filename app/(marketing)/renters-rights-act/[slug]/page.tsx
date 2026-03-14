@@ -6,14 +6,14 @@ import { MDXRemote } from 'next-mdx-remote/rsc'
 import remarkGfm from 'remark-gfm'
 import rehypeSlug from 'rehype-slug'
 import rehypeAutolinkHeadings from 'rehype-autolink-headings'
-import { getAllGuideSlugs, getGuideBySlug } from '@/lib/guides'
+import { getAllRraSlugs, getRraArticleBySlug, getAllRraArticles } from '@/lib/rra'
 import { mdxComponents } from '@/components/guides/MDXComponents'
 import ShareButtons from '@/components/ShareButtons'
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://letsorted.co.uk'
 
 export function generateStaticParams() {
-  return getAllGuideSlugs().map((slug) => ({ slug }))
+  return getAllRraSlugs().map((slug) => ({ slug }))
 }
 
 export function generateMetadata({
@@ -21,20 +21,20 @@ export function generateMetadata({
 }: {
   params: { slug: string }
 }): Metadata {
-  const guide = getGuideBySlug(params.slug)
-  if (!guide) return {}
+  const article = getRraArticleBySlug(params.slug)
+  if (!article) return {}
 
-  const { title, description, slug, publishedAt, updatedAt } = guide.frontmatter
+  const { title, description, slug, publishedAt, updatedAt } = article.frontmatter
 
   return {
     title,
     description,
-    alternates: { canonical: `/guides/${slug}` },
+    alternates: { canonical: `/renters-rights-act/${slug}` },
     openGraph: {
       type: 'article',
       title,
       description,
-      url: `${BASE_URL}/guides/${slug}`,
+      url: `${BASE_URL}/renters-rights-act/${slug}`,
       publishedTime: publishedAt,
       modifiedTime: updatedAt,
       authors: ['LetSorted'],
@@ -55,15 +55,17 @@ function formatDate(dateStr: string) {
   })
 }
 
-export default function GuideArticlePage({
+export default function RraArticlePage({
   params,
 }: {
   params: { slug: string }
 }) {
-  const guide = getGuideBySlug(params.slug)
-  if (!guide) notFound()
+  const article = getRraArticleBySlug(params.slug)
+  if (!article) notFound()
 
-  const { frontmatter, content } = guide
+  const { frontmatter, content } = article
+  const allArticles = getAllRraArticles()
+  const otherArticles = allArticles.filter((a) => a.frontmatter.slug !== frontmatter.slug)
 
   const articleSchema = {
     '@context': 'https://schema.org',
@@ -78,7 +80,7 @@ export default function GuideArticlePage({
       name: 'LetSorted',
       url: BASE_URL,
     },
-    mainEntityOfPage: `${BASE_URL}/guides/${frontmatter.slug}`,
+    mainEntityOfPage: `${BASE_URL}/renters-rights-act/${frontmatter.slug}`,
   }
 
   return (
@@ -92,10 +94,10 @@ export default function GuideArticlePage({
           </Link>
           <div className="flex items-center gap-1.5 md:gap-2.5">
             <Link
-              href="/guides"
+              href="/renters-rights-act"
               className="text-green-700 font-semibold px-3 py-2 md:px-4 md:py-2.5 text-xs md:text-sm"
             >
-              Guides
+              RRA Guides
             </Link>
             <Link
               href="/screening"
@@ -119,8 +121,8 @@ export default function GuideArticlePage({
       <article className="max-w-3xl mx-auto px-6 py-12 sm:py-16">
         {/* Breadcrumb */}
         <nav className="mb-8 text-sm text-gray-400">
-          <Link href="/guides" className="hover:text-green-600 transition-colors">
-            Guides
+          <Link href="/renters-rights-act" className="hover:text-green-600 transition-colors">
+            Renters&apos; Rights Act
           </Link>
           <span className="mx-2">/</span>
           <span className="text-gray-600">{frontmatter.title}</span>
@@ -174,11 +176,36 @@ export default function GuideArticlePage({
         <div className="mt-12 pt-8 border-t border-gray-200">
           <p className="text-sm text-gray-500 mb-3">Found this useful? Share with other landlords:</p>
           <ShareButtons
-            url={`${BASE_URL}/guides/${frontmatter.slug}`}
+            url={`${BASE_URL}/renters-rights-act/${frontmatter.slug}`}
             title={frontmatter.title}
           />
         </div>
       </article>
+
+      {/* ── Related RRA Articles ──────────────────────────────────────── */}
+      {otherArticles.length > 0 && (
+        <section className="bg-gray-50 py-12 px-6">
+          <div className="max-w-3xl mx-auto">
+            <h2 className="text-xl font-bold text-gray-900 mb-6">
+              More Renters&apos; Rights Act guides
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {otherArticles.map((a) => (
+                <Link
+                  key={a.frontmatter.slug}
+                  href={`/renters-rights-act/${a.frontmatter.slug}`}
+                  className="group block border border-gray-200 bg-white rounded-xl p-5 hover:border-green-300 hover:shadow-md transition-all duration-200"
+                >
+                  <h3 className="text-sm font-bold text-gray-900 group-hover:text-green-700 transition-colors mb-1">
+                    {a.frontmatter.title}
+                  </h3>
+                  <p className="text-xs text-gray-400">{a.frontmatter.readingTime} min read</p>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ── Bottom CTA ──────────────────────────────────────────────────── */}
       <section className="bg-green-50 py-16 px-6">

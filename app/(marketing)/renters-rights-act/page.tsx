@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
 import { CrispChatLink } from './crisp-link'
+import { getAllRraArticles } from '@/lib/rra'
 
 export const metadata: Metadata = {
   title: "Renters' Rights Act 2025: What UK Landlords Need to Know",
@@ -267,6 +268,57 @@ export default function RentersRightsActPage() {
           </div>
         </div>
       </section>
+
+      {/* ── Detailed Guides ─────────────────────────────────────────────── */}
+      {(() => {
+        const rraArticles = getAllRraArticles()
+        if (rraArticles.length === 0) return null
+        return (
+          <section className="py-16 px-6 bg-gray-50">
+            <div className="max-w-5xl mx-auto">
+              <div className="text-center mb-10">
+                <h2 className="text-3xl font-bold text-gray-900 mb-3">Detailed guides</h2>
+                <p className="text-gray-500 text-lg max-w-2xl mx-auto">
+                  In-depth articles on every aspect of the Renters&apos; Rights Act.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {rraArticles.map((article) => (
+                  <Link
+                    key={article.frontmatter.slug}
+                    href={`/renters-rights-act/${article.frontmatter.slug}`}
+                    className="group block border border-gray-200 bg-white rounded-xl p-6 hover:border-green-300 hover:shadow-md transition-all duration-200"
+                  >
+                    <div className="flex flex-wrap gap-1.5 mb-3">
+                      {article.frontmatter.tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="inline-block bg-green-50 text-green-700 text-xs font-medium px-2 py-0.5 rounded-full"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 group-hover:text-green-700 transition-colors mb-2">
+                      {article.frontmatter.title}
+                    </h3>
+                    <p className="text-gray-500 text-sm leading-relaxed mb-4 line-clamp-3">
+                      {article.frontmatter.description}
+                    </p>
+                    <div className="flex items-center justify-between text-xs text-gray-400">
+                      <span>{article.frontmatter.readingTime} min read</span>
+                    </div>
+                    <div className="mt-4 text-sm font-semibold text-green-600 group-hover:text-green-700 flex items-center gap-1 transition-colors">
+                      Read guide
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </section>
+        )
+      })()}
 
       {/* ── Bottom CTA ────────────────────────────────────────────────────── */}
       <section className="py-20 px-6" style={{ background: '#1a3d2b' }}>

@@ -1,6 +1,8 @@
 import type { MetadataRoute } from 'next'
 import { getAllGuides } from '@/lib/guides'
 import { getAllUpdates } from '@/lib/updates'
+import { getAllRraArticles } from '@/lib/rra'
+import { getAllChecklistArticles } from '@/lib/checklist'
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://letsorted.co.uk'
 
@@ -97,6 +99,28 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
     // ── Guides ─────────────────────────────────────────────────────────────────
     ...guideEntries,
+
+    // ── RRA Articles ─────────────────────────────────────────────────────────
+    ...getAllRraArticles().map((a) => ({
+      url: `${BASE_URL}/renters-rights-act/${a.frontmatter.slug}`,
+      lastModified: new Date(a.frontmatter.updatedAt || a.frontmatter.publishedAt),
+      changeFrequency: 'monthly' as const,
+      priority: 0.7,
+    })),
+
+    // ── Landlord Checklist ───────────────────────────────────────────────────
+    {
+      url: `${BASE_URL}/landlord-checklist`,
+      lastModified: now,
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    ...getAllChecklistArticles().map((a) => ({
+      url: `${BASE_URL}/landlord-checklist/${a.frontmatter.slug}`,
+      lastModified: new Date(a.frontmatter.updatedAt || a.frontmatter.publishedAt),
+      changeFrequency: 'monthly' as const,
+      priority: 0.7,
+    })),
 
     // ── Legal ─────────────────────────────────────────────────────────────────
     {

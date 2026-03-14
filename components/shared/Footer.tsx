@@ -68,6 +68,9 @@ export default function Footer({ variant }: FooterProps) {
             <Link href="/renters-rights-act" className="block text-gray-500 hover:text-gray-800 transition-colors text-xs">
               Renters&apos; Rights Act
             </Link>
+            <Link href="/landlord-checklist" className="block text-gray-500 hover:text-gray-800 transition-colors text-xs">
+              Landlord Checklist
+            </Link>
             <Link href="/screening" className="block text-gray-500 hover:text-gray-800 transition-colors text-xs">
               Tenant Screening
             </Link>

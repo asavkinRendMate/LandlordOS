@@ -1,23 +1,13 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import Image from 'next/image'
-import { MDXRemote } from 'next-mdx-remote/rsc'
-import { getAllUpdates, type UpdateTag } from '@/lib/updates'
-import ShareButtons from '@/components/ShareButtons'
-
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://letsorted.co.uk'
+import { getAllChecklistArticles } from '@/lib/checklist'
 
 export const metadata: Metadata = {
-  title: 'What\'s new — LetSorted',
+  title: 'UK Landlord Compliance Checklist — Practical Guides for Every Stage',
   description:
-    'Latest features, improvements, and fixes to LetSorted — the property management platform for UK landlords.',
-  alternates: { canonical: '/updates' },
-}
-
-const tagStyles: Record<UpdateTag, string> = {
-  'New feature': 'bg-green-50 text-green-700',
-  Improvement: 'bg-blue-50 text-blue-700',
-  Fix: 'bg-amber-50 text-amber-700',
+    'Practical guides for every stage of a tenancy — from move-in inspection to deposit return. Stay compliant and protect your investment.',
+  alternates: { canonical: '/landlord-checklist' },
 }
 
 function formatDate(dateStr: string) {
@@ -28,8 +18,8 @@ function formatDate(dateStr: string) {
   })
 }
 
-export default function UpdatesPage() {
-  const updates = getAllUpdates()
+export default function LandlordChecklistPage() {
+  const articles = getAllChecklistArticles()
 
   return (
     <>
@@ -42,16 +32,10 @@ export default function UpdatesPage() {
           </Link>
           <div className="flex items-center gap-1.5 md:gap-2.5">
             <Link
-              href="/guides"
-              className="text-gray-600 hover:text-green-700 font-semibold px-3 py-2 md:px-4 md:py-2.5 text-xs md:text-sm transition-colors"
-            >
-              Guides
-            </Link>
-            <Link
-              href="/updates"
+              href="/landlord-checklist"
               className="text-green-700 font-semibold px-3 py-2 md:px-4 md:py-2.5 text-xs md:text-sm"
             >
-              Updates
+              Checklist
             </Link>
             <Link
               href="/screening"
@@ -69,66 +53,52 @@ export default function UpdatesPage() {
       <section className="py-16 sm:py-20 px-6 bg-gradient-to-b from-green-50 via-green-50/40 to-white">
         <div className="max-w-3xl mx-auto text-center">
           <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-900 tracking-tight mb-4">
-            What&apos;s new
+            UK Landlord Compliance Checklist
           </h1>
           <p className="text-lg text-gray-500 leading-relaxed max-w-2xl mx-auto">
-            Latest features and improvements to LetSorted
+            Practical guides for every stage of a tenancy — from move-in to deposit return.
           </p>
         </div>
       </section>
 
-      {/* ── Timeline ────────────────────────────────────────────────────── */}
-      <section className="max-w-3xl mx-auto px-6 pb-20">
-        {updates.length === 0 ? (
-          <p className="text-center text-gray-400 py-12">Updates coming soon.</p>
+      {/* ── Articles Grid ───────────────────────────────────────────────── */}
+      <section className="max-w-5xl mx-auto px-6 pb-20">
+        {articles.length === 0 ? (
+          <p className="text-center text-gray-400 py-12">Guides coming soon.</p>
         ) : (
-          <div className="relative">
-            {/* Vertical line */}
-            <div className="absolute left-[7px] top-2 bottom-2 w-px bg-gray-200 hidden sm:block" />
-
-            <div className="space-y-10">
-              {updates.map((update) => (
-                <div key={update.slug} className="relative sm:pl-10">
-                  {/* Timeline dot */}
-                  <div className="absolute left-0 top-1.5 w-[15px] h-[15px] rounded-full border-2 border-green-500 bg-white hidden sm:block" />
-
-                  {/* Date + tag */}
-                  <div className="flex items-center gap-3 mb-2">
-                    <time className="text-sm text-gray-400">{formatDate(update.date)}</time>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {articles.map((article) => (
+              <Link
+                key={article.frontmatter.slug}
+                href={`/landlord-checklist/${article.frontmatter.slug}`}
+                className="group block border border-gray-200 rounded-xl p-6 hover:border-green-300 hover:shadow-md transition-all duration-200"
+              >
+                <div className="flex flex-wrap gap-1.5 mb-3">
+                  {article.frontmatter.tags.map((tag) => (
                     <span
-                      className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full ${tagStyles[update.tag]}`}
+                      key={tag}
+                      className="inline-block bg-green-50 text-green-700 text-xs font-medium px-2 py-0.5 rounded-full"
                     >
-                      {update.tag}
+                      {tag}
                     </span>
-                  </div>
-
-                  {/* Title */}
-                  <h2 className="text-lg font-bold text-gray-900 mb-2">
-                    {update.title}
-                  </h2>
-
-                  {/* Summary */}
-                  <p className="text-gray-500 leading-relaxed">
-                    {update.summary}
-                  </p>
-
-                  {/* Optional MDX body */}
-                  {update.content.trim() && (
-                    <div className="mt-4 prose-custom text-sm">
-                      <MDXRemote source={update.content} />
-                    </div>
-                  )}
-
-                  {/* Share */}
-                  <div className="mt-4">
-                    <ShareButtons
-                      url={`${BASE_URL}/updates`}
-                      title={update.title}
-                    />
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+                <h2 className="text-xl font-bold text-gray-900 group-hover:text-green-700 transition-colors mb-2">
+                  {article.frontmatter.title}
+                </h2>
+                <p className="text-gray-500 text-sm leading-relaxed mb-4 line-clamp-3">
+                  {article.frontmatter.description}
+                </p>
+                <div className="flex items-center justify-between text-xs text-gray-400">
+                  <span>{article.frontmatter.readingTime} min read</span>
+                  <span>{formatDate(article.frontmatter.publishedAt)}</span>
+                </div>
+                <div className="mt-4 text-sm font-semibold text-green-600 group-hover:text-green-700 flex items-center gap-1 transition-colors">
+                  Read guide
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                </div>
+              </Link>
+            ))}
           </div>
         )}
       </section>
