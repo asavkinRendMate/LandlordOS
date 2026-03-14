@@ -2701,101 +2701,6 @@ function SelectTenantModal({
   )
 }
 
-// ── Edit Tenancy Modal ────────────────────────────────────────────────────────
-
-function EditTenancyModal({
-  propertyId,
-  tenancy,
-  onClose,
-  onSaved,
-}: {
-  propertyId: string
-  tenancy: Tenancy
-  onClose: () => void
-  onSaved: () => void
-}) {
-  const [rentStr, setRentStr] = useState(tenancy.monthlyRent ? (tenancy.monthlyRent / 100).toString() : '')
-  const [paymentDay, setPaymentDay] = useState(tenancy.paymentDay ?? 1)
-  const [startDate, setStartDate] = useState(tenancy.startDate ? new Date(tenancy.startDate).toISOString().split('T')[0] : '')
-  const [depositStr, setDepositStr] = useState(tenancy.depositAmount ? (tenancy.depositAmount / 100).toString() : '')
-  const [depositScheme, setDepositScheme] = useState(tenancy.depositScheme ?? '')
-  const [depositRef, setDepositRef] = useState(tenancy.depositRef ?? '')
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  async function save() {
-    const rent = parseFloat(rentStr)
-    if (!rent || rent <= 0) { setError('Enter a valid rent amount'); return }
-    if (!startDate) { setError('Start date is required'); return }
-    setSaving(true)
-    setError(null)
-
-    const depositAmount = depositStr ? Math.round(parseFloat(depositStr) * 100) : undefined
-    const res = await fetch(`/api/properties/${propertyId}/tenancy`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        monthlyRent: Math.round(rent * 100),
-        paymentDay,
-        startDate: new Date(startDate).toISOString(),
-        ...(depositAmount !== undefined && { depositAmount }),
-        depositScheme: depositScheme || undefined,
-        depositRef: depositRef || undefined,
-      }),
-    })
-    setSaving(false)
-    if (res.ok) { onSaved(); onClose() }
-    else {
-      const json = await res.json().catch(() => ({}))
-      setError(json.error ?? 'Failed to save')
-    }
-  }
-
-  return (
-    <Modal isOpen onClose={onClose} title="Edit tenancy details" size="md">
-      <div className="space-y-4">
-        {error && <AlertBar variant="error" message={error} />}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm text-[#374151] mb-1.5">Monthly rent (&pound;)</label>
-            <input type="number" step="0.01" min="1" value={rentStr} onChange={(e) => setRentStr(e.target.value)} placeholder="1200" className={inputClass} />
-          </div>
-          <div>
-            <label className="block text-sm text-[#374151] mb-1.5">Payment day</label>
-            <select value={paymentDay} onChange={(e) => setPaymentDay(Number(e.target.value))} className={selectClassCompact}>
-              {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
-                <option key={d} value={d}>{d}{d === 1 ? 'st' : d === 2 ? 'nd' : d === 3 ? 'rd' : 'th'}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-        <div>
-          <label className="block text-sm text-[#374151] mb-1.5">Tenancy start date</label>
-          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputClass} />
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm text-[#374151] mb-1.5">Deposit amount (&pound;) <span className="text-[#9CA3AF]">(optional)</span></label>
-            <input type="number" step="0.01" min="0" value={depositStr} onChange={(e) => setDepositStr(e.target.value)} placeholder="1200" className={inputClass} />
-          </div>
-          <div>
-            <label className="block text-sm text-[#374151] mb-1.5">Deposit scheme <span className="text-[#9CA3AF]">(optional)</span></label>
-            <input value={depositScheme} onChange={(e) => setDepositScheme(e.target.value)} placeholder="e.g. DPS, TDS" className={inputClass} />
-          </div>
-        </div>
-        <div>
-          <label className="block text-sm text-[#374151] mb-1.5">Deposit reference <span className="text-[#9CA3AF]">(optional)</span></label>
-          <input value={depositRef} onChange={(e) => setDepositRef(e.target.value)} placeholder="Reference number" className={inputClass} />
-        </div>
-        <div className="flex gap-3 pt-2">
-          <button onClick={onClose} className={`${buttonSecondaryClass} flex-1`}>Cancel</button>
-          <button onClick={save} disabled={saving} className={`${buttonClass} flex-1`}>{saving ? 'Saving…' : 'Save'}</button>
-        </div>
-      </div>
-    </Modal>
-  )
-}
-
 // ── Edit Address Modal ──────────────────────────────────────────────────────
 
 function EditAddressModal({
@@ -3369,7 +3274,6 @@ function TenancySectionWrapper({
   candidates,
   applyLink,
   portalLink,
-  contractStatus,
   onRefresh,
   onContractStatusChange,
 }: {
@@ -3381,7 +3285,6 @@ function TenancySectionWrapper({
   candidates: Tenant[]
   applyLink: string
   portalLink: string | null
-  contractStatus: string | null
   onRefresh: () => void
   onContractStatusChange: (status: string | null) => void
 }) {
@@ -3765,7 +3668,6 @@ export default function PropertyPage() {
         candidates={candidates}
         applyLink={applyLink}
         portalLink={portalLink}
-        contractStatus={contractStatus}
         onRefresh={fetchProperty}
         onContractStatusChange={setContractStatus}
       />
