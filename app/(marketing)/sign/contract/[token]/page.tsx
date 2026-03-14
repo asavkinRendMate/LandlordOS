@@ -30,17 +30,29 @@ export default function SignContractPage() {
   const [name, setName] = useState('')
   const [signing, setSigning] = useState(false)
   const [signed, setSigned] = useState(false)
+  const [pdfSrc, setPdfSrc] = useState<string | null>(null)
+  const [pdfExpired, setPdfExpired] = useState(false)
+
+  function fetchPdfUrl() {
+    setPdfExpired(false)
+    fetch(`/api/contracts/token/${token}/pdf-url`, { redirect: 'follow' })
+      .then((r) => { if (r.ok) setPdfSrc(r.url) })
+      .catch(() => {})
+  }
 
   useEffect(() => {
     fetch(`/api/contracts/token/${token}`)
       .then((r) => r.json())
       .then((json) => {
         if (json.error) setError(json.error)
-        else setContract(json.data)
+        else {
+          setContract(json.data)
+          if (json.data?.pdfUrl) fetchPdfUrl()
+        }
       })
       .catch(() => setError('Failed to load contract'))
       .finally(() => setLoading(false))
-  }, [token])
+  }, [token]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleSign() {
     if (!name.trim()) return
@@ -57,10 +69,13 @@ export default function SignContractPage() {
         return
       }
       setSigned(true)
-      // Refresh contract data
+      // Refresh contract data and PDF (re-generated with signatures)
       const refresh = await fetch(`/api/contracts/token/${token}`)
       const refreshJson = await refresh.json()
-      if (refreshJson.data) setContract(refreshJson.data)
+      if (refreshJson.data) {
+        setContract(refreshJson.data)
+        if (refreshJson.data.pdfUrl) fetchPdfUrl()
+      }
     } catch {
       showErrorToast({ message: 'Something went wrong' })
     } finally {
@@ -155,14 +170,36 @@ export default function SignContractPage() {
             </div>
 
             {/* PDF Viewer */}
-            {contract.pdfUrl && (
-              <div className="mb-6 rounded-xl overflow-hidden border border-gray-200 bg-white shadow-sm">
-                <iframe
-                  src={`/api/contracts/token/${token}/pdf-url`}
-                  className="w-full rounded-lg border border-gray-200"
-                  style={{ height: '70vh' }}
-                  title="Tenancy Agreement"
-                />
+            {contract.pdfUrl && pdfSrc && (
+              <div className="mb-6">
+                {pdfExpired && (
+                  <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-lg px-4 py-2 mb-2 text-sm text-amber-800">
+                    <span>PDF link may have expired.</span>
+                    <button
+                      onClick={fetchPdfUrl}
+                      className="font-medium text-amber-700 hover:text-amber-900 underline"
+                    >
+                      Reload PDF
+                    </button>
+                  </div>
+                )}
+                <div className="rounded-xl overflow-hidden border border-gray-200 bg-white shadow-sm">
+                  <iframe
+                    src={`${pdfSrc}#navpanes=0&view=FitH`}
+                    className="w-full rounded-lg border border-gray-200"
+                    style={{ height: '70vh' }}
+                    title="Tenancy Agreement"
+                    onError={() => setPdfExpired(true)}
+                  />
+                </div>
+                {!pdfExpired && (
+                  <button
+                    onClick={fetchPdfUrl}
+                    className="mt-2 text-xs text-[#9CA3AF] hover:text-[#6B7280] transition-colors"
+                  >
+                    Reload PDF
+                  </button>
+                )}
               </div>
             )}
 
