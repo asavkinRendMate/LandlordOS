@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
 import { createAuthClient } from '@/lib/supabase/auth'
 import { prisma } from '@/lib/prisma'
-import { createServerClient } from '@/lib/supabase/server'
 import { buildCoverSheetPDF } from '@/lib/pdf-mappers'
 import { sendEmail } from '@/lib/resend'
 import { contractSigningHtml } from '@/lib/email-templates/contract'
 import { env } from '@/lib/env'
+import { uploadFile, ensureBucket } from '@/lib/storage-url'
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024 // 20MB
 
@@ -37,31 +37,20 @@ export async function POST(req: Request) {
     if (tenancy.contract) return NextResponse.json({ error: 'Contract already exists for this tenancy' }, { status: 409 })
     if (!tenancy.tenant) return NextResponse.json({ error: 'No tenant linked to this tenancy' }, { status: 400 })
 
-    const supabaseAdmin = createServerClient()
-    const { error: bucketError } = await supabaseAdmin.storage.getBucket('documents')
-    if (bucketError) await supabaseAdmin.storage.createBucket('documents', { public: false })
+    await ensureBucket('documents')
 
     // Upload original
     const arrayBuffer = await file.arrayBuffer()
     const uploadedBuffer = Buffer.from(arrayBuffer)
-
-    const originalPath = `contracts/${tenancyId}/original.pdf`
-    await supabaseAdmin.storage.from('documents').upload(originalPath, uploadedBuffer, {
-      contentType: 'application/pdf',
-      upsert: true,
-    })
+    await uploadFile('documents', `contracts/${tenancyId}/original.pdf`, uploadedBuffer)
 
     // Generate cover sheet + merge
     const combinedBuffer = await buildCoverSheetPDF(tenancyId, uploadedBuffer)
 
-    // Upload combined
-    const storagePath = `contracts/${tenancyId}/contract.pdf`
-    await supabaseAdmin.storage.from('documents').upload(storagePath, combinedBuffer, {
-      contentType: 'application/pdf',
-      upsert: true,
-    })
+    // Upload combined — returns storage path
+    const storagePath = await uploadFile('documents', `contracts/${tenancyId}/contract.pdf`, combinedBuffer)
 
-    // Create contract record
+    // Create contract record with storage path (not signed URL)
     const contract = await prisma.tenancyContract.create({
       data: {
         tenancyId,

@@ -4,10 +4,10 @@ import { createAuthClient } from '@/lib/supabase/auth'
 import { prisma } from '@/lib/prisma'
 import { charge, hasCard } from '@/lib/payment-service'
 import { buildAptContractPDF } from '@/lib/pdf-mappers'
-import { createServerClient } from '@/lib/supabase/server'
 import { sendEmail } from '@/lib/resend'
 import { contractSigningHtml } from '@/lib/email-templates/contract'
 import { env } from '@/lib/env'
+import { uploadFile, ensureBucket } from '@/lib/storage-url'
 
 const schema = z.object({
   tenancyId: z.string().min(1),
@@ -48,18 +48,11 @@ export async function POST(req: Request) {
     // Generate PDF
     const pdfBuffer = await buildAptContractPDF(tenancyId)
 
-    // Upload to storage
-    const storagePath = `contracts/${tenancyId}/contract.pdf`
-    const supabaseAdmin = createServerClient()
-    const { error: bucketError } = await supabaseAdmin.storage.getBucket('documents')
-    if (bucketError) await supabaseAdmin.storage.createBucket('documents', { public: false })
+    // Upload to storage — returns storage path
+    await ensureBucket('documents')
+    const storagePath = await uploadFile('documents', `contracts/${tenancyId}/contract.pdf`, pdfBuffer)
 
-    await supabaseAdmin.storage.from('documents').upload(storagePath, pdfBuffer, {
-      contentType: 'application/pdf',
-      upsert: true,
-    })
-
-    // Create contract record
+    // Create contract record with storage path (not signed URL)
     const contract = await prisma.tenancyContract.create({
       data: {
         tenancyId,

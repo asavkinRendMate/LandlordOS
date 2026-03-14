@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { verifyAdminSession } from '@/lib/admin-auth'
 import { prisma } from '@/lib/prisma'
 import { buildAptContractPDF } from '@/lib/pdf-mappers'
-import { createServerClient } from '@/lib/supabase/server'
+import { uploadFile } from '@/lib/storage-url'
 
 const schema = z.object({
   tenancyId: z.string().min(1),
@@ -28,20 +28,10 @@ export async function POST(req: Request) {
     // Generate PDF
     const pdfBuffer = await buildAptContractPDF(tenancyId)
 
-    // Upload to storage (overwrite existing)
-    const storagePath = `contracts/${tenancyId}/contract.pdf`
-    const supabase = createServerClient()
+    // Upload to storage — returns storage path
+    const storagePath = await uploadFile('documents', `contracts/${tenancyId}/contract.pdf`, pdfBuffer)
 
-    const { error: uploadError } = await supabase.storage.from('documents').upload(storagePath, pdfBuffer, {
-      contentType: 'application/pdf',
-      upsert: true,
-    })
-    if (uploadError) {
-      console.error('[admin/dev/regenerate-contract] upload failed:', uploadError)
-      return NextResponse.json({ error: 'Upload failed' }, { status: 500 })
-    }
-
-    // Update contract record
+    // Update contract record with storage path (not signed URL)
     await prisma.tenancyContract.update({
       where: { tenancyId },
       data: { pdfUrl: storagePath },

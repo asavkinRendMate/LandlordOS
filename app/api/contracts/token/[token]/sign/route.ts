@@ -5,7 +5,7 @@ import { sendEmail } from '@/lib/resend'
 import { contractFullySignedLandlordHtml, contractFullySignedTenantHtml } from '@/lib/email-templates/contract'
 import { env } from '@/lib/env'
 import { buildAptContractPDF } from '@/lib/pdf-mappers'
-import { createServerClient } from '@/lib/supabase/server'
+import { uploadFile } from '@/lib/storage-url'
 
 const schema = z.object({
   name: z.string().min(1).max(200),
@@ -130,16 +130,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
       void (async () => {
         try {
           const pdfBuffer = await buildAptContractPDF(tenancyId)
-          const storagePath = `contracts/${tenancyId}/contract.pdf`
-          const supabase = createServerClient()
-          const { error: uploadError } = await supabase.storage.from('documents').upload(storagePath, pdfBuffer, {
-            contentType: 'application/pdf',
-            upsert: true,
-          })
-          if (uploadError) {
-            console.error('[contracts/sign] PDF regeneration upload failed:', uploadError)
-            return
-          }
+          const storagePath = await uploadFile('documents', `contracts/${tenancyId}/contract.pdf`, pdfBuffer)
           await prisma.tenancyContract.update({
             where: { id: contract.id },
             data: { pdfUrl: storagePath },

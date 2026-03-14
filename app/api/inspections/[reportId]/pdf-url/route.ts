@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createAuthClient } from '@/lib/supabase/auth'
-import { createServerClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/prisma'
+import { getSignedUrl } from '@/lib/storage-url'
 
 export async function GET(_req: Request, { params }: { params: { reportId: string } }) {
   try {
@@ -25,13 +25,8 @@ export async function GET(_req: Request, { params }: { params: { reportId: strin
       return NextResponse.json({ error: 'PDF not yet generated' }, { status: 404 })
     }
 
-    const server = createServerClient()
-    const { data, error } = await server.storage.from('documents').createSignedUrl(inspection.pdfUrl, 3600)
-    if (error || !data) {
-      return NextResponse.json({ error: 'Failed to generate download URL' }, { status: 500 })
-    }
-
-    return NextResponse.redirect(data.signedUrl)
+    const signedUrl = await getSignedUrl('documents', inspection.pdfUrl)
+    return NextResponse.redirect(signedUrl)
   } catch (err) {
     console.error('[inspections/pdf-url GET]', err)
     return NextResponse.json({ error: 'Something went wrong' }, { status: 500 })

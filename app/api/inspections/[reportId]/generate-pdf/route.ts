@@ -2,9 +2,9 @@ import { NextResponse } from 'next/server'
 import { env } from '@/lib/env'
 import { prisma } from '@/lib/prisma'
 import { buildInspectionPDF } from '@/lib/pdf-mappers'
-import { createServerClient } from '@/lib/supabase/server'
 import { sendEmail } from '@/lib/resend'
 import { inspectionCompleteHtml } from '@/lib/email-templates'
+import { getSignedUrl, uploadFile, ensureBucket } from '@/lib/storage-url'
 
 export const maxDuration = 60
 
@@ -42,41 +42,26 @@ export async function POST(_req: Request, { params }: { params: { reportId: stri
 
     // Skip if already generated
     if (inspection.pdfUrl) {
-      const supabase = createServerClient()
-      const { data } = await supabase.storage.from('documents').createSignedUrl(inspection.pdfUrl, 3600)
-      return NextResponse.json({ pdfUrl: data?.signedUrl ?? null })
+      const signedUrl = await getSignedUrl('documents', inspection.pdfUrl)
+      return NextResponse.json({ pdfUrl: signedUrl })
     }
 
     // Generate PDF via pdf-mappers
     const buffer = await buildInspectionPDF(reportId)
 
-    // Upload to storage
-    const supabase = createServerClient()
+    // Upload to storage — returns storage path
+    await ensureBucket('documents')
     const storagePath = `inspections/${reportId}/inspection-report.pdf`
+    await uploadFile('documents', storagePath, buffer)
 
-    const { error: bucketError } = await supabase.storage.getBucket('documents')
-    if (bucketError) {
-      await supabase.storage.createBucket('documents', { public: false })
-    }
-
-    const { error: uploadError } = await supabase.storage.from('documents').upload(storagePath, buffer, {
-      contentType: 'application/pdf',
-      upsert: true,
-    })
-
-    if (uploadError) {
-      console.error('[generate-pdf] upload failed:', uploadError)
-      return NextResponse.json({ error: 'Upload failed' }, { status: 500 })
-    }
-
-    // Update DB
+    // Update DB with storage path (not signed URL)
     await prisma.propertyInspection.update({
       where: { id: reportId },
       data: { pdfUrl: storagePath, pdfGeneratedAt: new Date() },
     })
 
     // Generate signed URL for response
-    const { data: signedUrlData } = await supabase.storage.from('documents').createSignedUrl(storagePath, 3600)
+    const signedUrl = await getSignedUrl('documents', storagePath)
 
     // Send completion email to tenant
     if (inspection.tenant?.email) {
@@ -94,7 +79,7 @@ export async function POST(_req: Request, { params }: { params: { reportId: stri
       }).catch((err) => console.error('[generate-pdf] email failed:', err))
     }
 
-    return NextResponse.json({ pdfUrl: signedUrlData?.signedUrl ?? null })
+    return NextResponse.json({ pdfUrl: signedUrl })
   } catch (err) {
     console.error('[generate-pdf]', err)
     return NextResponse.json({ error: 'PDF generation failed' }, { status: 500 })

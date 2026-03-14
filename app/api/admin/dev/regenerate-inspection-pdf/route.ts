@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { verifyAdminSession } from '@/lib/admin-auth'
 import { prisma } from '@/lib/prisma'
 import { buildInspectionPDF } from '@/lib/pdf-mappers'
-import { createServerClient } from '@/lib/supabase/server'
+import { uploadFile } from '@/lib/storage-url'
 
 const schema = z.object({
   inspectionId: z.string().min(1),
@@ -29,20 +29,10 @@ export async function POST(req: Request) {
     // Generate PDF
     const buffer = await buildInspectionPDF(inspectionId)
 
-    // Upload to storage (overwrite existing)
-    const storagePath = `inspections/${inspectionId}/inspection-report.pdf`
-    const supabase = createServerClient()
+    // Upload to storage — returns storage path
+    const storagePath = await uploadFile('documents', `inspections/${inspectionId}/inspection-report.pdf`, buffer)
 
-    const { error: uploadError } = await supabase.storage.from('documents').upload(storagePath, buffer, {
-      contentType: 'application/pdf',
-      upsert: true,
-    })
-    if (uploadError) {
-      console.error('[admin/dev/regenerate-inspection-pdf] upload failed:', uploadError)
-      return NextResponse.json({ error: 'Upload failed' }, { status: 500 })
-    }
-
-    // Update DB
+    // Update DB with storage path (not signed URL)
     await prisma.propertyInspection.update({
       where: { id: inspectionId },
       data: { pdfUrl: storagePath, pdfGeneratedAt: new Date() },
