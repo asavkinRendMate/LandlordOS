@@ -452,14 +452,16 @@ export default function InspectionPage() {
               <span className="text-sm font-medium text-green-700">Report agreed by both parties</span>
             </div>
             {report.pdfUrl ? (
-              <a
-                href={`/api/inspections/${report.id}/pdf-url`}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                onClick={async () => {
+                  const r = await fetch(`/api/inspections/${report.id}/pdf-url`)
+                  const { url } = await r.json()
+                  if (url) window.open(url, '_blank')
+                }}
                 className="text-sm text-green-700 hover:text-green-800 font-medium"
               >
                 Download report &rarr;
-              </a>
+              </button>
             ) : (
               <button
                 onClick={async () => {

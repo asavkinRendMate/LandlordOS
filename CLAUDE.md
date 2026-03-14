@@ -37,6 +37,7 @@ app/
 │   ├── admin/
 │   │   ├── login/
 │   │   ├── notifications/
+│   │   ├── payments/
 │   │   ├── screenings/
 │   │   └── page.tsx
 │   └── layout.tsx
@@ -78,21 +79,27 @@ app/
 │   │   ├── use/
 │   │   ├── client.tsx
 │   │   └── page.tsx
+│   ├── sign/
+│   │   └── contract/
 │   ├── terms/
+│   │   └── page.tsx
+│   ├── updates/
 │   │   └── page.tsx
 │   ├── verify/
 │   │   └── [token]/
+│   ├── client.tsx
 │   ├── layout.tsx
 │   └── page.tsx
 ├── (tenant)/
 │   ├── apply/
 │   │   └── [propertyId]/
-│   ├── inspection/
+│   ├── check-in/
 │   │   └── [token]/
 │   ├── passport/
 │   │   └── page.tsx
 │   ├── tenant/
 │   │   ├── dashboard/
+│   │   ├── inspection/
 │   │   └── join/
 │   └── layout.tsx
 ├── api/
@@ -100,22 +107,37 @@ app/
 │   │   └── route.ts
 │   ├── admin/
 │   │   ├── auth/
+│   │   ├── dev/
 │   │   ├── properties/
 │   │   ├── screenings/
 │   │   └── users/
 │   ├── application-invites/
 │   │   └── [id]/
-│   ├── inspections/
-│   │   ├── [reportId]/
+│   ├── auth/
+│   │   └── send-otp/
+│   ├── contracts/
+│   │   ├── [tenancyId]/
+│   │   ├── generate/
 │   │   ├── token/
-│   │   └── route.ts
+│   │   └── upload/
 │   ├── cron/
 │   │   ├── awaabs/
 │   │   ├── compliance/
+│   │   ├── demo-cleanup/
+│   │   ├── inspections/
 │   │   └── rent-reminders/
+│   ├── demo/
+│   │   └── create/
 │   ├── documents/
 │   │   ├── [id]/
 │   │   ├── upload/
+│   │   └── route.ts
+│   ├── inspection-schedules/
+│   │   └── route.ts
+│   ├── inspections/
+│   │   ├── [reportId]/
+│   │   ├── acknowledge/
+│   │   ├── token/
 │   │   └── route.ts
 │   ├── maintenance/
 │   │   ├── [id]/
@@ -123,10 +145,12 @@ app/
 │   ├── payment/
 │   │   ├── charge/
 │   │   ├── has-card/
+│   │   ├── purchase-pack/
 │   │   ├── remove-card/
 │   │   ├── save-card/
 │   │   ├── setup-intent/
-│   │   └── subscription/
+│   │   ├── subscription/
+│   │   └── unlock-price/
 │   ├── payments/
 │   │   ├── [id]/
 │   │   └── route.ts
@@ -135,6 +159,7 @@ app/
 │   │   └── route.ts
 │   ├── scoring/
 │   │   ├── [reportId]/
+│   │   ├── process/
 │   │   └── upload/
 │   ├── screening/
 │   │   ├── credits/
@@ -146,12 +171,15 @@ app/
 │   │   ├── select-tenant/
 │   │   └── upload/
 │   ├── stripe/
+│   │   ├── portal/
 │   │   └── webhook/
 │   ├── tenancies/
 │   │   └── route.ts
 │   ├── tenant/
 │   │   ├── application-link-email/
 │   │   ├── apply/
+│   │   ├── contract/
+│   │   ├── inspections/
 │   │   ├── invite/
 │   │   ├── join/
 │   │   └── send-invite/
@@ -178,18 +206,44 @@ app/
 ├── globals.css
 ├── icon.svg
 ├── layout.tsx
+├── not-found.tsx
 ├── robots.ts
 └── sitemap.ts
 
 lib/
 ├── email-templates/
 │   ├── base.ts
+│   ├── contract.ts
 │   └── index.ts
 ├── notifications/
 │   ├── cron-awaabs.ts
 │   ├── cron-compliance.ts
+│   ├── cron-inspections.ts
 │   ├── cron-rent-reminders.ts
 │   └── registry.ts
+├── pdf-engine/
+│   ├── components/
+│   │   ├── clause-block.ts
+│   │   ├── footer.ts
+│   │   ├── header.ts
+│   │   ├── party-block.ts
+│   │   ├── photo-grid.ts
+│   │   ├── signature-block.ts
+│   │   └── table.ts
+│   ├── templates/
+│   │   ├── apt-contract.ts
+│   │   ├── cover-sheet.ts
+│   │   ├── dispute-pack.ts
+│   │   ├── inspection-report.ts
+│   │   ├── screening-report.ts
+│   │   ├── section-13-notice.ts
+│   │   └── section-8-notice.ts
+│   ├── AGENT.md
+│   ├── index.ts
+│   ├── loadLogo.ts
+│   ├── renderer.ts
+│   ├── test.ts
+│   └── types.ts
 ├── scoring/
 │   ├── engine.ts
 │   ├── index.ts
@@ -199,39 +253,65 @@ lib/
 │   ├── client.ts
 │   ├── otp.ts
 │   └── server.ts
+├── validators/
+│   └── postcode.ts
 ├── admin-auth.ts
-├── inspection-pdf.ts
-├── inspection-storage.ts
 ├── crisp-support.ts
 ├── env.ts
 ├── error-toast.ts
 ├── form-styles.ts
 ├── guides.ts
 ├── image-utils.ts
+├── inspection-pdf.ts
+├── inspection-schedule.ts
+├── inspection-storage.ts
 ├── maintenance-storage.ts
 ├── os-places.ts
+├── pay-per-use-pricing.ts
 ├── payment-service.ts
 ├── payments.ts
+├── pdf-mappers.ts
 ├── posthog.ts
 ├── prisma.ts
 ├── resend.ts
 ├── room-utils.ts
 ├── screening-pricing.ts
+├── screening-unlock.ts
+├── storage-url.ts
 ├── storage.ts
 ├── stripe.ts
+├── subscription-guard.ts
+├── ui.tsx
+├── updates.ts
 └── utils.ts
 
 components/
 ├── dashboard/
+│   ├── DemoBanner.tsx
 │   ├── NameModal.tsx
 │   ├── NameModalGate.tsx
-│   └── shell.tsx
+│   ├── shell.tsx
+│   └── UpgradeBanner.tsx
 ├── guides/
 │   └── MDXComponents.tsx
+├── inspections/
+│   ├── index.ts
+│   ├── InspectionCard.tsx
+│   ├── InspectionTimeline.tsx
+│   └── InspectionTypeBadge.tsx
+├── properties/
+│   ├── DeletePropertyModal.tsx
+│   └── SectionHelpModal.tsx
+├── screening-flow/
+│   ├── CandidateResultScreen.tsx
+│   ├── PackPurchaseModal.tsx
+│   ├── ScreeningCard.tsx
+│   └── ScreeningLayout.tsx
 ├── shared/
 │   ├── Analytics.tsx
 │   ├── CookieConsent.tsx
 │   ├── CrispChat.tsx
+│   ├── DemoUpsell.tsx
 │   ├── DocumentUploadModal.tsx
 │   ├── Footer.tsx
 │   ├── JsonLd.tsx
@@ -241,16 +321,20 @@ components/
 │   ├── ScoringProgressScreen.tsx
 │   ├── ScreeningReportDisplay.tsx
 │   └── TenantDetailsForm.tsx
-└── ui/
-    └── sonner.tsx
+├── ui/
+│   ├── SegmentedControl.tsx
+│   └── sonner.tsx
+└── DemoModal.tsx
 
 scripts/
+├── fix-storage-paths.ts
 ├── generate-article.ts
 ├── generate-og.mjs
 ├── generate-supabase-email-templates.ts
 └── update-docs.ts
 
 prisma/
+├── demo-seed.ts
 ├── schema.prisma
 └── seed-scoring.ts
 
@@ -284,33 +368,20 @@ supabase/
     ├── 20260327_add_rls_policies.sql
     ├── 20260328_compliance_alert_log.sql
     ├── 20260329_maintenance_awaabs_law.sql
-    └── 20260330_add_screening_logs.sql
+    ├── 20260330_add_screening_logs.sql
+    ├── 20260331_financial_verification_default_true.sql
+    ├── 20260332_add_missing_indexes.sql
+    ├── 20260333_payments_and_cycle.sql
+    ├── 20260334_rename_checkin_to_inspection.sql
+    ├── 20260335_periodic_inspections.sql
+    ├── 20260336_inspection_day_reminders.sql
+    ├── 20260337_add_tenancy_contracts.sql
+    └── 20260338_add_is_demo_field.sql
 ```
 
 ---
 
-## Critical Rules (applies to every task)
-
-1. All monetary values in pence integers — never floats
-2. Import UI primitives from `lib/form-styles`, `lib/ui`, `lib/utils` — never define inline
-3. Full spec in `UI.md` — read before building any UI
-4. Always generate signed URLs (60 min expiry) — never expose raw storage paths
-5. Never expose Supabase service role key to the browser
-6. Never skip input validation on API routes
-7. Every new table needs RLS + policies in the same migration file
-8. Register all new email notifications in `lib/notifications/registry.ts`
-9. Tenancy = agreement, Tenant = person — never add contact fields to Tenancy
-10. Never store passwords — auth is OTP via Supabase
-11. Never generate legal text from scratch — AI fills pre-approved templates only
-12. Never expose raw AI output — always parse, validate, and clean with `cleanSummary()`
-13. Return user-friendly messages — never expose stack traces
-14. Never use `prisma.$executeRaw` without parameterized queries
-
-**Full rules list: `CLAUDE.NEVERDO.md` (32 rules) | Implementation patterns: `CLAUDE.PATTERNS.md`**
-
----
-
-## Database Schema (Prisma)
+## Database Schema
 
 ```prisma
 generator client {
@@ -343,6 +414,7 @@ model User {
   id             String     @id
   email          String     @unique
   name           String?
+  isDemo         Boolean    @default(false) @map("is_demo")
   createdAt      DateTime   @default(now()) @map("created_at")
 
   // ── Payment / Stripe placeholders ──────────────────────────────────────────
@@ -364,6 +436,7 @@ model User {
   tenantProfiles    Tenant[]
   screeningPackages ScreeningPackage[]
   screeningInvites  ScreeningInvite[]
+  payments          Payment[]
 
   @@map("users")
 }
@@ -398,7 +471,8 @@ model Property {
   bedrooms         Int?
   status           PropertyStatus @default(VACANT)
   applicationToken String?        @unique @map("application_token")
-  requireFinancialVerification Boolean @default(false) @map("require_financial_verification")
+  requireFinancialVerification Boolean @default(true) @map("require_financial_verification")
+  screeningCycleResetAt DateTime? @map("screening_cycle_reset_at")
   createdAt        DateTime       @default(now()) @map("created_at")
   updatedAt        DateTime       @updatedAt @map("updated_at")
 
@@ -409,7 +483,7 @@ model Property {
   maintenanceRequests MaintenanceRequest[]
   financialReports    FinancialReport[]
   rooms               PropertyRoom[]
-  inspections      PropertyInspection[]
+  inspections         PropertyInspection[]
   applicationInvites  ApplicationInvite[]
 
   @@index([userId])
@@ -449,6 +523,7 @@ model ComplianceDoc {
   updatedAt   DateTime            @updatedAt @map("updated_at")
 
   @@unique([propertyId, type])
+  @@index([expiryDate])
   @@map("compliance_docs")
 }
 
@@ -482,10 +557,14 @@ model Tenancy {
   createdAt          DateTime      @default(now()) @map("created_at")
   updatedAt          DateTime      @updatedAt @map("updated_at")
   payments           RentPayment[]
+  inspectionSchedule InspectionSchedule?
+  contract           TenancyContract?
 
   @@index([propertyId])
   @@index([tenantId])
   @@index([propertyId, status])
+  @@index([status])
+  @@index([status, depositProtected])
   @@map("tenancies")
 }
 
@@ -548,7 +627,7 @@ model Tenant {
   acknowledgments     DocumentAcknowledgment[]
   maintenanceRequests MaintenanceRequest[]
   financialReports    FinancialReport[]
-  inspections      PropertyInspection[]
+  inspections         PropertyInspection[]
 
   @@index([propertyId])
   @@index([userId])
@@ -634,6 +713,7 @@ model DocumentAcknowledgment {
   acknowledgedAt DateTime         @default(now()) @map("acknowledged_at")
 
   @@unique([documentId, tenantId])
+  @@index([tenantId])
   @@map("document_acknowledgments")
 }
 
@@ -676,6 +756,7 @@ model MaintenanceRequest {
   @@index([propertyId])
   @@index([tenantId])
   @@index([propertyId, status])
+  @@index([status, respondBy])
   @@map("maintenance_requests")
 }
 
@@ -793,6 +874,7 @@ model FinancialReport {
   @@index([propertyId])
   @@index([inviteId])
   @@index([inviteId, status])
+  @@index([status])
   @@map("financial_reports")
 }
 
@@ -929,6 +1011,12 @@ model PropertyRoom {
 
 // ── Property Inspections ────────────────────────────────────────────────────
 
+enum InspectionType {
+  MOVE_IN
+  PERIODIC
+  MOVE_OUT
+}
+
 enum InspectionStatus {
   DRAFT
   PENDING
@@ -938,25 +1026,48 @@ enum InspectionStatus {
 }
 
 model PropertyInspection {
-  id                  String              @id @default(uuid())
-  propertyId          String              @map("property_id")
-  property            Property            @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  tenantId            String?             @map("tenant_id")
-  tenant              Tenant?             @relation(fields: [tenantId], references: [id])
+  id                  String           @id @default(uuid())
+  propertyId          String           @map("property_id")
+  property            Property         @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  tenantId            String?          @map("tenant_id")
+  tenant              Tenant?          @relation(fields: [tenantId], references: [id])
+  inspectionType      InspectionType   @default(MOVE_IN) @map("inspection_type")
+  inspectionNumber    Int              @default(1) @map("inspection_number")
+  scheduledDate       DateTime?        @map("scheduled_date")
+  scheduledTime       String?          @map("scheduled_time") // "HH:MM" format, 08:00–20:00
+  dayOfReminderSentAt DateTime?        @map("day_of_reminder_sent_at")
+  noticeSeenAt        DateTime?        @map("notice_seen_at")
+  noticeToken         String?          @unique @map("notice_token")
   status              InspectionStatus @default(DRAFT)
-  token               String              @unique @default(uuid())
-  landlordConfirmedAt DateTime?           @map("landlord_confirmed_at")
-  tenantConfirmedAt   DateTime?           @map("tenant_confirmed_at")
-  pdfUrl              String?             @map("pdf_url")
-  pdfGeneratedAt      DateTime?           @map("pdf_generated_at")
-  createdAt           DateTime            @default(now()) @map("created_at")
-  updatedAt           DateTime            @updatedAt @map("updated_at")
+  token               String           @unique @default(uuid())
+  landlordConfirmedAt DateTime?        @map("landlord_confirmed_at")
+  tenantConfirmedAt   DateTime?        @map("tenant_confirmed_at")
+  pdfUrl              String?          @map("pdf_url")
+  pdfGeneratedAt      DateTime?        @map("pdf_generated_at")
+  createdAt           DateTime         @default(now()) @map("created_at")
+  updatedAt           DateTime         @updatedAt @map("updated_at")
 
   photos InspectionPhoto[]
 
   @@index([propertyId])
   @@index([tenantId])
+  @@index([propertyId, inspectionType])
   @@map("property_inspections")
+}
+
+// ── Inspection Schedule ─────────────────────────────────────────────────────
+// One schedule per tenancy — controls periodic inspection frequency.
+
+model InspectionSchedule {
+  id              String   @id @default(uuid())
+  tenancyId       String   @unique @map("tenancy_id")
+  tenancy         Tenancy  @relation(fields: [tenancyId], references: [id], onDelete: Cascade)
+  frequencyMonths Int      @map("frequency_months") // 3 or 6
+  nextDueDate     DateTime @map("next_due_date")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("inspection_schedules")
 }
 
 // ── Compliance Alert Log ────────────────────────────────────────────────────
@@ -970,6 +1081,7 @@ model ComplianceAlertLog {
   sentAt         DateTime @default(now()) @map("sent_at")
 
   @@index([notificationId, referenceId, sentAt])
+  @@index([userId])
   @@map("compliance_alert_log")
 }
 
@@ -992,122 +1104,57 @@ model ApplicationInvite {
 
 // GDPR: Inspection photos retained for tenancy duration + 3 months
 model InspectionPhoto {
-  id             String              @id @default(uuid())
-  inspectionId   String              @map("inspection_id")
-  inspection     PropertyInspection  @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
-  roomId         String?             @map("room_id")
-  room           PropertyRoom?       @relation(fields: [roomId], references: [id])
-  roomName       String              @map("room_name")
-  uploadedBy     String              @map("uploaded_by") // "LANDLORD" | "TENANT"
-  uploaderName   String              @map("uploader_name")
-  fileUrl        String              @map("file_url")
-  caption        String?
-  condition      String?             // "GOOD" | "MINOR_ISSUE" | "DAMAGE"
-  takenAt        DateTime?           @map("taken_at")
-  createdAt      DateTime            @default(now()) @map("created_at")
+  id           String              @id @default(uuid())
+  inspectionId String              @map("inspection_id")
+  inspection   PropertyInspection  @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  roomId       String?             @map("room_id")
+  room         PropertyRoom?       @relation(fields: [roomId], references: [id])
+  roomName     String              @map("room_name")
+  uploadedBy   String              @map("uploaded_by") // "LANDLORD" | "TENANT"
+  uploaderName String              @map("uploader_name")
+  fileUrl      String              @map("file_url")
+  caption      String?
+  condition    String?             // "GOOD" | "MINOR_ISSUE" | "DAMAGE"
+  takenAt      DateTime?           @map("taken_at")
+  createdAt    DateTime            @default(now()) @map("created_at")
 
   @@index([inspectionId])
   @@index([roomId])
   @@map("inspection_photos")
 }
-```
 
----
+// ── Tenancy Contract ──────────────────────────────────────────────────────────
 
-## Feature Status
+enum ContractStatus {
+  PENDING_GENERATION
+  PENDING_SIGNATURES
+  LANDLORD_SIGNED
+  TENANT_SIGNED
+  BOTH_SIGNED
+  VOIDED
+}
 
-| Feature | Status | Notes |
-|---|---|---|
-| Property management | LIVE | CRUD, compliance docs, document management, cascade delete with type-to-confirm |
-| Tenant pipeline | LIVE | Apply → Candidate → Invited → Tenant lifecycle. ApplicationInvite persists emailed invites; merged with CANDIDATE tenants for unified applicant list on property page |
-| Tenant portal | LIVE | Auth-protected, docs, rent, maintenance, inspection |
-| Document management | LIVE | 14 types, drag-drop upload, signed URLs |
-| Rent tracking | LIVE | Auto-generate payments, manual mark received |
-| Maintenance requests | LIVE | Priority, status, photos, audit trail |
-| Compliance alerts | LIVE | Dashboard dots, alert bar, expiry tracking |
-| Financial screening (invite flow) | BETA | Landlord invites → candidate uploads → AI analysis |
-| Financial screening (credit packs) | BETA | Buy packs, upload directly (legacy flow) |
-| Screening report unlock | MOCK | isLocked=false (MOCK_PAID, no real Stripe yet) |
-| Admin panel | LIVE | Cookie-based auth, user/property CRUD, screenings management (bulk delete, file download, debug logs viewer) |
-| Onboarding wizard | LIVE | 5-step first-run for new landlords (property → rooms → occupancy → tenant → done) |
-| Name capture modal | LIVE | Undismissable modal for landlords with no name set |
-| Settings page | LIVE | Display name edit |
-| Property inspections | BETA | Property rooms, photo capture, tenant/landlord sign-off, tenant dashboard section, auth-aware header on inspection page |
-| Financial Passport | PRE-LAUNCH | Email capture landing page only |
-| Google Analytics | LIVE | Consent Mode v2 — script loads unconditionally, `gtag('config')` must be called after consent defaults (otherwise GA defers all hits indefinitely). gtag function must use `arguments` (not rest params) — Google's gtag.js expects Arguments objects in dataLayer. `vanilla-cookieconsent` `onConsent`/`onChange` callbacks fire `gtag('consent', 'update', ...)` |
-| Live chat (Crisp) | LIVE | Marketing pages only |
-| Demo login | LIVE | Landlord + tenant demo buttons on login page, env-var gated |
-| Stripe payments | PHASE 1 | Client + webhook + SetupIntent card flow. Charges still mock (Phase 2–4 pending) |
+enum ContractType {
+  GENERATED
+  UPLOADED
+}
 
----
-
-## Email System
-
-### Architecture
-- `lib/resend.ts` — Resend client, FROM: `LetSorted <no-reply@letsorted.co.uk>`, console fallback if no API key
-- `lib/email-templates/base.ts` — Unified base template wrapper (all emails use this)
-- `lib/email-templates/index.ts` — 9 email template functions
-
-### Base Template (`baseEmailTemplate`)
-- Background: `#F7F8F6`
-- Card: 600px max-width, white, 8px border-radius, 40px/48px padding
-- Header: house emoji + "LetSorted" in `#2D6A4F` (brand green), subtitle below
-- Divider: `#F0F0F0` 1px border
-- Footer: copyright + letsorted.co.uk
-- Mobile: `@media (max-width: 620px)` reduces padding to 32px/24px
-- Outlook: table-based CTA buttons for compatibility
-- Preview text: zero-width joiners for inbox preview
-
-### Template Functions
-| Function | Used By | Purpose |
-|---|---|---|
-| `tenantInviteHtml` | api/tenant/invite, send-invite | Invite tenant to portal |
-| `applicationReceivedHtml` | api/tenant/apply | Confirm application to applicant |
-| `newApplicationHtml` | api/tenant/apply | Notify landlord of new application |
-| `applicationLinkHtml` | api/tenant/application-link-email | Send apply URL to prospect |
-| `candidateInviteHtml` | api/screening/invite | Invite candidate for financial check |
-| `landlordNotificationHtml` | lib/scoring/engine.ts | Notify landlord: screening complete |
-| `inspectionReviewHtml` | api/inspections/[reportId] | Ask tenant to review inspection report |
-| `inspectionTenantResponseHtml` | api/inspections/token/[token]/confirm | Notify landlord: tenant confirmed/disputed
-
----
-
-## PDF Engine — `lib/pdf-engine/`
-
-**This is an isolated module. Do not modify its internals.**
-
-All PDF generation goes through one function:
-
-```typescript
-import { generatePDF } from '@/lib/pdf-engine'
-
-const result = await generatePDF({
-  template: 'inspection-report',
-  data: { ... }  // InspectionReportData — see lib/pdf-engine/types.ts
-})
-// result.buffer → write to Supabase storage
-// result.filename → suggested filename
-```
-
-### Available templates
-| template | Document | Status |
-|---|---|---|
-| `screening-report` | AI financial screening result | ⏸ Stub |
-| `inspection-report` | Property inspection with dual-party photos | ⏸ Stub |
-| `apt-contract` | Assured Periodic Tenancy agreement | ⏸ Stub |
-| `section-8-notice` | Notice seeking possession | ⏸ Stub |
-| `section-13-notice` | Rent increase notice | ⏸ Stub |
-| `dispute-pack` | Multi-section deposit/tribunal evidence pack | ⏸ Stub |
-
-### Mapper pattern
-Use `lib/pdf-mappers.ts` (see rules 28–32 in `CLAUDE.NEVERDO.md`):
-```typescript
-import { buildInspectionPDF } from '@/lib/pdf-mappers'
-const buffer = await buildInspectionPDF(reportId)
-```
-
-- `lib/inspection-pdf.ts` is deprecated — new code uses `buildInspectionPDF()` from pdf-mappers.ts
-- Agent docs: `lib/pdf-engine/AGENT.md`
+model TenancyContract {
+  id                  String         @id @default(cuid())
+  tenancyId           String         @unique @map("tenancy_id")
+  tenancy             Tenancy        @relation(fields: [tenancyId], references: [id], onDelete: Cascade)
+  type                ContractType
+  status              ContractStatus @default(PENDING_GENERATION)
+  pdfUrl              String?        @map("pdf_url")
+  landlordToken       String         @unique @default(uuid()) @map("landlord_token")
+  tenantToken         String         @unique @default(uuid()) @map("tenant_token")
+  landlordSignedAt    DateTime?      @map("landlord_signed_at")
+  landlordSignedName  String?        @map("landlord_signed_name")
+  landlordSignedIp    String?        @map("landlord_signed_ip")
+  tenantSignedAt      DateTime?      @map("tenant_signed_at")
+  tenantSignedName    String?        @map("tenant_signed_name")
+  tenantSignedIp      String?        @map("tenant_signed_ip")
+  createdAt           DateTime       @default(
 
 ---
 
@@ -1123,3 +1170,18 @@ Protected notes are maintained in two focused files:
 - **CLAUDE.NEVERDO.md** — 32 hard rules (security, data integrity, UI consistency, screening, PDF engine)
 
 See those files for the full protected notes content.
+
+1. All monetary values in pence integers — never floats  <!-- Auto-preserved by update-docs -->
+2. Import UI primitives from `lib/form-styles`, `lib/ui`, `lib/utils` — never define inline  <!-- Auto-preserved by update-docs -->
+4. Always generate signed URLs (60 min expiry) — never expose raw storage paths  <!-- Auto-preserved by update-docs -->
+5. Never expose Supabase service role key to the browser  <!-- Auto-preserved by update-docs -->
+6. Never skip input validation on API routes  <!-- Auto-preserved by update-docs -->
+9. Tenancy = agreement, Tenant = person — never add contact fields to Tenancy  <!-- Auto-preserved by update-docs -->
+10. Never store passwords — auth is OTP via Supabase  <!-- Auto-preserved by update-docs -->
+11. Never generate legal text from scratch — AI fills pre-approved templates only  <!-- Auto-preserved by update-docs -->
+12. Never expose raw AI output — always parse, validate, and clean with `cleanSummary()`  <!-- Auto-preserved by update-docs -->
+13. Return user-friendly messages — never expose stack traces  <!-- Auto-preserved by update-docs -->
+14. Never use `prisma.$executeRaw` without parameterized queries  <!-- Auto-preserved by update-docs -->
+**Full rules list: `CLAUDE.NEVERDO.md` (32 rules) | Implementation patterns: `CLAUDE.PATTERNS.md`**  <!-- Auto-preserved by update-docs -->
+**This is an isolated module. Do not modify its internals.**  <!-- Auto-preserved by update-docs -->
+Use `lib/pdf-mappers.ts` (see rules 28–32 in `CLAUDE.NEVERDO.md`):  <!-- Auto-preserved by update-docs -->

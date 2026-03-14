@@ -22,7 +22,7 @@ export async function GET(_req: Request, { params }: { params: { tenancyId: stri
     }
 
     const signedUrl = await getSignedUrl('documents', contract.pdfUrl)
-    return NextResponse.redirect(signedUrl)
+    return NextResponse.json({ url: signedUrl })
   } catch (err) {
     console.error('[contracts/[tenancyId]/pdf-url GET]', err)
     return NextResponse.json({ error: 'Something went wrong' }, { status: 500 })

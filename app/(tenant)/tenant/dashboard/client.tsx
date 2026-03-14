@@ -797,17 +797,19 @@ function ContractSection() {
             <span className="text-sm font-medium">Agreement signed by both parties</span>
           </div>
           {contract.hasPdf && (
-            <a
-              href="/api/tenant/contract/pdf-url"
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              onClick={async () => {
+                const r = await fetch('/api/tenant/contract/pdf-url')
+                const { url } = await r.json()
+                if (url) window.open(url, '_blank')
+              }}
               className="mt-2 text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1 transition-colors"
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
               Download PDF
-            </a>
+            </button>
           )}
         </div>
       )}
@@ -899,17 +901,21 @@ function InspectionSection({ report }: { report: InspectionData }) {
                 Both parties have confirmed the property condition. Your inspection report has been saved.
               </p>
               {report.hasPdf && (
-                <a
-                  href={`/api/tenant/inspections/${report.id}/pdf-url`}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  onClick={async () => {
+                    try {
+                      const res = await fetch(`/api/tenant/inspections/${report.id}/pdf-url`)
+                      const json = await res.json()
+                      if (json.url) window.open(json.url, '_blank')
+                    } catch { /* ignore */ }
+                  }}
                   className="inline-flex items-center gap-1.5 mt-3 text-sm text-green-600 hover:text-green-700 font-medium transition-colors"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                   </svg>
                   Download report
-                </a>
+                </button>
               )}
             </>
           )}

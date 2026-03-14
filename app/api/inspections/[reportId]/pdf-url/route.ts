@@ -26,7 +26,7 @@ export async function GET(_req: Request, { params }: { params: { reportId: strin
     }
 
     const signedUrl = await getSignedUrl('documents', inspection.pdfUrl)
-    return NextResponse.redirect(signedUrl)
+    return NextResponse.json({ url: signedUrl })
   } catch (err) {
     console.error('[inspections/pdf-url GET]', err)
     return NextResponse.json({ error: 'Something went wrong' }, { status: 500 })

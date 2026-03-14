@@ -1698,14 +1698,16 @@ function InspectionSection({ propertyId, contractStatus, embedded }: { propertyI
           </div>
           <div className="flex gap-2">
             {report.pdfUrl && (
-              <a
-                href={`/api/inspections/${report.id}/pdf-url`}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                onClick={async () => {
+                  const r = await fetch(`/api/inspections/${report.id}/pdf-url`)
+                  const { url } = await r.json()
+                  if (url) window.open(url, '_blank')
+                }}
                 className="text-xs text-[#16a34a] hover:text-[#15803d] font-medium transition-colors"
               >
                 Download PDF
-              </a>
+              </button>
             )}
             <button
               onClick={() => router.push(`/dashboard/properties/${propertyId}/inspection?reportId=${report.id}`)}

@@ -35,8 +35,9 @@ export default function SignContractPage() {
 
   function fetchPdfUrl() {
     setPdfExpired(false)
-    fetch(`/api/contracts/token/${token}/pdf-url`, { redirect: 'follow' })
-      .then((r) => { if (r.ok) setPdfSrc(r.url) })
+    fetch(`/api/contracts/token/${token}/pdf-url`, { cache: 'no-store' })
+      .then((r) => r.json())
+      .then(({ url }) => { if (url) setPdfSrc(url) })
       .catch(() => {})
   }
 
