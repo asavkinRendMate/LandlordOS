@@ -581,6 +581,10 @@ function MyDocumentsSection({ tenantId }: { tenantId: string }) {
         </div>
       )}
 
+      <p className="text-sm text-gray-500 mb-3">
+        Landlords typically ask for: proof of ID (passport or driving licence), Right to Rent document, proof of income, and references. If your landlord has specific requirements, they&apos;ll let you know.
+      </p>
+
       {loading ? (
         <div className="flex justify-center py-4">
           <div className="w-5 h-5 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
