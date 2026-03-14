@@ -25,10 +25,10 @@ export async function addToOnboardingSequence(user: {
         name: user.name?.split(' ')[0] ?? '',
         last_name: user.name?.split(' ').slice(1).join(' ') ?? '',
         letsorted_user_id: user.id,
-        has_property: false,
-        has_tenant: false,
-        has_signed_contract: false,
-        has_inspection: false,
+        has_property: 0,
+        has_tenant: 0,
+        has_signed_contract: 0,
+        has_inspection: 0,
         property_count: 0,
       },
       groups: [process.env.MAILERLITE_GROUP_ID],
@@ -45,7 +45,7 @@ export async function addToOnboardingSequence(user: {
  */
 export async function updateSubscriber(
   email: string,
-  fields: Record<string, string | number | boolean>,
+  fields: Record<string, string | number>,
 ): Promise<void> {
   if (!process.env.MAILERLITE_API_KEY) return
   if (email.includes('@demo.letsorted.co.uk')) return

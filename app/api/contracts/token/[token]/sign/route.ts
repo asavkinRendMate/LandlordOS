@@ -127,7 +127,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
 
     // Fire and forget — update landlord's MailerLite subscriber
     if (newStatus === 'BOTH_SIGNED' && contract.tenancy.property.user?.email) {
-      updateSubscriber(contract.tenancy.property.user.email, { has_signed_contract: true })
+      updateSubscriber(contract.tenancy.property.user.email, { has_signed_contract: 1 })
         .catch((err) => console.error('[MailerLite]', err))
     }
 

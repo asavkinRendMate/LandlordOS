@@ -84,7 +84,7 @@ export async function POST(req: Request) {
     })
 
     // Fire and forget — update landlord's MailerLite subscriber
-    updateSubscriber(user.email!, { has_tenant: true })
+    updateSubscriber(user.email!, { has_tenant: 1 })
       .catch((err) => console.error('[MailerLite]', err))
 
     return NextResponse.json({ data: tenancy }, { status: 201 })

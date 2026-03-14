@@ -120,7 +120,7 @@ export async function PATCH(req: Request, { params }: { params: { reportId: stri
 
     // Fire and forget — update landlord's MailerLite subscriber
     if (updated.status === 'AGREED') {
-      updateSubscriber(user.email!, { has_inspection: true })
+      updateSubscriber(user.email!, { has_inspection: 1 })
         .catch((err) => console.error('[MailerLite]', err))
     }
 

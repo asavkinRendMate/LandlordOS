@@ -76,7 +76,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
       select: { user: { select: { email: true } } },
     }).then((prop) => {
       if (prop?.user?.email) {
-        updateSubscriber(prop.user.email, { has_tenant: true })
+        updateSubscriber(prop.user.email, { has_tenant: 1 })
           .catch((err) => console.error('[MailerLite]', err))
       }
     }).catch((err) => console.error('[MailerLite]', err))

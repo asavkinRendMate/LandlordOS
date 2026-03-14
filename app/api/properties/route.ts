@@ -102,7 +102,7 @@ export async function POST(req: Request) {
 
     // Fire and forget — update MailerLite subscriber
     updateSubscriber(user.email!, {
-      has_property: true,
+      has_property: 1,
       property_count: propertyCount,
     }).catch((err) => console.error('[MailerLite]', err))
 
