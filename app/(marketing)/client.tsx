@@ -31,55 +31,55 @@ function formatUpdateDate(dateStr: string) {
 
 const painPoints = [
   {
-    icon: '📁',
-    title: 'Documents everywhere',
-    body: 'Certificates, contracts, inventories — scattered across email, Dropbox, and that pile on the desk. Finding anything when you need it is a mini-crisis.',
+    icon: '⚖️',
+    title: 'Without Section 21, you need evidence',
+    body: 'Since 1 May 2026, the only way to end a tenancy is through court. Judges need proof — a signed contract, rent records, inspection reports. Landlords on spreadsheets arrive with nothing.',
   },
   {
-    icon: '💬',
-    title: 'Chasing rent manually',
-    body: "Texting tenants, checking your bank app every Friday, trying to remember if Dave paid last month. There has to be a better way.",
+    icon: '📸',
+    title: 'Deposit disputes are won on evidence',
+    body: "95% of deposit disputes come down to one question: what was the condition at move-in? Without a signed, timestamped inspection report, the adjudicator sides with the tenant.",
   },
   {
     icon: '⏰',
-    title: 'No idea if certificates are expired',
-    body: "Gas Safety, EPC, EICR — you know you have them somewhere. But when do they run out? You tend to find out when it's already a problem.",
+    title: 'Compliance failures are expensive',
+    body: "Gas Safety, EICR, EPC — missing certificates mean up to £30,000 in fines and an invalid Section 8 notice. You can't evict a tenant if your compliance is out of date.",
   },
   {
-    icon: '📱',
-    title: 'Tenant requests lost in WhatsApp',
-    body: "The boiler message is buried under 300 others. No paper trail, no follow-up, no idea what you agreed. And no defence if it goes further.",
+    icon: '💬',
+    title: "WhatsApp isn't a paper trail",
+    body: 'Maintenance requests in texts, rent agreements in emails, inspection notes in a notebook. When a tenant makes a counterclaim, you have nothing admissible.',
   },
 ]
 
 const journeySteps = [
   {
     icon: '🔍',
-    title: 'Find the right tenant',
-    body: 'Share one link in your Rightmove or OpenRent listing. Applicants upload their documents. You get an AI summary — income verified, affordability checked, red flags flagged.',
+    title: 'Screen with confidence',
+    body: 'Share one link in your listing. Applicants upload bank statements. AI verifies income and affordability — documented and timestamped.',
     slug: 'tenant-screening',
   },
   {
     icon: '📋',
-    title: 'Move them in properly',
-    body: "Generate a legally compliant tenancy agreement in minutes. Both parties sign online. Capture a timestamped photo inventory — your protection if there's ever a deposit dispute.",
+    title: 'Move in with a paper trail',
+    body: 'RRA 2025-compliant contract, signed digitally with IP and timestamp. Move-in inspection signed by both parties. Your evidence starts here.',
     slug: 'move-in',
   },
   {
     icon: '🏠',
-    title: 'Manage without the chaos',
-    body: 'Rent reminders go out automatically. Tenants submit maintenance requests through their own portal, with photos and a paper trail. You get alerts before certificates expire.',
+    title: 'Manage with a full audit log',
+    body: 'Every maintenance request logged, every rent payment recorded, every certificate tracked. Nothing lost.',
     slug: 'property-management',
   },
   {
     icon: '🛡️',
-    title: 'Handle issues properly',
-    body: "Need to raise the rent? We generate the correct notice. Things go wrong? Export a complete evidence pack — every message, photo and payment — in one click.",
+    title: 'Raise issues properly',
+    body: 'Section 8 notices generated correctly. And if it goes further — export your complete Dispute Evidence Pack in one click: contract, inspections, rent ledger, maintenance history.',
     slug: 'issue-management',
   },
   {
     icon: '🔄',
-    title: 'Start again, stress-free',
+    title: 'Move on cleanly',
     body: 'Once the tenancy ends, your property is back to vacant in one click. Run the check-out inspection, handle the deposit, and open applications again.',
     slug: 'tenancy-renewal',
   },
@@ -188,23 +188,6 @@ function IconCheck({ className = '' }: { className?: string }) {
   )
 }
 
-function IconChevronDown() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <polyline points="6 9 12 15 18 9" />
-    </svg>
-  )
-}
-
 function IconChevronLeft() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -260,13 +243,6 @@ function ComparisonCell({ value, bold, isLetSorted }: { value: CellValue; bold?:
 export default function LandingPage({ updates }: { updates: LandingUpdate[] }) {
   // Demo modal
   const [demoOpen, setDemoOpen] = useState(false)
-
-  const [email, setEmail] = useState('')
-  const [properties, setProperties] = useState('')
-  const [submitted, setSubmitted] = useState(false)
-  const [alreadyRegistered, setAlreadyRegistered] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [formError, setFormError] = useState('')
 
   // Auth-aware dashboard CTA: 'loading' → 'guest' | { href, label }
   const [ctaState, setCtaState] = useState<'loading' | 'guest' | { href: string; label: string }>('loading')
@@ -336,38 +312,6 @@ export default function LandingPage({ updates }: { updates: LandingUpdate[] }) {
     window.addEventListener('resize', update)
     return () => window.removeEventListener('resize', update)
   }, [])
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!email || !properties) {
-      setFormError('Please fill in both fields.')
-      return
-    }
-    setFormError('')
-    setLoading(true)
-    try {
-      const res = await fetch('/api/waitlist', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, propertyCount: properties }),
-      })
-      const data = (await res.json()) as {
-        success?: boolean
-        alreadyRegistered?: boolean
-        error?: string
-      }
-      if (!res.ok || !data.success) {
-        setFormError(data.error ?? 'Something went wrong. Please try again.')
-        return
-      }
-      if (data.alreadyRegistered) setAlreadyRegistered(true)
-      setSubmitted(true)
-    } catch {
-      setFormError('Something went wrong. Please try again.')
-    } finally {
-      setLoading(false)
-    }
-  }
 
   // Carousel computed values
   const SLIDER_GAP = 24
@@ -463,14 +407,14 @@ export default function LandingPage({ updates }: { updates: LandingUpdate[] }) {
       <div className="bg-[#FEF9EC] border-b border-[#F5E5A0]" style={{ padding: '10px 24px' }}>
         <div className="max-w-[1280px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-1 sm:gap-4 text-center sm:text-left">
           <p className="text-sm text-amber-900">
-            <span className="mr-1.5">📋</span>
-            Renters&apos; Rights Act 2026 — the biggest change to rental law in 30 years.
+            <span className="mr-1.5">⚖️</span>
+            Section 21 is abolished from 1 May 2026. Evictions now require court evidence. Is your paperwork ready?
           </p>
           <a
             href="/renters-rights-act"
             className="text-sm font-semibold text-green-700 hover:text-green-800 transition-colors whitespace-nowrap"
           >
-            Are you prepared? &rarr;
+            See what changes &rarr;
           </a>
         </div>
       </div>
@@ -479,13 +423,12 @@ export default function LandingPage({ updates }: { updates: LandingUpdate[] }) {
       <section className="py-24 sm:py-32 px-6 bg-gradient-to-b from-green-50 via-green-50/40 to-white">
         <div className="max-w-3xl mx-auto text-center">
           <h1 className="hero-0 text-5xl sm:text-6xl font-extrabold text-gray-900 tracking-tight leading-[1.1] mb-6">
-            Your rentals,{' '}
-            <span className="text-green-600">sorted.</span>
+            When a tenancy goes wrong,{' '}
+            <span className="text-green-600">your evidence wins.</span>
           </h1>
 
           <p className="hero-1 text-xl text-gray-500 leading-relaxed mb-10 max-w-2xl mx-auto">
-            LetSorted is the simplest way to manage your rental properties — tenants, documents,
-            rent and compliance, all in one place.
+            Section 21 is gone. Evictions now require proof — in court. LetSorted automatically builds the complete evidence trail every landlord needs: signed contracts, inspection reports, rent records, and a one-click dispute pack.
           </p>
 
           <div className="hero-2">
@@ -493,10 +436,10 @@ export default function LandingPage({ updates }: { updates: LandingUpdate[] }) {
               onClick={() => setDemoOpen(true)}
               className="inline-flex items-center gap-2.5 bg-green-600 hover:bg-green-700 text-white font-bold text-lg px-8 py-4 rounded-xl transition-colors duration-150 shadow-lg shadow-green-200/60"
             >
-              Try For Free &rarr;
+              Try for free &rarr;
             </button>
             <p className="mt-4 text-sm text-gray-400">
-              Built for UK self-managing landlords with 1–5 properties.
+              Free for your first property. Built for UK self-managing landlords.
             </p>
           </div>
         </div>
@@ -507,10 +450,10 @@ export default function LandingPage({ updates }: { updates: LandingUpdate[] }) {
         <div className="max-w-[1280px] mx-auto">
           <div className="reveal text-center mb-14">
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">
-              Sound familiar?
+              The law has changed. Has your paperwork?
             </h2>
             <p className="text-gray-400 text-lg">
-              Managing a rental property shouldn&apos;t feel like this.
+              Section 21 abolition means every landlord needs an evidence trail.
             </p>
           </div>
 
@@ -536,10 +479,10 @@ export default function LandingPage({ updates }: { updates: LandingUpdate[] }) {
         <div className="max-w-[1280px] mx-auto px-6 mb-14">
           <div className="reveal text-center">
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">
-              From empty property to happy tenant — and everything in between
+              Every step builds your protection
             </h2>
             <p className="text-gray-400 text-lg">
-              LetSorted guides you through every stage of renting.
+              LetSorted doesn&apos;t just help you manage — it automatically creates the legal record you&apos;d need in court.
             </p>
           </div>
         </div>
@@ -735,6 +678,40 @@ export default function LandingPage({ updates }: { updates: LandingUpdate[] }) {
         </div>
       </section>
 
+      {/* ── Evidence pack section ──────────────────────────────────────────── */}
+      <section className="py-20 px-6 bg-white">
+        <div className="max-w-3xl mx-auto">
+          <div className="reveal text-center mb-12">
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
+              When it goes to court, LetSorted has your back
+            </h2>
+            <p className="text-gray-500 text-lg leading-relaxed max-w-2xl mx-auto">
+              Most tenancies end without problems. But when one doesn&apos;t, the landlord with evidence wins. LetSorted builds that evidence automatically — from day one.
+            </p>
+          </div>
+
+          <div className="reveal grid sm:grid-cols-2 gap-4">
+            {[
+              'Signed tenancy agreement with digital signatures, IP addresses and timestamps',
+              'Move-in inspection report signed by both parties',
+              'Complete rent payment history with arrears highlighted',
+              'Every maintenance request — dated, photographed, tracked',
+              'All periodic inspection reports in chronological order',
+              'One-click Dispute Evidence Pack — everything your solicitor needs',
+            ].map((item) => (
+              <div key={item} className="flex items-start gap-3 bg-green-50/60 rounded-xl p-4 border border-green-100">
+                <IconCheck className="text-green-600 shrink-0 mt-0.5" />
+                <p className="text-gray-700 text-sm leading-relaxed">{item}</p>
+              </div>
+            ))}
+          </div>
+
+          <p className="reveal text-center text-gray-400 text-xs mt-8 max-w-xl mx-auto">
+            LetSorted is not a law firm and does not provide legal advice. Evidence packs contain factual records to support your case.
+          </p>
+        </div>
+      </section>
+
       {/* ── Comparison table section ──────────────────────────────────────── */}
       <section className="py-20 px-6 bg-gray-50">
         <div className="max-w-4xl mx-auto">
@@ -905,77 +882,21 @@ export default function LandingPage({ updates }: { updates: LandingUpdate[] }) {
         </div>
       </section>
 
-      {/* ── Waitlist section ──────────────────────────────────────────────── */}
-      <section id="waitlist" className="py-24 px-6 bg-green-50">
-        <div className="max-w-md mx-auto text-center">
-          {submitted ? (
-            <div>
-              <p className="text-6xl mb-6">{alreadyRegistered ? '👋' : '🎉'}</p>
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">
-                {alreadyRegistered ? "You're already on the list!" : "You're on the list!"}
-              </h2>
-              <p className="text-gray-500 text-lg leading-relaxed">
-                We&apos;ll be in touch before May 2026. Know another landlord who&apos;d benefit?
-                Tell them about LetSorted.
-              </p>
-            </div>
-          ) : (
-            <>
-              <div className="reveal mb-10">
-                <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">
-                  Be first in the door
-                </h2>
-                <p className="text-gray-500 text-lg leading-relaxed">
-                  We&apos;re building LetSorted right now. Join the waitlist and get early access.
-                </p>
-              </div>
-
-              <form onSubmit={handleSubmit} className="reveal space-y-3.5 text-left">
-                <input
-                  type="email"
-                  placeholder="your@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-white border border-gray-200 rounded-xl px-5 py-3.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-base"
-                  required
-                />
-
-                <div className="relative">
-                  <select
-                    value={properties}
-                    onChange={(e) => setProperties(e.target.value)}
-                    className="w-full bg-white border border-gray-200 rounded-xl px-5 py-3.5 pr-11 text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-base appearance-none"
-                    required
-                  >
-                    <option value="" disabled>
-                      How many properties do you manage?
-                    </option>
-                    <option value="1">1 property</option>
-                    <option value="2-3">2–3 properties</option>
-                    <option value="4-10">4–10 properties</option>
-                    <option value="10+">10+ properties</option>
-                  </select>
-                  <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
-                    <IconChevronDown />
-                  </div>
-                </div>
-
-                {formError && <p className="text-red-500 text-sm">{formError}</p>}
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl text-base transition-colors duration-150 shadow-lg shadow-green-200/60"
-                >
-                  {loading ? 'Joining…' : "Join the waitlist — it's free"}
-                </button>
-
-                <p className="text-center text-gray-400 text-xs pt-1">
-                  No spam. No passwords. Unsubscribe any time.
-                </p>
-              </form>
-            </>
-          )}
+      {/* ── CTA section ─────────────────────────────────────────────────── */}
+      <section className="py-24 px-6 bg-green-50">
+        <div className="max-w-md mx-auto text-center reveal">
+          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
+            Ready to protect your rental?
+          </h2>
+          <p className="text-gray-500 text-lg leading-relaxed mb-8">
+            Free for your first property. No credit card required.
+          </p>
+          <a
+            href="/login"
+            className="inline-flex items-center gap-2.5 bg-green-600 hover:bg-green-700 text-white font-bold text-lg px-8 py-4 rounded-xl transition-colors duration-150 shadow-lg shadow-green-200/60"
+          >
+            Get started free &rarr;
+          </a>
         </div>
       </section>
 

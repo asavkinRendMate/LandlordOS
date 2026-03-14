@@ -8,18 +8,18 @@ const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://letsorted.co.uk'
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
   title: {
-    default: 'LetSorted — AI Tenant Screening for UK Landlords',
+    default: 'LetSorted — Property Management for UK Landlords',
     template: '%s | LetSorted',
   },
   description:
-    'Screen tenants with AI-powered financial analysis. Protect yourself from bad tenancies after Section 21 abolition. Built for UK self-managing landlords.',
+    'The only UK property management platform that builds your legal evidence trail automatically. Contracts, inspections, rent records and dispute packs — everything you need if a tenancy goes wrong.',
   keywords: [
-    'tenant screening UK',
+    'property management UK',
     'landlord software UK',
-    'tenant check',
+    'tenant screening UK',
     'renters rights act landlord',
-    'tenant financial check',
     'section 21 abolished',
+    'landlord evidence trail',
     'UK landlord app',
   ],
   authors: [{ name: 'LetSorted' }],
@@ -30,23 +30,23 @@ export const metadata: Metadata = {
     locale: 'en_GB',
     url: BASE_URL,
     siteName: 'LetSorted',
-    title: 'LetSorted — AI Tenant Screening for UK Landlords',
+    title: 'LetSorted — Property Management for UK Landlords',
     description:
-      'Screen tenants with AI-powered financial analysis. Protect yourself from bad tenancies after Section 21 abolition.',
+      'The only UK property management platform that builds your legal evidence trail automatically. Contracts, inspections, rent records and dispute packs.',
     images: [
       {
         url: '/og-image.png',
         width: 1200,
         height: 630,
-        alt: 'LetSorted — AI Tenant Screening for UK Landlords',
+        alt: 'LetSorted — Property Management for UK Landlords',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'LetSorted — AI Tenant Screening for UK Landlords',
+    title: 'LetSorted — Property Management for UK Landlords',
     description:
-      'Screen tenants with AI-powered financial analysis. Built for UK landlords.',
+      'The only UK property management platform that builds your legal evidence trail automatically.',
     images: ['/og-image.png'],
   },
   robots: {
@@ -66,7 +66,7 @@ const organizationSchema = {
   url: BASE_URL,
   logo: `${BASE_URL}/logo.png`,
   description:
-    'AI-powered tenant screening and property management for UK landlords.',
+    'Property management platform that builds your legal evidence trail automatically. Built for UK landlords.',
   address: {
     '@type': 'PostalAddress',
     addressCountry: 'GB',
@@ -85,7 +85,7 @@ const softwareSchema = {
     priceCurrency: 'GBP',
   },
   description:
-    'AI-powered tenant screening for UK landlords. Screen tenants with bank statement analysis.',
+    'Property management for UK landlords. Contracts, inspections, rent records and dispute packs — builds your legal evidence trail automatically.',
 }
 
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
